@@ -1,0 +1,4 @@
+transformers==4.52.0
+lm-eval==0.4.9
+matplotlib
+seaborn
