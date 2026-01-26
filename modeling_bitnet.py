@@ -61,7 +61,6 @@ import glob_set
 
 print("OMG EVERYTHING IS FINE!!")
 
-exit()
 
 logger = logging.get_logger(__name__)
 _CONFIG_FOR_DOC = "BitNetConfig"

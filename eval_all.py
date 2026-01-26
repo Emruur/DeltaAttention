@@ -21,7 +21,7 @@ if args.shot == 10:
 tasks = ["arc_challenge"]
 
 # model_args = "pretrained=/projects/0/prjs1280/huggingface_cache/llama3_2_1B-local/models--meta-llama--Llama-3.2-1B-Instruct/snapshots/9213176726f574b556790deb65791e0c5aa438b6,trust_remote_code=False,dtype=bfloat16,device_map=auto,attn_implementation=eager"
-model_args="pretrained=/projects/0/prjs1280/huggingface_cache/bitnet-local/models--microsoft--bitnet-b1.58-2B-4T/snapshots/5494d2858154ceb2b3854430366bf6d43d6ba5b5,trust_remote_code=False,dtype=bfloat16,device_map=auto,attn_implementation=eager"
+model_args = "pretrained=microsoft/bitnet-b1.58-2B-4T"
 
 sparsity = {}
 eval_result = []
@@ -46,7 +46,7 @@ for t in tasks:
     eval_result.append(results)
 
 
-    save_dir = "/home/jqi1/BitNet/checkpoints"
+    save_dir = "./BitNet/checkpoints"
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, f"bitnet_arcc_t1.pt")
     print(globVR.delta_key[0].shape)
