@@ -59,7 +59,6 @@ if is_torch_flex_attn_available():
 import globVR
 import glob_set
 
-print("OMG EVERYTHING IS FINE!!")
 
 
 logger = logging.get_logger(__name__)
@@ -281,6 +280,7 @@ class BitNetAttention(nn.Module):
         return condition_mat
     
     def regular_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size):
+        # TODO calculate the attention scores using delta key and q
         delta_out = torch.matmul(regular_x, delta_y)
         output_base = delta_out[:,:,:,0].view(bsz,self.num_heads,dim_out, 1)
         out = output_base
@@ -288,6 +288,7 @@ class BitNetAttention(nn.Module):
             output_base = output_base + delta_out[:,:,:,pos].view(bsz, self.num_heads, dim_out, 1)
             out = torch.cat((out, output_base), dim=-1)
 
+        # TODO Have the full attention
         full_attn = torch.matmul(regular_x, regular_y)
         condition_mask = self.get_condition_mask_dn(delta_out.shape, blk_size)
         output = torch.where(condition_mask, full_attn, out)
@@ -302,6 +303,7 @@ class BitNetAttention(nn.Module):
         cache_position: Optional[torch.LongTensor] = None,
         **kwargs: Unpack[FlashAttentionKwargs],
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+
         input_shape = hidden_states.shape[:-1]
         hidden_shape = (*input_shape, -1, self.head_dim)
 
@@ -318,11 +320,11 @@ class BitNetAttention(nn.Module):
             key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
         
         bsz, q_len, _ = hidden_states.size()
-        # print('sir, this way')
+
+        # TODO
         if query_states.shape[2] > 1 and globVR.delta_pf_key_on == 1:
             key_delta_all = self.get_delta_mat(key_states, globVR.delta_pf_key_thresh)
             # globVR.delta_key.append(key_delta_all)
-            # print(key_delta_all.shape)
             # globVR.delta_head = glob_set.delta_compute_sparsity_head(key_delta_all, self.num_kv_heads, globVR.collect_delta_pf_key, globVR.delta_head)
             glob_set.store_delta(globVR.delta_key, self.layer_idx, key_delta_all, globVR.collect_delta_pf_key)
             blk_size = round(q_len*globVR.scale)

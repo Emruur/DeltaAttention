@@ -5,6 +5,17 @@ from lm_eval.evaluator import simple_evaluate
 import os
 import torch
 
+
+from transformers import AutoConfig, AutoModelForCausalLM
+from modeling_bitnet import BitNetForCausalLM, BitNetConfig 
+
+AutoConfig.register("bitnet", BitNetConfig,exist_ok=True)
+
+# 2. Register the model (maps the config class to YOUR local model class)
+AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM,exist_ok=True)
+
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--shot', default=0, type=int)
 args = parser.parse_args()
@@ -50,6 +61,7 @@ for t in tasks:
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, f"bitnet_arcc_t1.pt")
     print(globVR.delta_key[0].shape)
+
     torch.save(globVR.delta_key, save_path)
 
 for r in eval_result:
