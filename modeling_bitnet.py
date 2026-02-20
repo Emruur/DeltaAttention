@@ -510,7 +510,16 @@ class BitNetAttention(nn.Module):
                 glob_set.update_latency('time_get_row_delta', t_rd_end - t_rd_start)
                 # -----------------------------
             else:
+
+                # --- 3B. TIME GET ELEMENT DELTA ---
+                torch.cuda.synchronize()
+                t_ed_start = time.time()
+                
                 key_delta_all = self.get_delta_mat(key_states, globVR.delta_pf_key_thresh)
+                
+                torch.cuda.synchronize()
+                t_ed_end = time.time()
+                glob_set.update_latency('time_get_delta_mat', t_ed_end - t_ed_start)
 
             glob_set.store_delta(globVR.delta_key, self.layer_idx, key_delta_all, globVR.collect_delta_pf_key)
             blk_size = round(q_len*globVR.scale)
@@ -537,6 +546,8 @@ class BitNetAttention(nn.Module):
                 glob_set.update_latency('time_delta_mm_pattern', t_mm_end - t_mm_start)
                 # --------------------------------
             else:
+
+                
                 attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) * self.scaling
         else:
             if globVR.delta_key_on == 1:

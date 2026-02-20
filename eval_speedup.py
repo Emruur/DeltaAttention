@@ -31,6 +31,18 @@ except ImportError:
 # EXPERIMENT DEFINITIONS
 # ==========================================
 EXPERIMENT_DEFINITIONS = {
+    "scale_delta": {  # <--- Use this experiment type for get_delta_mat
+        "grid": {
+            "scale": [0.05], 
+            "thresh": [0.8, 1.2, 2.0]
+        },
+        "arg_builder": lambda p: ["--scale", str(p["scale"]), "--thresh", str(p["thresh"])],
+        "injector": lambda args: {
+            "use_row_delta": False,  # <--- EXPLICITLY DISABLE ROW DELTA HERE
+            "scale": args.scale,
+            "delta_pf_key_thresh": args.thresh
+        }
+    },
     "row_delta": {
         "grid": {
             "scale": [0.05], 
