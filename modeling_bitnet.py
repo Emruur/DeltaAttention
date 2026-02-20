@@ -238,91 +238,71 @@ class BitNetAttention(nn.Module):
         return delta_all
 
     def get_row_delta_mat(self, input_states, threshold, similarity_metric="cosine"):
-            """
-            Computes a row-wise (structured) delta matrix and a keep-mask.
-            
-            Args:
-                input_states: (bsz, n_head, seq_len, head_dim)
-                threshold: float, sensitivity for the metric
-                similarity_metric: "cosine", "euclidean", "l1", "max", or "kl"
-                
-            Returns:
-                delta_all: (bsz, n_head, seq_len, head_dim) - The sparse delta states
-                keep_mask: (bsz, n_head, seq_len) - Boolean map (True=Keep, False=Skip)
-            """
-            bsz, n_head, seq_len, head_dim = input_states.shape
-            device = input_states.device
-            
-            # Initialize the delta matrix with zeros
-            delta_all = torch.zeros_like(input_states)
-            
-            # Initialize the Boolean Map (False = Skip/Zero)
-            keep_mask = torch.zeros((bsz, n_head, seq_len), dtype=torch.bool, device=device)
-            
-            # --- FIRST TOKEN HANDLING ---
-            # The first row is always stored as the starting reference (Anchor)
-            delta_all[:, :, 0, :] = input_states[:, :, 0, :]
-            keep_mask[:, :, 0] = True  # Always keep the first token
-            
-            # Initialize reference states
-            ref_states = input_states[:, :, 0, :].clone() 
+        """
+        Computes a row-wise (structured) delta matrix and a keep-mask.
+        OPTIMIZED FOR SPEED: Does not zero-out skipped rows.
+        """
+        bsz, n_head, seq_len, head_dim = input_states.shape
+        device = input_states.device
+        
+        # 1. OPTIMIZATION: Use empty_like to skip the massive zero-initialization overhead
+        delta_all = torch.empty_like(input_states)
+        
+        # Initialize the Boolean Map
+        keep_mask = torch.zeros((bsz, n_head, seq_len), dtype=torch.bool, device=device)
+        
+        # --- FIRST TOKEN HANDLING ---
+        delta_all[:, :, 0, :] = input_states[:, :, 0, :]
+        keep_mask[:, :, 0] = True
+        
+        # Initialize reference states
+        ref_states = input_states[:, :, 0, :].clone() 
 
-            for n in range(1, seq_len):
-                current_row = input_states[:, :, n, :]
+        for n in range(1, seq_len):
+            current_row = input_states[:, :, n, :]
+            
+            # --- METRIC CALCULATION ---
+            # Directly calculating `should_keep` to avoid extra NOT operations
+            if similarity_metric == "cosine":
+                sim = torch.nn.functional.cosine_similarity(current_row, ref_states, dim=-1)
+                should_keep = sim < threshold
                 
-                # --- METRIC CALCULATION ---
-                if similarity_metric == "cosine":
-                    # Higher is more similar (1.0 = identical)
-                    sim = torch.nn.functional.cosine_similarity(current_row, ref_states, dim=-1)
-                    is_similar = sim >= threshold  # Note: Cosine is similarity, not distance
-                    
-                elif similarity_metric == "euclidean":
-                    # Lower is more similar (0.0 = identical)
-                    dist = torch.norm(current_row - ref_states, p=2, dim=-1)
-                    is_similar = dist <= threshold
-                    
-                elif similarity_metric == "l1":
-                    dist = torch.norm(current_row - ref_states, p=1, dim=-1)
-                    is_similar = dist <= threshold
-                    
-                elif similarity_metric == "max":
-                    # Chebyshev distance
-                    dist = torch.max(torch.abs(current_row - ref_states), dim=-1)[0]
-                    is_similar = dist <= threshold
+            elif similarity_metric == "euclidean":
+                # OPTIMIZATION: Squared distance is much faster than torch.norm (which does a sqrt)
+                sq_dist = torch.sum((current_row - ref_states) ** 2, dim=-1)
+                should_keep = sq_dist > (threshold ** 2)
+                
+            elif similarity_metric == "l1":
+                dist = torch.norm(current_row - ref_states, p=1, dim=-1)
+                should_keep = dist > threshold
+                
+            elif similarity_metric == "max":
+                dist = torch.max(torch.abs(current_row - ref_states), dim=-1)[0]
+                should_keep = dist > threshold
 
-                elif similarity_metric == "kl":
-                    # KL Divergence
-                    p = torch.nn.functional.softmax(current_row, dim=-1)
-                    q = torch.nn.functional.softmax(ref_states, dim=-1)
-                    kl_div = torch.sum(p * (torch.log(p + 1e-10) - torch.log(q + 1e-10)), dim=-1)
-                    is_similar = kl_div <= threshold
-                    
-                else:
-                    raise ValueError(f"Unknown metric: {similarity_metric}")
+            elif similarity_metric == "kl":
+                p = torch.nn.functional.softmax(current_row, dim=-1)
+                q = torch.nn.functional.softmax(ref_states, dim=-1)
+                kl_div = torch.sum(p * (torch.log(p + 1e-10) - torch.log(q + 1e-10)), dim=-1)
+                should_keep = kl_div > threshold
+                
+            else:
+                raise ValueError(f"Unknown metric: {similarity_metric}")
 
-                # --- MASK GENERATION ---
-                # is_similar is (bsz, n_head).
-                # If similar (True), we SKIP (keep=False).
-                # If different (False), we KEEP (keep=True).
-                should_keep = ~is_similar
-                
-                # Store in the map
-                keep_mask[:, :, n] = should_keep
+            # --- MASK GENERATION ---
+            keep_mask[:, :, n] = should_keep
 
-                # --- DELTA CALCULATION ---
-                # Reshape for broadcasting: (bsz, n_head, 1)
-                mask_broadcast = is_similar.unsqueeze(-1)
-                
-                # If similar: Delta is 0. If not: Delta is (Current - Reference)
-                delta_row = torch.where(mask_broadcast, torch.zeros_like(current_row), current_row - ref_states)
-                delta_all[:, :, n, :] = delta_row
-                
-                # --- REFERENCE UPDATE ---
-                # Update reference ONLY if the row was significant enough to be kept
-                ref_states = torch.where(mask_broadcast, ref_states, current_row)
-                
-            return delta_all, keep_mask
-
+            # --- DELTA CALCULATION ---
+            # OPTIMIZATION: Unconditionally write the delta. 
+            # We removed torch.where() and torch.zeros_like().
+            delta_all[:, :, n, :] = current_row - ref_states
+            
+            # --- REFERENCE UPDATE ---
+            # Update reference ONLY if the row was significant enough to be kept
+            mask_broadcast = should_keep.unsqueeze(-1)
+            ref_states = torch.where(mask_broadcast, current_row, ref_states)
+            
+        return delta_all, keep_mask
     def direct_prune(self, input_states, thresh):
         # mask = input_states > thresh
         out = torch.where(input_states.abs() < thresh, torch.tensor(0), input_states)
