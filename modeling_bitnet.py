@@ -19,7 +19,7 @@
 # See the License for the specific language governing permissions and
 
 from typing import Callable, Optional, Tuple, Union
-
+import time
 import torch
 from torch import nn
 
@@ -236,7 +236,93 @@ class BitNetAttention(nn.Module):
             input_old = torch.where(delta_mask, input_old, input_new)
         
         return delta_all
-    
+
+    def get_row_delta_mat(self, input_states, threshold, similarity_metric="cosine"):
+            """
+            Computes a row-wise (structured) delta matrix and a keep-mask.
+            
+            Args:
+                input_states: (bsz, n_head, seq_len, head_dim)
+                threshold: float, sensitivity for the metric
+                similarity_metric: "cosine", "euclidean", "l1", "max", or "kl"
+                
+            Returns:
+                delta_all: (bsz, n_head, seq_len, head_dim) - The sparse delta states
+                keep_mask: (bsz, n_head, seq_len) - Boolean map (True=Keep, False=Skip)
+            """
+            bsz, n_head, seq_len, head_dim = input_states.shape
+            device = input_states.device
+            
+            # Initialize the delta matrix with zeros
+            delta_all = torch.zeros_like(input_states)
+            
+            # Initialize the Boolean Map (False = Skip/Zero)
+            keep_mask = torch.zeros((bsz, n_head, seq_len), dtype=torch.bool, device=device)
+            
+            # --- FIRST TOKEN HANDLING ---
+            # The first row is always stored as the starting reference (Anchor)
+            delta_all[:, :, 0, :] = input_states[:, :, 0, :]
+            keep_mask[:, :, 0] = True  # Always keep the first token
+            
+            # Initialize reference states
+            ref_states = input_states[:, :, 0, :].clone() 
+
+            for n in range(1, seq_len):
+                current_row = input_states[:, :, n, :]
+                
+                # --- METRIC CALCULATION ---
+                if similarity_metric == "cosine":
+                    # Higher is more similar (1.0 = identical)
+                    sim = torch.nn.functional.cosine_similarity(current_row, ref_states, dim=-1)
+                    is_similar = sim >= threshold  # Note: Cosine is similarity, not distance
+                    
+                elif similarity_metric == "euclidean":
+                    # Lower is more similar (0.0 = identical)
+                    dist = torch.norm(current_row - ref_states, p=2, dim=-1)
+                    is_similar = dist <= threshold
+                    
+                elif similarity_metric == "l1":
+                    dist = torch.norm(current_row - ref_states, p=1, dim=-1)
+                    is_similar = dist <= threshold
+                    
+                elif similarity_metric == "max":
+                    # Chebyshev distance
+                    dist = torch.max(torch.abs(current_row - ref_states), dim=-1)[0]
+                    is_similar = dist <= threshold
+
+                elif similarity_metric == "kl":
+                    # KL Divergence
+                    p = torch.nn.functional.softmax(current_row, dim=-1)
+                    q = torch.nn.functional.softmax(ref_states, dim=-1)
+                    kl_div = torch.sum(p * (torch.log(p + 1e-10) - torch.log(q + 1e-10)), dim=-1)
+                    is_similar = kl_div <= threshold
+                    
+                else:
+                    raise ValueError(f"Unknown metric: {similarity_metric}")
+
+                # --- MASK GENERATION ---
+                # is_similar is (bsz, n_head).
+                # If similar (True), we SKIP (keep=False).
+                # If different (False), we KEEP (keep=True).
+                should_keep = ~is_similar
+                
+                # Store in the map
+                keep_mask[:, :, n] = should_keep
+
+                # --- DELTA CALCULATION ---
+                # Reshape for broadcasting: (bsz, n_head, 1)
+                mask_broadcast = is_similar.unsqueeze(-1)
+                
+                # If similar: Delta is 0. If not: Delta is (Current - Reference)
+                delta_row = torch.where(mask_broadcast, torch.zeros_like(current_row), current_row - ref_states)
+                delta_all[:, :, n, :] = delta_row
+                
+                # --- REFERENCE UPDATE ---
+                # Update reference ONLY if the row was significant enough to be kept
+                ref_states = torch.where(mask_broadcast, ref_states, current_row)
+                
+            return delta_all, keep_mask
+
     def direct_prune(self, input_states, thresh):
         # mask = input_states > thresh
         out = torch.where(input_states.abs() < thresh, torch.tensor(0), input_states)
@@ -278,22 +364,126 @@ class BitNetAttention(nn.Module):
                 condition_mat[:,:,i, block_start:block_start+blk_size] = True
             # condition_mat[:,:,i, max(0, i-globVR.window_size):i+1] = True
         return condition_mat
-    
-    def regular_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size):
-        # TODO calculate the attention scores using delta key and q
-        delta_out = torch.matmul(regular_x, delta_y)
-        output_base = delta_out[:,:,:,0].view(bsz,self.num_heads,dim_out, 1)
-        out = output_base
-        for pos in range(1, seq_len):
-            output_base = output_base + delta_out[:,:,:,pos].view(bsz, self.num_heads, dim_out, 1)
-            out = torch.cat((out, output_base), dim=-1)
 
-        # TODO Have the full attention
-        full_attn = torch.matmul(regular_x, regular_y)
-        condition_mask = self.get_condition_mask_dn(delta_out.shape, blk_size)
-        output = torch.where(condition_mask, full_attn, out)
-        return output
-    
+
+    def _patch_hybrid_attention(self, out, regular_x, regular_y, bsz, seq_len, blk_size):
+        """
+        Efficiently computes exact attention ONLY for the Sink and Local Diagonal Blocks,
+        patching them directly into the 'out' tensor.
+        
+        Args:
+            out: (B, H, L, L) - The accumulated delta attention scores (to be patched)
+            regular_x: (B, H, L, D) - Query states
+            regular_y: (B, H, D, L) - Transposed Key states
+        """
+        # 
+        
+        sink_size = globVR.sink_size
+        
+        # --- A. SINK ATTENTION (Vertical Strip) ---
+        # Computes attention from ALL tokens to the first 'sink_size' tokens.
+        # Complexity: O(L * sink_size)
+        if sink_size > 0:
+            # 1. Slice K to get only sink columns: (B, H, D, sink_size)
+            # We slice the last dimension of transposed K
+            k_sink = regular_y[..., :sink_size]
+            
+            # 2. Compute exact scores: Q(All) * K(Sink)
+            # Output: (B, H, L, sink_size)
+            sink_scores = torch.matmul(regular_x, k_sink)
+            
+            # 3. Patch: Overwrite the first 'sink_size' columns of 'out'
+            out[..., :sink_size] = sink_scores
+
+        # --- B. LOCAL BLOCK ATTENTION (Diagonal Squares) ---
+        # Computes attention within local blocks (e.g. 64x64 squares on diagonal).
+        # Complexity: O(L * blk_size) -> Linear scaling with sequence length!
+        if blk_size > 0:
+            n_blocks = seq_len // blk_size
+            trunc_len = n_blocks * blk_size
+            
+            if n_blocks > 0:
+                # 1. Reshape Q to isolate blocks: (B, H, n_blocks, blk_size, D)
+                q_blocked = regular_x[..., :trunc_len, :].view(bsz, self.num_heads, n_blocks, blk_size, -1)
+                
+                # 2. Reshape K (Transposed) to isolate blocks
+                # K is (B, H, D, L) -> view as (B, H, D, n_blocks, blk_size)
+                k_blocked = regular_y[..., :trunc_len].view(bsz, self.num_heads, -1, n_blocks, blk_size)
+                # Permute to (B, H, n_blocks, D, blk_size) for batch matmul
+                k_blocked = k_blocked.permute(0, 1, 3, 2, 4)
+
+                # 3. Batch Matrix Multiplication
+                # Computes all diagonal blocks in parallel
+                # (..., blk, D) @ (..., D, blk) -> (..., blk, blk)
+                block_scores = torch.matmul(q_blocked, k_blocked)
+                
+                # 4. Patch into 'out'
+                # We view 'out' as a grid of blocks to easily assign to the diagonal
+                out_view = out[..., :trunc_len, :trunc_len].view(bsz, self.num_heads, n_blocks, blk_size, n_blocks, blk_size)
+                
+                # Loop through blocks to assign diagonal: out[b,h,i,:,i,:] = block_scores[b,h,i,:,:]
+                # Note: A Python loop here is fine because n_blocks is small (e.g. 16 for L=1024)
+                for i in range(n_blocks):
+                    out_view[:, :, i, :, i, :] = block_scores[:, :, i, :, :]
+
+            # 5. Handle Remainder (Tail of sequence)
+            # If L=100 and blk=64, we have 36 tokens left at the end.
+            if seq_len > trunc_len:
+                q_tail = regular_x[..., trunc_len:, :]     # (B, H, rem, D)
+                k_tail = regular_y[..., trunc_len:]        # (B, H, D, rem)
+                
+                tail_scores = torch.matmul(q_tail, k_tail) # (B, H, rem, rem)
+                
+                # Patch the bottom-right corner
+                out[..., trunc_len:, trunc_len:] = tail_scores
+
+        return out
+
+    def regular_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None):
+            
+            # --- OPTIMIZED PATH ---
+            delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 
+                                dtype=regular_x.dtype, device=regular_x.device)
+
+            if keep_mask is not None:
+                for b in range(bsz):
+                    for h in range(self.num_heads):
+                        kv_head_idx = h // self.num_key_value_groups
+                        mask_h = keep_mask[b, kv_head_idx]
+
+                        # --- ADD THIS DEBUG PRINT ---
+                        if b == 0 and h == 0:
+                            active_ratio = mask_h.sum().item() / mask_h.numel()
+                            # print(f"DEBUG: Head 0 Sparsity: {1.0 - active_ratio:.2%} (Active Rows: {mask_h.sum().item()})")
+                                            
+                        # 1. Slice Active Keys (Sparse Method)
+                        active_k = delta_y[b, h][:, mask_h].contiguous()
+                        
+                        if active_k.shape[1] > 0:
+                            # --- 1. TIME INNER MATMUL ---
+                            torch.cuda.synchronize()
+                            t_sm_start = time.time()
+                            
+                            active_scores = torch.matmul(regular_x[b, h].to(torch.float32), active_k.to(torch.float32))
+
+                            torch.cuda.synchronize()
+                            t_sm_end = time.time()
+                            glob_set.update_latency('time_sparse_matmul', t_sm_end - t_sm_start)
+                            # -----------------------------
+
+                            delta_out[b, h, :, mask_h] = active_scores.to(delta_out.dtype)
+                                
+            else:
+                delta_out = torch.matmul(regular_x, delta_y)
+
+            # In-place cumsum to save memory
+            delta_out = torch.cumsum(delta_out, dim=-1)
+
+            output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
+            
+            return output
+
+
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -303,6 +493,11 @@ class BitNetAttention(nn.Module):
         cache_position: Optional[torch.LongTensor] = None,
         **kwargs: Unpack[FlashAttentionKwargs],
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+
+        # --- 2. TIME THE WHOLE FUNC (START) ---
+        torch.cuda.synchronize()
+        t_forward_start = time.time()
+        # --------------------------------------
 
         input_shape = hidden_states.shape[:-1]
         hidden_shape = (*input_shape, -1, self.head_dim)
@@ -315,45 +510,59 @@ class BitNetAttention(nn.Module):
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
         if past_key_value is not None:
-            # sin and cos are specific to RoPE models; cache_position needed for the static cache
             cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
             key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
         
         bsz, q_len, _ = hidden_states.size()
 
-        # TODO
+        keep_mask = None
+
         if query_states.shape[2] > 1 and globVR.delta_pf_key_on == 1:
-            key_delta_all = self.get_delta_mat(key_states, globVR.delta_pf_key_thresh)
-            # globVR.delta_key.append(key_delta_all)
-            # globVR.delta_head = glob_set.delta_compute_sparsity_head(key_delta_all, self.num_kv_heads, globVR.collect_delta_pf_key, globVR.delta_head)
+            if globVR.use_row_delta: 
+                # --- 3. TIME GET ROW DELTA ---
+                torch.cuda.synchronize()
+                t_rd_start = time.time()
+                
+                key_delta_all, keep_mask = self.get_row_delta_mat(key_states, globVR.row_delta_threshold ,globVR.row_similarity_metric)
+                
+                torch.cuda.synchronize()
+                t_rd_end = time.time()
+                glob_set.update_latency('time_get_row_delta', t_rd_end - t_rd_start)
+                # -----------------------------
+            else:
+                key_delta_all = self.get_delta_mat(key_states, globVR.delta_pf_key_thresh)
+
             glob_set.store_delta(globVR.delta_key, self.layer_idx, key_delta_all, globVR.collect_delta_pf_key)
             blk_size = round(q_len*globVR.scale)
             new_scale = blk_size/q_len
             if globVR.collect_delta_pf_key == 1:
                 glob_set.compute_sparsity_scale(key_delta_all, new_scale)
+                
             key_delta_all = repeat_kv(key_delta_all, self.num_key_value_groups)
         
-        # if query_states.shape[2] > 1 and globVR.direct_prune == 1:
-        #     key_states = self.direct_prune(key_states, globVR.direct_thresh)
-        
-        key_states = repeat_kv(key_states, self.num_key_value_groups) # for group query attention
+        key_states = repeat_kv(key_states, self.num_key_value_groups) 
         value_states = repeat_kv(value_states, self.num_key_value_groups)
 
-        if query_states.shape[2] > 1: # determine the prefill or decoding phase
+
+        if query_states.shape[2] > 1: 
             if globVR.delta_pf_key_on == 1:
-                attn_weights = self.regular_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size)) * self.scaling
-                # attn_weights = self.regular_delta_mm_pattern(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len) * self.scaling
+                # --- 4. TIME DELTA MM PATTERN ---
+                torch.cuda.synchronize()
+                t_mm_start = time.time()
+                
+                attn_weights = self.regular_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask) * self.scaling
+                
+                torch.cuda.synchronize()
+                t_mm_end = time.time()
+                glob_set.update_latency('time_delta_mm_pattern', t_mm_end - t_mm_start)
+                # --------------------------------
             else:
                 attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) * self.scaling
         else:
             if globVR.delta_key_on == 1:
                 attn_weights = self.regular_delta_vm_window(query_states, key_delta_all.transpose(2,3), key_states.transpose(2,3), bsz, key_states.shape[2]) * self.scaling
-                # attn_weights = self.regular_delta_vm_right(query_states, key_delta_all.transpose(2,3), bsz, key_states.shape[2]) * self.scaling
-                # attn_weights = self.regular_delta_vm_right_sink(query_states, key_delta_all.transpose(2,3), key_states.transpose(2,3), bsz, key_states.shape[2]) * self.scaling                
-                # attn_weights = self.regular_delta_vm(query_states, key_delta_all.transpose(2,3), bsz, key_states.shape[2]) * self.scaling
             else:
                 attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) * self.scaling
-        
         
         if attention_mask is not None:
             causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
@@ -361,46 +570,21 @@ class BitNetAttention(nn.Module):
 
         attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query_states.dtype)
         attn_weights = nn.functional.dropout(attn_weights, p=0.0, training=self.training)
-        # try full attention for sink and diagnol only
-        # attn_weights = self.apply_attn_mask(attn_weights, 16, 1)
+
         attn_output = torch.matmul(attn_weights, value_states)
         attn_output = attn_output.transpose(1, 2).contiguous()
 
-        # attention_interface: Callable = eager_attention_forward
-        
-        # print(f'self.config._attn_implementation: {self.config._attn_implementation}')
-        # print(torch.backends.cuda.is_flash_attention_available())        # True/False
-
-        # Which backends are globally enabled?
-        # print("Flash:",  torch.backends.cuda.flash_sdp_enabled())        # FlashAttention-2
-        # print("Efficient:", torch.backends.cuda.mem_efficient_sdp_enabled())  # xFormers memory-efficient
-        # print("Math:",   torch.backends.cuda.math_sdp_enabled()) 
-        # if self.config._attn_implementation != "eager":
-        #     if self.config._attn_implementation == "sdpa" and kwargs.get("output_attentions", False):
-        #         logger.warning_once(
-        #             "`torch.nn.functional.scaled_dot_product_attention` does not support `output_attentions=True`. Falling back to "
-        #             'eager attention. This warning can be removed using the argument `attn_implementation="eager"` when loading the model.'
-        #         )
-        #     else:
-        #         # print('this branch')
-        #         attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
-
-        # attn_output, attn_weights = attention_interface(
-        #     self,
-        #     query_states,
-        #     key_states,
-        #     value_states,
-        #     attention_mask,
-        #     dropout=0.0 if not self.training else self.attention_dropout,
-        #     scaling=self.scaling,
-        #     **kwargs,
-        # )
-
         attn_output = attn_output.reshape(*input_shape, -1).contiguous()
-        attn_output = self.attn_sub_norm(attn_output)  # diff with Llama
+        attn_output = self.attn_sub_norm(attn_output) 
         attn_output = self.o_proj(attn_output)
-        return attn_output, attn_weights
 
+        # --- 2. TIME THE WHOLE FUNC (END) ---
+        torch.cuda.synchronize()
+        t_forward_end = time.time()
+        glob_set.update_latency('time_forward_total', t_forward_end - t_forward_start)
+        # ------------------------------------
+
+        return attn_output, attn_weights
 
 class BitNetDecoderLayer(GradientCheckpointingLayer):
     def __init__(self, config: BitNetConfig, layer_idx: int):

@@ -1,0 +1,6 @@
+{
+    "use_row_delta": true,
+    "scale": 0.05,
+    "row_delta_threshold": 500.0,
+    "row_similarity_metric": "l1"
+}

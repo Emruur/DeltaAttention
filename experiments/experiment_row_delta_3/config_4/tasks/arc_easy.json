@@ -1,0 +1,22 @@
+{
+    "task_name": "arc_easy",
+    "timestamp": "2026-02-17T18:16:49.652001",
+    "experiment_type": "row_delta",
+    "parameters": {
+        "use_row_delta": true,
+        "scale": 0.05,
+        "row_delta_threshold": 10.0,
+        "row_similarity_metric": "euclidean"
+    },
+    "shot": 0,
+    "sparsity": 0.04351121187210083,
+    "avg_attn_latency_ms": 2.596299229759201,
+    "accuracy": 0.79,
+    "metrics": {
+        "alias": "arc_easy",
+        "acc,none": 0.79,
+        "acc_stderr,none": 0.040936018074033256,
+        "acc_norm,none": 0.84,
+        "acc_norm_stderr,none": 0.036845294917747115
+    }
+}

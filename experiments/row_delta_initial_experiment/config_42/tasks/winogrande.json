@@ -1,0 +1,19 @@
+{
+    "task_name": "winogrande",
+    "timestamp": "2026-02-09T19:54:41.195523",
+    "experiment_type": "row_delta",
+    "parameters": {
+        "use_row_delta": true,
+        "scale": 0.05,
+        "row_delta_threshold": 10.0,
+        "row_similarity_metric": "kl"
+    },
+    "shot": 0,
+    "sparsity": 0.8711110353469849,
+    "accuracy": 0.58,
+    "metrics": {
+        "alias": "winogrande",
+        "acc,none": 0.58,
+        "acc_stderr,none": 0.049604496374885836
+    }
+}

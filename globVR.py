@@ -60,3 +60,10 @@ delta_pf_k = {}
 delta_attn = {}
 # q_pre = torch.tensor([]).cuda()
 # attn_pre = torch.tensor([]).cuda()
+
+
+
+use_row_delta = False
+row_delta_threshold = 10
+row_similarity_metric= "cos"
+

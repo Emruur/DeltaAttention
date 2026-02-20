@@ -9,6 +9,22 @@ import pandas as pd
 def set_sample(n_data):
     globVR.n_sample = n_data
 
+def update_latency(metric_name, dt_seconds):
+    """
+    Structured latency tracker. Stores metrics in a dictionary in globVR.
+    """
+    # Initialize the dictionary if it doesn't exist
+    if not hasattr(globVR, 'latency_stats'):
+        globVR.latency_stats = {}
+    
+    # Initialize the specific metric if it's new
+    if metric_name not in globVR.latency_stats:
+        globVR.latency_stats[metric_name] = {'time_ms': 0.0, 'calls': 0}
+        
+    # Accumulate
+    globVR.latency_stats[metric_name]['time_ms'] += (dt_seconds * 1000)
+    globVR.latency_stats[metric_name]['calls'] += 1
+
 def build_glob(activation, n_data, n_layer, max_len, d_model):
     activation[n_data] = torch.zeros(n_layer, max_len, d_model).cuda()
     #globVR.k_act[n_data] = torch.zeros(n_layer, max_len, d_model)

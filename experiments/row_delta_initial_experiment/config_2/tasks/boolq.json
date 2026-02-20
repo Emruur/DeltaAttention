@@ -1,0 +1,19 @@
+{
+    "task_name": "boolq",
+    "timestamp": "2026-02-10T18:09:11.766336",
+    "experiment_type": "row_delta",
+    "parameters": {
+        "use_row_delta": true,
+        "scale": 0.05,
+        "row_delta_threshold": 0.1,
+        "row_similarity_metric": "l1"
+    },
+    "shot": 0,
+    "sparsity": 0.0024457231629639864,
+    "accuracy": 0.76,
+    "metrics": {
+        "alias": "boolq",
+        "acc,none": 0.76,
+        "acc_stderr,none": 0.042923469599092816
+    }
+}

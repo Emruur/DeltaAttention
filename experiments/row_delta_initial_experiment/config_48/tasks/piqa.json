@@ -1,0 +1,21 @@
+{
+    "task_name": "piqa",
+    "timestamp": "2026-02-09T16:55:29.634433",
+    "experiment_type": "row_delta",
+    "parameters": {
+        "use_row_delta": true,
+        "scale": 0.05,
+        "row_delta_threshold": 0.5,
+        "row_similarity_metric": "cosine"
+    },
+    "shot": 0,
+    "sparsity": 0.40735432505607605,
+    "accuracy": 0.69,
+    "metrics": {
+        "alias": "piqa",
+        "acc,none": 0.69,
+        "acc_stderr,none": 0.04648231987117316,
+        "acc_norm,none": 0.73,
+        "acc_norm_stderr,none": 0.044619604333847394
+    }
+}
