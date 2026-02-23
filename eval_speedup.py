@@ -32,7 +32,7 @@ except ImportError:
 EXPERIMENT_DEFINITIONS = {
     "baseline": {
         "grid": {
-            "seq_len": [1024, 2048, 4096],
+            "seq_len": [1024, 2048, 3072],
         },
         "arg_builder": lambda p: ["--seq_len", str(p["seq_len"])],
         "injector": lambda args: {
