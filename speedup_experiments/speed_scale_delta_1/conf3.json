@@ -1,0 +1,16 @@
+{
+    "timestamp": "2026-02-20T14:04:03.131774",
+    "experiment_type": "scale_delta",
+    "parameters": {
+        "use_row_delta": false,
+        "scale": 0.05,
+        "delta_pf_key_thresh": 2.0
+    },
+    "seq_len": 1024,
+    "latency_breakdown_ms": {
+        "time_get_delta_mat": 19.66703216234843,
+        "time_delta_mm_pattern": 1.3249850273132324,
+        "time_forward_total": 24.811681906382244
+    },
+    "sparsity": 0.8479279279708862
+}
