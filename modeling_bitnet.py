@@ -303,11 +303,77 @@ class BitNetAttention(nn.Module):
             ref_states = torch.where(mask_broadcast, current_row, ref_states)
             
         return delta_all, keep_mask
+    
+    def get_row_delta_mat_fast(self, input_states, threshold, similarity_metric="cosine"):
+        bsz, n_head, seq_len, head_dim = input_states.shape
+        device = input_states.device
+        
+        # Pre-allocate mask
+        keep_mask = torch.zeros((bsz, n_head, seq_len), dtype=torch.bool, device=device)
+        keep_mask[:, :, 0] = True
+        
+        # List accumulation for Eager Mode speed
+        delta_list = [input_states[:, :, 0, :]]
+        ref_states = input_states[:, :, 0, :].clone() 
+
+        # Pre-compute threshold for euclidean to avoid squaring in the loop
+        thresh_sq = threshold ** 2 if similarity_metric == "euclidean" else None
+
+        for n in range(1, seq_len):
+            current_row = input_states[:, :, n, :]
+            
+            # Compute diff ONCE. We use this for the delta list, and for L1/Max/Euclidean metrics.
+            diff = current_row - ref_states
+            
+            # --- METRIC CALCULATION ---
+            if similarity_metric == "cosine":
+                sim = torch.nn.functional.cosine_similarity(current_row, ref_states, dim=-1)
+                should_keep = sim < threshold
+                
+            elif similarity_metric == "euclidean":
+                # Reusing 'diff', and doing element-wise multiplication instead of **2
+                sq_dist = torch.sum(diff * diff, dim=-1)
+                should_keep = sq_dist > thresh_sq
+                
+            elif similarity_metric == "l1":
+                # Reusing 'diff', and using sum(abs) which is generally faster than torch.norm
+                dist = torch.sum(torch.abs(diff), dim=-1)
+                should_keep = dist > threshold
+                
+            elif similarity_metric == "max":
+                # Reusing 'diff'
+                dist = torch.max(torch.abs(diff), dim=-1)[0]
+                should_keep = dist > threshold
+
+            elif similarity_metric == "kl":
+                p = torch.nn.functional.softmax(current_row, dim=-1)
+                q = torch.nn.functional.softmax(ref_states, dim=-1)
+                kl_div = torch.sum(p * (torch.log(p + 1e-10) - torch.log(q + 1e-10)), dim=-1)
+                should_keep = kl_div > threshold
+                
+            else:
+                raise ValueError(f"Unknown metric: {similarity_metric}")
+
+            # --- MASK & DELTA ---
+            keep_mask[:, :, n] = should_keep
+            delta_list.append(diff)
+            
+            # --- REFERENCE UPDATE ---
+            ref_states = torch.where(should_keep.unsqueeze(-1), current_row, ref_states)
+            
+        # Combine efficiently at the end
+        delta_all = torch.stack(delta_list, dim=2)
+        
+        return delta_all, keep_mask
+    
+    
+    
     def direct_prune(self, input_states, thresh):
         # mask = input_states > thresh
         out = torch.where(input_states.abs() < thresh, torch.tensor(0), input_states)
         globVR.direct_spars += torch.sum(out == 0).item()/out.numel()
         return out
+    
     # def get_condition_mask(self, shape):
     #     # generate the A-shape condition matrix according to predefined window size and sink size
     #     bsz, n_heads, row, col = shape
@@ -503,7 +569,7 @@ class BitNetAttention(nn.Module):
                 torch.cuda.synchronize()
                 t_rd_start = time.time()
                 
-                key_delta_all, keep_mask = self.get_row_delta_mat(key_states, globVR.row_delta_threshold ,globVR.row_similarity_metric)
+                key_delta_all, keep_mask = self.get_row_delta_mat_fast(key_states, globVR.row_delta_threshold ,globVR.row_similarity_metric)
                 
                 torch.cuda.synchronize()
                 t_rd_end = time.time()
