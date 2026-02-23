@@ -44,9 +44,9 @@ EXPERIMENT_DEFINITIONS = {
     },
     "scale_delta": {
         "grid": {
-            "seq_len": [1024, 2048, 4096],
+            "seq_len": [1024, 2048, 3072],
             "scale": [0.05], 
-            "thresh": [0.8, 1.2]
+            "thresh": [1]
         },
         "arg_builder": lambda p: ["--seq_len", str(p["seq_len"]), "--scale", str(p["scale"]), "--thresh", str(p["thresh"])],
         "injector": lambda args: {
@@ -59,8 +59,8 @@ EXPERIMENT_DEFINITIONS = {
     },
     "row_delta": {
         "grid": {
-            "seq_len": [1024, 2048, 4096],
-            "delta": [20.0, 30.0],
+            "seq_len": [1024, 2048, 3072],
+            "delta": [19.0],
             "row_sim": ["euclidean"]
         },
         "arg_builder": lambda p: [
