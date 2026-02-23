@@ -118,34 +118,61 @@ def get_real_text_input(tokenizer, seq_len, device):
     except:
         return torch.randint(0, 1000, (1, seq_len)).to(device)
 
-def benchmark_latency(model, input_ids, warmup=5, repeats=20):
-    print(f"   [Bench] Warming up...")
+def benchmark_latency(model, input_ids, warmup=10, repeats=30):
+    """
+    Measures total model latency and extracts internal layer stats.
+    Includes explicit synchronization for accurate GPU timing.
+    """
+    device = next(model.parameters()).device
+    
+    # 1. Warmup: Critical for JIT/autotune and filling GPU caches
+    print(f"   [Bench] Warming up ({warmup} iters)...")
     with torch.no_grad():
-        for _ in range(warmup): model(input_ids)
+        for _ in range(warmup):
+            model(input_ids)
     
-    # Clear custom accumulators in glob_set/globVR
-    if hasattr(glob_set, 'latency_stats'): glob_set.latency_stats = {}
+    # 2. Reset Statistics: Ensure fresh stats for this specific config
+    if hasattr(glob_set, 'latency_stats'):
+        glob_set.latency_stats = {}
+    if hasattr(globVR, 'spars'):
+        globVR.spars = 0.0
     
-    print(f"   [Bench] Measuring {repeats} iterations...")
-    torch.cuda.synchronize()
-    t_start = time.time()
+    # 3. Measurement Loop
+    print(f"   [Bench] Measuring ({repeats} iters)...")
+    torch.cuda.synchronize() # Wait for warmup to finish
+    t_start_total = time.time()
     
     with torch.no_grad():
         for i in range(repeats):
             model(input_ids)
+            # Synchronize every iteration to ensure the GPU finished the pass
             torch.cuda.synchronize()
             
-    t_total = time.time() - t_start
-    avg_total_ms = (t_total / repeats) * 1000
-    
-    # Extract breakdown from glob_set
-    breakdown = {}
-    if hasattr(glob_set, 'latency_stats'):
-        for k, v in glob_set.latency_stats.items():
-            breakdown[k] = (v['time'] / v['calls']) * 1000 if v['calls'] > 0 else 0
+            # Optional: Periodic cache clearing to prevent VRAM fragmentation 
+            # if testing extremely long sequences
+            if i % 10 == 0:
+                torch.cuda.empty_cache()
             
-    return breakdown, avg_total_ms
-
+    t_end_total = time.time()
+    
+    # 4. Calculate Final Stats
+    total_wall_clock_ms = ((t_end_total - t_start_total) / repeats) * 1000
+    
+    latency_breakdown = {}
+    if hasattr(glob_set, 'latency_stats'):
+        for metric, stats in glob_set.latency_stats.items():
+            if stats['calls'] > 0:
+                # Convert to milliseconds per iteration
+                # Note: 'time' in glob_set is usually cumulative seconds
+                avg_ms = (stats['time'] / stats['calls']) * 1000
+                latency_breakdown[metric] = avg_ms
+                
+    # Record avg sparsity if available (only for delta experiments)
+    avg_sparsity = getattr(globVR, 'spars', 0.0)
+    
+    print(f"   [Bench] Total Pass: {total_wall_clock_ms:.2f}ms | Attn (Internal): {latency_breakdown.get('time_forward_total', 0):.2f}ms")
+    
+    return latency_breakdown, total_wall_clock_ms, avg_sparsity
 # ==========================================
 # WORKER PROCESS
 # ==========================================
@@ -168,7 +195,8 @@ def run_worker_process(args, experiment_dir):
         setattr(globVR, key, value)
 
     try:
-        latency_breakdown, total_avg = benchmark_latency(model, input_ids)
+
+        latency_breakdown, total_avg, avg_sparsity = benchmark_latency(model, input_ids)
         
         result_data = {
             "timestamp": datetime.now().isoformat(),
@@ -176,7 +204,9 @@ def run_worker_process(args, experiment_dir):
             "parameters": glob_settings,
             "seq_len": args.seq_len,
             "total_avg_ms": total_avg,
-            "latency_breakdown_ms": latency_breakdown
+            "latency_breakdown_ms": latency_breakdown,
+            "avg_sparsity": avg_sparsity
+
         }
         
         os.makedirs(experiment_dir, exist_ok=True)
