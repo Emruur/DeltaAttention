@@ -638,6 +638,7 @@ class BitNetAttention(nn.Module):
         # --- 2. TIME THE WHOLE FUNC (END) ---
         torch.cuda.synchronize()
         t_forward_end = time.time()
+        print("DUR", t_forward_end - t_forward_start)
         glob_set.update_latency('time_forward_total', t_forward_end - t_forward_start)
         # ------------------------------------
 
