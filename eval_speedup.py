@@ -118,61 +118,57 @@ def get_real_text_input(tokenizer, seq_len, device):
     except:
         return torch.randint(0, 1000, (1, seq_len)).to(device)
 
-def benchmark_latency(model, input_ids, warmup=10, repeats=30):
+def benchmark_latency(model, input_ids, warmup=10, repeats=20):
     """
-    Measures total model latency and extracts internal layer stats.
-    Includes explicit synchronization for accurate GPU timing.
+    Benchmarks the model and extracts internal attention stats from globVR.
     """
-    device = next(model.parameters()).device
-    
-    # 1. Warmup: Critical for JIT/autotune and filling GPU caches
+    # 1. Warmup: Critical to initialize CUDA kernels and settle GPU clocks
     print(f"   [Bench] Warming up ({warmup} iters)...")
     with torch.no_grad():
         for _ in range(warmup):
             model(input_ids)
     
-    # 2. Reset Statistics: Ensure fresh stats for this specific config
-    if hasattr(glob_set, 'latency_stats'):
-        glob_set.latency_stats = {}
+    # 2. Reset Statistics: Ensure we don't include warmup time in our metrics
+    # We clear the dictionary that your glob_set.update_latency writes to.
+    globVR.latency_stats = {}
     if hasattr(globVR, 'spars'):
-        globVR.spars = 0.0
+        globVR.spars = 0.0 
     
     # 3. Measurement Loop
     print(f"   [Bench] Measuring ({repeats} iters)...")
-    torch.cuda.synchronize() # Wait for warmup to finish
-    t_start_total = time.time()
+    torch.cuda.synchronize()
+    t_start_total = time.perf_counter() # Use high-resolution counter
     
     with torch.no_grad():
         for i in range(repeats):
             model(input_ids)
-            # Synchronize every iteration to ensure the GPU finished the pass
+            # Sync after every pass to ensure hardware finished the work
             torch.cuda.synchronize()
             
-            # Optional: Periodic cache clearing to prevent VRAM fragmentation 
-            # if testing extremely long sequences
-            if i % 10 == 0:
-                torch.cuda.empty_cache()
-            
-    t_end_total = time.time()
+    t_end_total = time.perf_counter()
     
-    # 4. Calculate Final Stats
+    # 4. Process Results
     total_wall_clock_ms = ((t_end_total - t_start_total) / repeats) * 1000
     
     latency_breakdown = {}
-    if hasattr(glob_set, 'latency_stats'):
-        for metric, stats in glob_set.latency_stats.items():
+    # Extract the stats that were populated during the 'repeats' loop
+    if hasattr(globVR, 'latency_stats'):
+        for metric, stats in globVR.latency_stats.items():
             if stats['calls'] > 0:
-                # Convert to milliseconds per iteration
-                # Note: 'time' in glob_set is usually cumulative seconds
-                avg_ms = (stats['time'] / stats['calls']) * 1000
+                # Calculate average ms per call
+                # Note: your update_latency already multiplied by 1000
+                avg_ms = stats['time_ms'] / stats['calls']
                 latency_breakdown[metric] = avg_ms
                 
-    # Record avg sparsity if available (only for delta experiments)
     avg_sparsity = getattr(globVR, 'spars', 0.0)
     
-    print(f"   [Bench] Total Pass: {total_wall_clock_ms:.2f}ms | Attn (Internal): {latency_breakdown.get('time_forward_total', 0):.2f}ms")
-    
+    # Logging for console feedback
+    print(f"   [Bench] Avg Total: {total_wall_clock_ms:.2f}ms")
+    if 'time_forward_total' in latency_breakdown:
+        print(f"   [Bench] Avg Attn:  {latency_breakdown['time_forward_total']:.2f}ms")
+            
     return latency_breakdown, total_wall_clock_ms, avg_sparsity
+
 # ==========================================
 # WORKER PROCESS
 # ==========================================
