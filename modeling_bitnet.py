@@ -523,7 +523,7 @@ class BitNetAttention(nn.Module):
                 delta_out = torch.matmul(regular_x, delta_y)
 
             # In-place cumsum to save memory
-            delta_out = torch.cumsum(delta_out, dim=-1)
+            delta_out = torch.cumsum_(delta_out, dim=-1)
 
             output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
             
