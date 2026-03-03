@@ -1,0 +1,20 @@
+{
+    "timestamp": "2026-03-03T16:46:45.003223",
+    "experiment_type": "row_delta",
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "use_row_delta": true,
+        "row_delta_threshold": 0.0,
+        "row_similarity_metric": "euclidean",
+        "scale": 0.05,
+        "sink_size": 64
+    },
+    "seq_len": 1024,
+    "total_avg_ms": 174.85960279591382,
+    "latency_breakdown_ms": {
+        "time_get_row_delta": 0.45539577802022296,
+        "time_delta_mm_pattern": 0.4453436533610026,
+        "time_forward_total": 2.867321570714315
+    },
+    "avg_sparsity": 0.0
+}
