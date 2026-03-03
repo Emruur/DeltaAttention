@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-02-23T15:49:44.637269",
+    "timestamp": "2026-03-02T22:13:16.160475",
     "experiment_type": "baseline",
     "parameters": {
         "delta_pf_key_on": 0,
@@ -8,9 +8,10 @@
         "scale": 0.0
     },
     "seq_len": 3072,
-    "total_avg_ms": 1439.5718851592392,
+    "total_avg_ms": 1432.3174836987164,
     "latency_breakdown_ms": {
-        "time_forward_total": 27.72702654202779
+        "time_baseline_matmul": 4.899309476216634,
+        "time_forward_total": 27.742620309193928
     },
     "avg_sparsity": 0.0
 }
