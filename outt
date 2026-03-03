@@ -1,0 +1,29 @@
+[Worker] Applying row_delta settings: {'use_row_delta': True, 'scale': 0.05, 'row_delta_threshold': 0.0, 'row_similarity_metric': 'euclidean'}
+[Worker] Loading Model...
+[Fatal Worker Error] Model load failed: BitNetForCausalLM.__init__() got an unexpected keyword argument 'dtype'
+[Worker] Applying row_delta settings: {'use_row_delta': True, 'scale': 0.05, 'row_delta_threshold': 5.0, 'row_similarity_metric': 'euclidean'}
+[Worker] Loading Model...
+[Fatal Worker Error] Model load failed: BitNetForCausalLM.__init__() got an unexpected keyword argument 'dtype'
+[Worker] Applying row_delta settings: {'use_row_delta': True, 'scale': 0.05, 'row_delta_threshold': 10.0, 'row_similarity_metric': 'euclidean'}
+[Worker] Loading Model...
+[Fatal Worker Error] Model load failed: BitNetForCausalLM.__init__() got an unexpected keyword argument 'dtype'
+[Worker] Applying row_delta settings: {'use_row_delta': True, 'scale': 0.05, 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean'}
+[Worker] Loading Model...
+[Fatal Worker Error] Model load failed: BitNetForCausalLM.__init__() got an unexpected keyword argument 'dtype'
+[Worker] Applying row_delta settings: {'use_row_delta': True, 'scale': 0.05, 'row_delta_threshold': 20.0, 'row_similarity_metric': 'euclidean'}
+[Worker] Loading Model...
+[Fatal Worker Error] Model load failed: BitNetForCausalLM.__init__() got an unexpected keyword argument 'dtype'
+[Master] Starting row_delta Grid Search.
+[Master] Parameters: ['scale', 'delta', 'row_sim']
+[Master] Total Experiments: 5
+[Master] Experiment ID: 1
+
+=== Step 1/5: {'scale': 0.05, 'delta': 0, 'row_sim': 'euclidean'} ===
+
+=== Step 2/5: {'scale': 0.05, 'delta': 5, 'row_sim': 'euclidean'} ===
+
+=== Step 3/5: {'scale': 0.05, 'delta': 10, 'row_sim': 'euclidean'} ===
+
+=== Step 4/5: {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean'} ===
+
+=== Step 5/5: {'scale': 0.05, 'delta': 20, 'row_sim': 'euclidean'} ===
