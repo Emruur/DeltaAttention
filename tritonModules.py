@@ -159,6 +159,9 @@ def fused_delta_mm_cumsum_kernel(
     batch_idx = tl.program_id(0)
     head_idx = tl.program_id(1)
     q_block_idx = tl.program_id(2)
+    
+    # We only use kv_head_idx for keep_mask, IF your keep_mask isn't repeated.
+    # Otherwise, ignore it.
     kv_head_idx = head_idx // num_kv_groups
 
     # Setup Query Block
@@ -181,17 +184,17 @@ def fused_delta_mm_cumsum_kernel(
         n_start = k_idx * BLOCK_N
         n_end = n_start + BLOCK_N - 1
         
-        # --- 1. COMPUTE APPROXIMATED SCORES ---
-        # We simply load the approximated keys and do a clean dot product.
-        # No keep_mask zeroing needed here if key_delta_all contains the approximated states!
-        k_delta_ptrs = k_delta_ptr + batch_idx * stride_k_b + kv_head_idx * stride_k_h + \
+        # --- THE GQA BUG FIX ---
+        # Use head_idx instead of kv_head_idx because PyTorch's repeat_kv 
+        # already expanded the tensor to match the query heads!
+        k_delta_ptrs = k_delta_ptr + batch_idx * stride_k_b + head_idx * stride_k_h + \
                        offs_n[:, None] * stride_k_s + offs_d[None, :] * stride_k_d
         k_delta = tl.load(k_delta_ptrs, mask=mask_n[:, None] & mask_d[None, :], other=0.0)
         
-        # Pure Q @ K^T. This outputs fp32 logits.
+        # Pure Q @ K^T. Outputs fp32 logits.
         out_block = tl.dot(q, tl.trans(k_delta))
 
-        # --- 2. FUSED SINK & LOCAL PATCHING ---
+        # --- SINK & LOCAL PATCHING ---
         is_sink = n_start < sink_size
         if blk_size > 0:
             is_local = (m_start // blk_size <= n_end // blk_size) and (n_start // blk_size <= m_end // blk_size)
@@ -199,11 +202,11 @@ def fused_delta_mm_cumsum_kernel(
             is_local = False
             
         if is_sink or is_local:
-            k_exact_ptrs = k_exact_ptr + batch_idx * stride_k_b + kv_head_idx * stride_k_h + \
+            # BUG FIX: Use head_idx here too!
+            k_exact_ptrs = k_exact_ptr + batch_idx * stride_k_b + head_idx * stride_k_h + \
                            offs_n[:, None] * stride_k_s + offs_d[None, :] * stride_k_d
             k_exact = tl.load(k_exact_ptrs, mask=mask_n[:, None] & mask_d[None, :], other=0.0)
             
-            # Compute exact attention scores
             exact_scores = tl.dot(q, tl.trans(k_exact))
             
             sink_mask = offs_n[None, :] < sink_size
@@ -214,10 +217,9 @@ def fused_delta_mm_cumsum_kernel(
                 
             patch_mask = sink_mask | local_mask
             
-            # Overwrite the approximated scores with exact scores where required
             out_block = tl.where(patch_mask, exact_scores, out_block)
 
-        # --- 3. STORE RESULT ---
+        # --- STORE RESULT ---
         out_ptrs = out_ptr + batch_idx * stride_o_b + head_idx * stride_o_h + \
                    offs_m[:, None] * stride_o_s1 + offs_n[None, :] * stride_o_s2
                    
