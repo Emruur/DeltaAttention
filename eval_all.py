@@ -176,6 +176,14 @@ def run_worker_process(args, experiment_dir):
     else:
         tasks = ["arc_challenge"]
 
+    # 4. Load Model
+    eval_config = {
+        "shot": args.shot,
+        "limit": 100,
+        "batch_size": 1,
+        "device": "cuda",
+        "model_args": "pretrained=microsoft/bitnet-b1.58-2B-4T,trust_remote_code=False,dtype=bfloat16,attn_implementation=eager"
+    }
     print(f"[Worker] Loading Model...")
     try:
         # 1. Use your exact working code to instantiate the model
