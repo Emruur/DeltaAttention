@@ -23,6 +23,7 @@ try:
     # Register Model and Config
     AutoConfig.register("bitnet", BitNetConfig, exist_ok=True)
     AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
+    from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 except ImportError:
     pass 
 
@@ -148,13 +149,7 @@ def save_single_task_result(config_dir, task_name, result_data):
 # ==========================================
 def run_worker_process(args, experiment_dir):
     # 1. Base Settings
-    eval_config = {
-        "shot": args.shot,
-        "limit": 100,
-        "batch_size": 1,
-        "device": "cuda",
-        "model_args": "pretrained=microsoft/bitnet-b1.58-2B-4T,trust_remote_code=False,dtype=bfloat16,attn_implementation=eager"
-    }
+    
 
     # 2. Apply Experiment Specifics
     if args.experiment_type not in EXPERIMENT_DEFINITIONS:
@@ -181,17 +176,26 @@ def run_worker_process(args, experiment_dir):
     else:
         tasks = ["arc_challenge"]
 
-    # 4. Load Model
     print(f"[Worker] Loading Model...")
     try:
-        model_class = lm_eval.api.registry.get_model("hf")
-        lm_model = model_class.create_from_arg_string(
-            eval_config["model_args"], 
-            {
-                "batch_size": eval_config["batch_size"],
-                "device": eval_config["device"]
-            }
+        # 1. Use your exact working code to instantiate the model
+        model_id = "microsoft/bitnet-b1.58-2B-4T"
+        config = AutoConfig.from_pretrained(model_id)
+        config.attn_implementation = "eager" 
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
+        
+        raw_model = AutoModelForCausalLM.from_pretrained(
+            model_id, config=config, torch_dtype=torch.bfloat16
+        ).to("cuda").eval()
+
+        # 2. Wrap the pre-loaded model for lm-evaluation-harness
+        from lm_eval.models.huggingface import HFLM
+        lm_model = HFLM(
+            pretrained=raw_model, 
+            tokenizer=tokenizer, 
+            batch_size=1
         )
+        
     except Exception as e:
         print(f"[Fatal Worker Error] Model load failed: {e}")
         return
