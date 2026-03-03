@@ -1,0 +1,13 @@
+# Core Machine Learning & GPU Kernels
+torch>=2.1.0
+triton>=2.1.0
+
+# Hugging Face Ecosystem
+transformers==4.52.0
+datasets>=2.18.0
+seaborn
+
+
+# Utilities
+numpy>=1.26.0
+accelerate>=0.27.0
