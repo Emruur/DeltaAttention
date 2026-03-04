@@ -691,7 +691,8 @@ class BitNetAttention(nn.Module):
                 torch.cuda.synchronize()
                 t_mm_start = time.time()
                 
-                attn_weights = self.fused_delta_mm_pattern_dn_triton(key_delta_all, query_states, key_states, bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask) * self.scaling
+                attn_weights= self.regular_delta_mm_pattern_dn((key_delta_all.transpose(2, 3), query_states, key_states.transpose(2, 3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask) * self.scaling)
+                #attn_weights = self.fused_delta_mm_pattern_dn_triton(key_delta_all, query_states, key_states, bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask) * self.scaling
                 
                 torch.cuda.synchronize()
                 t_mm_end = time.time()
