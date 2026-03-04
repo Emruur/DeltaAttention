@@ -82,12 +82,22 @@ def compute_sparsity(input,len,switch):
             # print(globVR.spars)
     return
 
-def compute_sparsity_scale(input, scale):
-    if globVR.spars == 0.0:
-        globVR.spars = torch.sum(input == 0)/torch.numel(input)*(1-scale)
+def compute_sparsity_scale(input, scale, keep_mask=None):
+    # 1. Calculate the current sparsity ratio
+    if keep_mask is not None:
+        # ~keep_mask inverts the boolean tensor (True becomes False).
+        # Summing it counts exactly how many rows/elements were dropped.
+        current_spars = (torch.sum(~keep_mask).item() / keep_mask.numel()) * (1 - scale)
     else:
-        globVR.spars = (globVR.spars + torch.sum(input == 0)/torch.numel(input)*(1-scale))/2
-        # print(globVR.spars)
+        # Fallback: scan the dense delta matrix for exact zeros
+        current_spars = (torch.sum(input == 0).item() / input.numel()) * (1 - scale)
+        
+    # 2. Update the global moving average
+    if globVR.spars == 0.0:
+        globVR.spars = current_spars
+    else:
+        globVR.spars = (globVR.spars + current_spars) / 2
+        
     return
 
 def store_attention(activation, l, value, switch):

@@ -591,7 +591,7 @@ class BitNetAttention(nn.Module):
             blk_size = round(q_len*globVR.scale)
             new_scale = blk_size/q_len
             if globVR.collect_delta_pf_key == 1:
-                glob_set.compute_sparsity_scale(key_delta_all, new_scale)
+                glob_set.compute_sparsity_scale(key_delta_all, new_scale, keep_mask= keep_mask)
                 
             key_delta_all = repeat_kv(key_delta_all, self.num_key_value_groups)
         
