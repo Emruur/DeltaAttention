@@ -61,7 +61,7 @@ if is_torch_flex_attn_available():
 import globVR
 import glob_set
 
-from tritonModule import row_delta_euclidean_kernel
+from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel
 
 
 
@@ -548,6 +548,65 @@ class BitNetAttention(nn.Module):
             
             return output
 
+    def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None):
+
+        
+        delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 
+                            dtype=regular_x.dtype, device=regular_x.device)
+
+        if keep_mask is not None:
+            torch.cuda.synchronize()
+            t_sm_start = time.time()
+            
+            # 1. Get counts of active keys per (batch, kv_head)
+            counts = keep_mask.sum(dim=-1).to(torch.int32)
+            
+            # 2. Pack active indices to the left efficiently using argsort trick
+            # Inactive items get assigned 'seq_len + 1' so they sort to the very end
+            seq_idx = torch.arange(seq_len, dtype=torch.int32, device=keep_mask.device)
+            sort_keys = torch.where(keep_mask, seq_idx, seq_len + 1)
+            active_indices = sort_keys.sort(dim=-1)[0].to(torch.int32)
+
+            head_dim = regular_x.shape[-1]
+            BLOCK_D = triton.next_power_of_2(head_dim)
+            
+            # Launch grid: (batch * heads, Query_blocks, 1)
+            grid = lambda META: (
+                bsz * self.num_heads, 
+                triton.cdiv(seq_len, META['BLOCK_M']), 
+                1
+            )
+
+            # Ensure tensors are contiguous for safe pointer math
+            regular_x = regular_x.contiguous()
+            delta_y = delta_y.contiguous()
+            
+            # Launch Triton Kernel
+            sparse_delta_mm_scatter_kernel[grid](
+                regular_x, delta_y, delta_out, active_indices, counts,
+                regular_x.stride(0), regular_x.stride(1), regular_x.stride(2), regular_x.stride(3),
+                delta_y.stride(0), delta_y.stride(1), delta_y.stride(2), delta_y.stride(3),
+                delta_out.stride(0), delta_out.stride(1), delta_out.stride(2), delta_out.stride(3),
+                active_indices.stride(0), active_indices.stride(1), active_indices.stride(2),
+                counts.stride(0), counts.stride(1),
+                self.num_heads, self.num_key_value_groups, seq_len, head_dim,
+                BLOCK_M=64, BLOCK_N=64, BLOCK_D=BLOCK_D
+            )
+
+            torch.cuda.synchronize()
+            t_sm_end = time.time()
+            glob_set.update_latency('time_sparse_matmul_triton', t_sm_end - t_sm_start)
+                                
+        else:
+            delta_out = torch.matmul(regular_x, delta_y)
+
+        # In-place cumsum to save memory
+        delta_out = torch.cumsum(delta_out, dim=-1)
+
+        output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
+        
+        return output
+
 
     def forward(
         self,
@@ -558,7 +617,6 @@ class BitNetAttention(nn.Module):
         cache_position: Optional[torch.LongTensor] = None,
         **kwargs: Unpack[FlashAttentionKwargs],
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
-
         # --- 2. TIME THE WHOLE FUNC (START) ---
         torch.cuda.synchronize()
         t_forward_start = time.time()
@@ -624,7 +682,7 @@ class BitNetAttention(nn.Module):
                 torch.cuda.synchronize()
                 t_mm_start = time.time()
                 
-                attn_weights = self.regular_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask) * self.scaling
+                attn_weights = self.triton_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask) * self.scaling
                 
                 torch.cuda.synchronize()
                 t_mm_end = time.time()

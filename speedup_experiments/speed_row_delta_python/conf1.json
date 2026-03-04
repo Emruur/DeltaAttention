@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-03-04T21:22:31.964282",
+    "timestamp": "2026-03-04T16:11:51.370241",
     "experiment_type": "row_delta",
     "parameters": {
         "delta_pf_key_on": 1,
@@ -10,12 +10,12 @@
         "sink_size": 64
     },
     "seq_len": 1024,
-    "total_avg_ms": 401.8166280002333,
+    "total_avg_ms": 1075.3808929468505,
     "latency_breakdown_ms": {
-        "time_get_row_delta": 0.2969074249267578,
-        "time_sparse_matmul_triton": 2.2508203983306885,
-        "time_delta_mm_pattern": 3.3439294497172036,
-        "time_forward_total": 7.415683666865031
+        "time_get_row_delta": 22.435932954152424,
+        "time_sparse_matmul": 0.05547728141148885,
+        "time_delta_mm_pattern": 3.6592559019724527,
+        "time_forward_total": 29.875277280807495
     },
     "avg_sparsity": 0.0
 }

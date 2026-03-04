@@ -13,18 +13,17 @@ from datetime import datetime
 # ==========================================
 # IMPORTS & REGISTRATION
 # ==========================================
-try:
-    import globVR
-    import lm_eval.api.registry
-    from lm_eval.evaluator import simple_evaluate
-    from transformers import AutoConfig, AutoModelForCausalLM
-    from modeling_bitnet import BitNetForCausalLM, BitNetConfig
-    
-    # Register Model and Config
-    AutoConfig.register("bitnet", BitNetConfig, exist_ok=True)
-    AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
-except ImportError:
-    pass 
+
+import globVR
+import lm_eval.api.registry
+from lm_eval.evaluator import simple_evaluate
+from transformers import AutoConfig, AutoModelForCausalLM
+from modeling_bitnet import BitNetForCausalLM, BitNetConfig
+
+# Register Model and Config
+AutoConfig.register("bitnet", BitNetConfig, exist_ok=True)
+AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
+
 
 # ==========================================
 # EXPERIMENT DEFINITIONS
