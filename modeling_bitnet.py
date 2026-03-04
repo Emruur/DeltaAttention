@@ -22,6 +22,8 @@ from typing import Callable, Optional, Tuple, Union
 import time
 import torch
 from torch import nn
+import triton
+import triton.language as tl
 
 # --- MODIFIED IMPORTS START ---
 from transformers.activations import ACT2FN
@@ -365,7 +367,106 @@ class BitNetAttention(nn.Module):
         delta_all = torch.stack(delta_list, dim=2)
         
         return delta_all, keep_mask
-    
+
+
+
+
+    @triton.jit
+    def row_delta_euclidean_kernel(
+        in_ptr, delta_ptr, mask_ptr,          # Pointers to memory
+        threshold_sq,                         # Pre-squared threshold for speed
+        stride_in_b, stride_in_h, stride_in_s, stride_in_d,  # Input/Delta strides
+        stride_m_b, stride_m_h, stride_m_s,                  # Mask strides
+        seq_len, head_dim,                    # Dimensions
+        BLOCK_D: tl.constexpr                 # Must be a power of 2 (e.g., 64, 128)
+    ):
+        # 1. Identify which Batch and Head this specific program is processing
+        pid_b = tl.program_id(0)
+        pid_h = tl.program_id(1)
+        
+        # 2. Calculate the starting memory address for this specific sequence
+        in_seq_ptr = in_ptr + pid_b * stride_in_b + pid_h * stride_in_h
+        delta_seq_ptr = delta_ptr + pid_b * stride_in_b + pid_h * stride_in_h
+        mask_seq_ptr = mask_ptr + pid_b * stride_m_b + pid_h * stride_m_h
+        
+        # 3. Create memory offsets for the head dimension (e.g., [0, 1, ..., 63])
+        offs_d = tl.arange(0, BLOCK_D)
+        mask_d = offs_d < head_dim
+        
+        # --- PROCESS TOKEN 0 ---
+        # Load the first token to act as our initial reference state
+        ptrs_0 = in_seq_ptr + 0 * stride_in_s + offs_d * stride_in_d
+        ref_state = tl.load(ptrs_0, mask=mask_d, other=0.0)
+        
+        # Store delta[0] (which is just the input itself) and keep_mask[0] = True (1)
+        delta_ptrs_0 = delta_seq_ptr + 0 * stride_in_s + offs_d * stride_in_d
+        tl.store(delta_ptrs_0, ref_state, mask=mask_d)
+        tl.store(mask_seq_ptr + 0 * stride_m_s, 1, mask=None) 
+        
+        # --- PROCESS TOKENS 1 TO N ---
+        # We iterate sequentially on the GPU, avoiding Python overhead
+        for i in range(1, seq_len):
+            # Load current token
+            curr_in_ptrs = in_seq_ptr + i * stride_in_s + offs_d * stride_in_d
+            curr_state = tl.load(curr_in_ptrs, mask=mask_d, other=0.0)
+            
+            # Compute difference and Euclidean distance squared
+            diff = curr_state - ref_state
+            sq_dist = tl.sum(diff * diff, axis=0)
+            
+            # Evaluate if distance exceeds threshold
+            should_keep = sq_dist > threshold_sq
+            
+            # Store the difference to the delta matrix
+            curr_delta_ptrs = delta_seq_ptr + i * stride_in_s + offs_d * stride_in_d
+            tl.store(curr_delta_ptrs, diff, mask=mask_d)
+            
+            # Store the boolean mask (cast automatically to uint8 by Triton)
+            tl.store(mask_seq_ptr + i * stride_m_s, should_keep, mask=None)
+            
+            # Dynamically update the reference state if we kept this token
+            if should_keep:
+                ref_state = curr_state
+
+
+
+    def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean"):
+        """
+        Triton-accelerated structured delta matrix computation.
+        """
+        bsz, n_head, seq_len, head_dim = input_states.shape
+        device = input_states.device
+        
+        # Ensure memory is contiguous for safe pointer arithmetic
+        if not input_states.is_contiguous():
+            input_states = input_states.contiguous()
+
+        # Allocate outputs
+        delta_all = torch.empty_like(input_states)
+        keep_mask = torch.empty((bsz, n_head, seq_len), dtype=torch.bool, device=device)
+        
+        # Triton requires block sizes to be powers of 2.
+        # If head_dim is 64 or 128, this just returns 64 or 128.
+        BLOCK_D = triton.next_power_of_2(head_dim)
+        
+        if similarity_metric == "euclidean":
+            threshold_sq = threshold ** 2
+            
+            # 2D Grid: We launch one program per batch and per head.
+            grid = (bsz, n_head)
+            
+            row_delta_euclidean_kernel[grid](
+                input_states, delta_all, keep_mask,
+                threshold_sq,
+                input_states.stride(0), input_states.stride(1), input_states.stride(2), input_states.stride(3),
+                keep_mask.stride(0), keep_mask.stride(1), keep_mask.stride(2),
+                seq_len, head_dim,
+                BLOCK_D=BLOCK_D
+            )
+        else:
+            raise NotImplementedError(f"Triton kernel for '{similarity_metric}' is not yet implemented.")
+            
+        return delta_all, keep_mask
     
     
     def direct_prune(self, input_states, thresh):
@@ -374,31 +475,6 @@ class BitNetAttention(nn.Module):
         globVR.direct_spars += torch.sum(out == 0).item()/out.numel()
         return out
     
-    # def get_condition_mask(self, shape):
-    #     # generate the A-shape condition matrix according to predefined window size and sink size
-    #     bsz, n_heads, row, col = shape
-    #     condition_mat = torch.zeros(shape, dtype=torch.bool).cuda()
-    #     for i in range(row):
-    #         condition_mat[:,:,i, 0:globVR.sink_size] = True
-    #         if globVR.block_size > 0:
-    #             block_start = (i//globVR.block_size)*globVR.block_size
-    #             condition_mat[:,:,i, block_start:block_start+globVR.block_size] = True
-    #         # condition_mat[:,:,i, max(0, i-globVR.window_size):i+1] = True
-    #     return condition_mat
-    
-    # def regular_delta_mm_pattern(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out):
-    #     delta_out = torch.matmul(regular_x, delta_y)
-    #     output_base = delta_out[:,:,:,0].view(bsz,self.num_heads,dim_out, 1)
-    #     out = output_base
-    #     for pos in range(1, seq_len):
-    #         output_base = output_base + delta_out[:,:,:,pos].view(bsz, self.num_heads, dim_out, 1)
-    #         out = torch.cat((out, output_base), dim=-1)
-
-    #     full_attn = torch.matmul(regular_x, regular_y)
-    #     condition_mask = self.get_condition_mask(delta_out.shape)
-    #     output = torch.where(condition_mask, full_attn, out)
-    #     return output
-
     def get_condition_mask_dn(self, shape, blk_size):
         # generate the A-shape condition matrix according to predefined window size and sink size
         bsz, n_heads, row, col = shape
@@ -569,7 +645,7 @@ class BitNetAttention(nn.Module):
                 torch.cuda.synchronize()
                 t_rd_start = time.time()
                 
-                key_delta_all, keep_mask = self.get_row_delta_mat_fast(key_states, globVR.row_delta_threshold ,globVR.row_similarity_metric)
+                key_delta_all, keep_mask = self.get_row_delta_mat_triton(key_states, globVR.row_delta_threshold ,globVR.row_similarity_metric)
                 
                 torch.cuda.synchronize()
                 t_rd_end = time.time()
