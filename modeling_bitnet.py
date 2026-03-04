@@ -655,7 +655,7 @@ class BitNetAttention(nn.Module):
                 torch.cuda.synchronize()
                 t_rd_start = time.time()
                 
-                key_delta_all, keep_mask = self.get_row_delta_mat_triton(key_states, globVR.row_delta_threshold ,globVR.row_similarity_metric)
+                key_delta_all, keep_mask = self.get_row_delta_mat(key_states, globVR.row_delta_threshold ,globVR.row_similarity_metric)
                 
                 torch.cuda.synchronize()
                 t_rd_end = time.time()
