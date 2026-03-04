@@ -14,17 +14,15 @@ from datetime import datetime
 # ==========================================
 # IMPORTS & REGISTRATION
 # ==========================================
-try:
-    import globVR
-    import glob_set 
-    from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
-    from modeling_bitnet import BitNetForCausalLM, BitNetConfig
-    
-    # Register Model and Config
-    AutoConfig.register("bitnet", BitNetConfig, exist_ok=True)
-    AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
-except ImportError:
-    print("[Error] Ensure globVR, glob_set, and modeling_bitnet.py are in your path.")
+
+import globVR
+import glob_set 
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+from modeling_bitnet import BitNetForCausalLM, BitNetConfig
+
+# Register Model and Config
+AutoConfig.register("bitnet", BitNetConfig, exist_ok=True)
+AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
 
 # ==========================================
 # EXPERIMENT DEFINITIONS
@@ -59,8 +57,8 @@ EXPERIMENT_DEFINITIONS = {
     },
     "row_delta": {
         "grid": {
-            "seq_len": [1024, 2048, 3072],
-            "delta": [19.0],
+            "seq_len": [1024],
+            "delta": [0,15,20],
             "row_sim": ["euclidean"]
         },
         "arg_builder": lambda p: [
