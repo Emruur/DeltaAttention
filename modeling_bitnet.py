@@ -582,7 +582,7 @@ class BitNetAttention(nn.Module):
             delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 
                                 dtype=regular_x.dtype, device=regular_x.device)
 
-            if keep_mask is not None:
+            if keep_mask is not None or False:
                 for b in range(bsz):
                     for h in range(self.num_heads):
                         kv_head_idx = h // self.num_key_value_groups
