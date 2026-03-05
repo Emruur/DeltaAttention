@@ -428,10 +428,7 @@ class BitNetAttention(nn.Module):
         # Flatten back to the original shape: (bsz, n_head, seq_len, head_dim)
         delta_nm = delta_nm.view(bsz, n_head, seq_len, head_dim)
         
-        # We also flatten the mask in case you need it for debugging/verification
-        mask = mask_reshaped.view(bsz, n_head, seq_len, head_dim)
-        
-        return delta_nm, mask
+        return delta_nm
 
 
     def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean"):
@@ -772,7 +769,7 @@ class BitNetAttention(nn.Module):
 
                 else:
                     attn_weights = self.regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size)) * self.scaling
-                    
+
                 torch.cuda.synchronize()
                 t_mm_end = time.time()
                 glob_set.update_latency('time_delta_mm_pattern', t_mm_end - t_mm_start)
