@@ -216,9 +216,18 @@ def run_worker_process(args, experiment_dir):
                 limit=eval_config["limit"]
             )
 
-            avg_time = 0.0
-            if hasattr(globVR, 'total_attn_calls') and globVR.total_attn_calls > 0:
-                avg_time = globVR.total_attn_time / globVR.total_attn_calls
+            latency_breakdown = {}
+            # Extract the stats that were populated during the 'repeats' loop
+            if hasattr(globVR, 'latency_stats'):
+                for metric, stats in globVR.latency_stats.items():
+                    if stats['calls'] > 0:
+                        # Calculate average ms per call
+                        # Note: your update_latency already multiplied by 1000
+                        avg_ms = stats['time_ms'] / stats['calls']
+                        latency_breakdown[metric] = avg_ms
+                    
+            if 'time_forward_total' in latency_breakdown:
+                avg_time = latency_breakdown['time_forward_total']
 
             current_sparsity = getattr(globVR, 'spars', 0.0)
             raw_metrics = eval_output["results"].get(task, {})
