@@ -764,7 +764,7 @@ class BitNetAttention(nn.Module):
                 t_mm_start = time.time()
                 
                 attn_weights= None
-                if globVR["delta_type"]== "row":
+                if globVR.delta_type== "row":
                     attn_weights = self.triton_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask) * self.scaling
 
                 else:
