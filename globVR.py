@@ -63,7 +63,7 @@ delta_attn = {}
 
 
 
-use_row_delta = False
+delta_type = "regular" # regular, row, nm
 row_delta_threshold = 10
 row_similarity_metric= "cos"
 

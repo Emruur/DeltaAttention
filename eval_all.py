@@ -52,7 +52,25 @@ EXPERIMENT_DEFINITIONS = {
             "--row_sim", str(p["row_sim"])
         ],
         "injector": lambda args: {
-            "use_row_delta": True,
+            "delta_type": "row",
+            "scale": args.scale,
+            "row_delta_threshold": args.delta,
+            "row_similarity_metric": args.row_sim
+        }
+    },
+    "nm_delta": {
+        "grid": {
+            "scale": [0.05], 
+            "delta": [0,1,5],
+            "row_sim": ["euclidean"]
+        },
+        "arg_builder": lambda p: [
+            "--scale", str(p["scale"]), 
+            "--delta", str(p["delta"]), 
+            "--row_sim", str(p["row_sim"])
+        ],
+        "injector": lambda args: {
+            "delta_type": "nm",
             "scale": args.scale,
             "row_delta_threshold": args.delta,
             "row_similarity_metric": args.row_sim
