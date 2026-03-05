@@ -183,16 +183,30 @@ def run_worker_process(args, experiment_dir):
     # 4. Load Model
     print(f"[Worker] Loading Model...")
     try:
+        model_id = "microsoft/bitnet-b1.58-2B-4T"
+        
+        # 1. Load config and model exactly like your working script
+        config = AutoConfig.from_pretrained(model_id)
+        config.attn_implementation = "eager" 
+        
+        raw_model = AutoModelForCausalLM.from_pretrained(
+            model_id, config=config, torch_dtype=torch.bfloat16
+        ).to(eval_config["device"]).eval()
+
+        # 2. Get the lm_eval Hugging Face wrapper class
         model_class = lm_eval.api.registry.get_model("hf")
-        lm_model = model_class.create_from_arg_string(
-            eval_config["model_args"], 
-            {
-                "batch_size": eval_config["batch_size"],
-                "device": eval_config["device"]
-            }
+        
+        # 3. Instantiate the lm_eval wrapper with your pre-loaded model
+        lm_model = model_class(
+            pretrained=raw_model,
+            batch_size=eval_config["batch_size"],
+            backend="causal" # explicit backend usually helps lm_eval
         )
+        
     except Exception as e:
         print(f"[Fatal Worker Error] Model load failed: {e}")
+        import traceback
+        traceback.print_exc()
         return
 
     # 5. Run Tasks
