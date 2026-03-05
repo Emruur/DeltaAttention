@@ -668,6 +668,18 @@ class BitNetAttention(nn.Module):
         
         return output
 
+    def regular_delta_mm(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size):
+        delta_out = torch.matmul(regular_x, delta_y)
+        output_base = delta_out[:,:,:,0].view(bsz,self.num_heads,dim_out, 1)
+        out = output_base
+        for pos in range(1, seq_len):
+            output_base = output_base + delta_out[:,:,:,pos].view(bsz, self.num_heads, dim_out, 1)
+            out = torch.cat((out, output_base), dim=-1)
+
+        full_attn = torch.matmul(regular_x, regular_y)
+        condition_mask = self.get_condition_mask_dn(delta_out.shape, blk_size)
+        output = torch.where(condition_mask, full_attn, out)
+        return output
 
     def forward(
         self,
@@ -754,8 +766,13 @@ class BitNetAttention(nn.Module):
                 torch.cuda.synchronize()
                 t_mm_start = time.time()
                 
-                attn_weights = self.triton_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask) * self.scaling
-                
+                attn_weights= None
+                if globVR["delta_type"]== "row":
+                    attn_weights = self.triton_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask) * self.scaling
+
+                else:
+                    attn_weights = self.regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size)) * self.scaling
+                    
                 torch.cuda.synchronize()
                 t_mm_end = time.time()
                 glob_set.update_latency('time_delta_mm_pattern', t_mm_end - t_mm_start)
