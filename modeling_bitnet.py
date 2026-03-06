@@ -369,6 +369,65 @@ class BitNetAttention(nn.Module):
         delta_all = torch.stack(delta_list, dim=2)
         
         return delta_all, keep_mask
+    def get_nm_delta_mat(self, input_states, thresh):
+            """
+            Computes the temporal delta matrix and strictly enforces 2:4 structured sparsity.
+            Every contiguous block of 4 elements in the head_dim will have at most 2 non-zero values.
+            """
+            bsz, n_head, seq_len, head_dim = input_states.shape
+            device = input_states.device
+            
+            # Ensure head_dim is divisible by 4 for 2:4 sparsity
+            if head_dim % 4 != 0:
+                raise ValueError(f"head_dim ({head_dim}) must be a multiple of 4 for 2:4 sparsity.")
+
+            # --- 1. Compute Temporal Delta ---
+            # Pre-allocate for speed to avoid concatenating in a loop
+            delta_all = torch.empty_like(input_states)
+            delta_all[:, :, 0, :] = input_states[:, :, 0, :]
+            
+            input_old = input_states[:, :, 0:1, :].clone()
+
+            for n in range(1, seq_len):
+                input_new = input_states[:, :, n:n+1, :]
+                sub = input_new - input_old
+                
+                # Identify values below the temporal threshold
+                delta_mask = sub.abs() <= thresh
+                delta_row = sub.masked_fill(delta_mask, 0.0)
+                
+                # Assign to the pre-allocated tensor (squeeze seq_len dim which is 1)
+                delta_all[:, :, n, :] = delta_row.squeeze(2) 
+                
+                # Update reference state only where the threshold was exceeded
+                input_old = torch.where(delta_mask, input_old, input_new)
+
+            # --- 2. Enforce 2:4 Structured Sparsity ---
+            # Reshape the last dimension into chunks of 4
+            # Shape becomes: (bsz, n_head, seq_len, head_dim // 4, 4)
+            delta_reshaped = delta_all.view(bsz, n_head, seq_len, -1, 4)
+            
+            # Find the 2 largest absolute values in each chunk of 4
+            # topk_indices will have shape: (bsz, n_head, seq_len, head_dim // 4, 2)
+            _, topk_indices = torch.topk(delta_reshaped.abs(), k=2, dim=-1)
+            
+            # Create a boolean mask of the same shape as delta_reshaped
+            mask_reshaped = torch.zeros_like(delta_reshaped, dtype=torch.bool, device=device)
+            
+            # Scatter 'True' into the positions of the top 2 values
+            mask_reshaped.scatter_(
+                dim=-1, 
+                index=topk_indices, 
+                src=torch.ones_like(topk_indices, dtype=torch.bool)
+            )
+            
+            # Apply the 2:4 mask (zero out the smallest 2 values per chunk)
+            delta_nm = delta_reshaped.masked_fill(~mask_reshaped, 0.0)
+            
+            # Flatten back to the original shape: (bsz, n_head, seq_len, head_dim)
+            delta_nm = delta_nm.view(bsz, n_head, seq_len, head_dim)
+            
+            return delta_nm
 
     def get_nm_delta_mat_triton(self, input_states, thresh):
         """
@@ -402,6 +461,7 @@ class BitNetAttention(nn.Module):
         )
 
         return delta_out
+    
     def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean"):
         """
         Triton-accelerated structured delta matrix computation.
@@ -698,7 +758,7 @@ class BitNetAttention(nn.Module):
                 torch.cuda.synchronize()
                 t_rd_start = time.time()
                 
-                key_delta_all = self.get_nm_delta_mat_triton(key_states, globVR.row_delta_threshold)
+                key_delta_all = self.get_nm_delta_mat(key_states, globVR.row_delta_threshold)
                 
                 torch.cuda.synchronize()
                 t_rd_end = time.time()

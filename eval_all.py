@@ -61,7 +61,7 @@ EXPERIMENT_DEFINITIONS = {
     "nm_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [0,1,2,3]
+            "delta": [0,0.5,1,1.5]
         },
         "arg_builder": lambda p: [
             "--scale", str(p["scale"]), 
