@@ -65,8 +65,6 @@ EXPERIMENT_DEFINITIONS = {
         },
         "arg_builder": lambda p: [
             "--scale", str(p["scale"]), 
-            "--delta", str(p["delta"]), 
-            "--row_sim", str(p["row_sim"])
         ],
         "injector": lambda args: {
             "delta_type": "nm",
