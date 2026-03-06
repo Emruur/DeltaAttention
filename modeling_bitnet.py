@@ -370,45 +370,38 @@ class BitNetAttention(nn.Module):
         
         return delta_all, keep_mask
 
-    def get_nm_delta_mat_triton(self, input_states):
+    def get_nm_delta_mat_triton(self, input_states, thresh):
         """
-        Orchestrates the fused dynamic 2:4 structured sparsity delta kernel.
-        No threshold is needed; it strictly zeros out the 2 least significant 
-        deltas in every 4-element chunk across the sequence.
+        Orchestrates the fused Option B kernel:
+        Applies a temporal threshold to filter noise and update states,
+        then strictly enforces 2:4 structured sparsity.
         """
         bsz, n_head, seq_len, head_dim = input_states.shape
         
         if head_dim % 4 != 0:
             raise ValueError(f"head_dim ({head_dim}) must be a multiple of 4 for 2:4 sparsity.")
 
-        # Triton requires contiguous memory for predictable stride math
         if not input_states.is_contiguous():
             input_states = input_states.contiguous()
 
-        # Pre-allocate output directly on the device
         delta_out = torch.empty_like(input_states)
 
-        # View as 3D (B*H, Seq, Dim) to cleanly map to the kernel's expected strides
         states_3d = input_states.view(bsz * n_head, seq_len, head_dim)
         out_3d = delta_out.view(bsz * n_head, seq_len, head_dim)
 
-        # --- GRID LAUNCH ---
-        # Dim 0: One program instance for every Batch and Head combination
-        # Dim 1: One program instance for every 4-element chunk in the head_dim
         grid = (bsz * n_head, head_dim // 4)
 
-        # Launch the kernel
+        # Pass thresh directly into the kernel
         fused_dynamic_24_delta_kernel[grid](
             states_3d, 
             out_3d,
             states_3d.stride(0), states_3d.stride(1), states_3d.stride(2),
             seq_len,
-            BLOCK_DIM=4 # Hardcoded to 4 for 2:4 sparsity
+            thresh, 
+            BLOCK_DIM=4
         )
 
-        # Return the 4D output. (No mask returned, as requested!)
         return delta_out
-
     def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean"):
         """
         Triton-accelerated structured delta matrix computation.
@@ -705,7 +698,7 @@ class BitNetAttention(nn.Module):
                 torch.cuda.synchronize()
                 t_rd_start = time.time()
                 
-                key_delta_all = self.get_nm_delta_mat_triton(key_states)
+                key_delta_all = self.get_nm_delta_mat_triton(key_states, globVR.row_delta_threshold)
                 
                 torch.cuda.synchronize()
                 t_rd_end = time.time()

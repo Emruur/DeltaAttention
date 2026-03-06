@@ -130,6 +130,8 @@ def sparse_delta_mm_scatter_kernel(
 
 
 
+import triton
+import triton.language as tl
 
 @triton.jit
 def fused_dynamic_24_delta_kernel(
@@ -137,57 +139,54 @@ def fused_dynamic_24_delta_kernel(
     out_ptr,          # [B * H, seq_len, head_dim]
     stride_bh, stride_seq, stride_dim,
     seq_len,
+    thresh,           # <-- NEW: The temporal threshold parameter
     BLOCK_DIM: tl.constexpr = 4
 ):
-    # 1. Map programs to specific batches/heads and specific 4-element chunks
+    # 1. Map programs
     bh_idx = tl.program_id(0)
     chunk_idx = tl.program_id(1)
     
-    # 2. Setup memory pointers for this specific 4-element block
     dim_offsets = chunk_idx * BLOCK_DIM + tl.arange(0, BLOCK_DIM)
     
     base_state_ptr = states_ptr + bh_idx * stride_bh + dim_offsets * stride_dim
     base_out_ptr   = out_ptr + bh_idx * stride_bh + dim_offsets * stride_dim
     
-    # 3. Initialize the first step (t=0)
-    # The first token has no delta, so we output exactly 0.0 and set the initial reference state.
+    # 2. Initialize t=0
     ref_states = tl.load(base_state_ptr + 0 * stride_seq)
     tl.store(base_out_ptr + 0 * stride_seq, tl.zeros((BLOCK_DIM,), dtype=ref_states.dtype))
 
-    # Static indices for the 4 elements in our block
     block_indices = tl.arange(0, BLOCK_DIM)
 
-    # 4. Iterate strictly down the sequence length
+    # 3. Iterate down the sequence
     for t in range(1, seq_len):
-        # Load current states
         curr_states = tl.load(base_state_ptr + t * stride_seq)
         
-        # Calculate raw temporal difference
         diff = curr_states - ref_states
         abs_diff = tl.abs(diff)
         
-        # --- THE 2:4 CORE LOGIC (Using argmax to avoid argsort) ---
-        # Find the index of the absolute maximum value
-        idx_1 = tl.argmax(abs_diff, axis=0)
+        # --- PHASE 1: TEMPORAL THRESHOLD (Noise Killer & State Update) ---
+        exceeds_thresh = abs_diff > thresh
         
-        # Create a mask for that first max element
+        # Clean the diffs (zero out the micro-noise)
+        clean_diff = tl.where(exceeds_thresh, diff, 0.0)
+        clean_abs_diff = tl.where(exceeds_thresh, abs_diff, 0.0)
+        
+        # Update the reference state ONLY if it exceeded the threshold
+        # This prevents state lag, matching your original `input_old` logic exactly!
+        ref_states = tl.where(exceeds_thresh, curr_states, ref_states)
+        
+        # --- PHASE 2: 2:4 STRUCTURED SPARSITY ---
+        # Find the top 2 values from the *cleaned* diffs
+        idx_1 = tl.argmax(clean_abs_diff, axis=0)
         is_max_1 = block_indices == idx_1
         
-        # Mask out the first max by setting it to a negative number 
-        # (Since abs_diff is always >= 0, -1.0 guarantees it won't be picked again)
-        abs_diff_masked = tl.where(is_max_1, -1.0, abs_diff)
-        
-        # Find the index of the second maximum value
+        # Mask out the first max so we can find the second
+        abs_diff_masked = tl.where(is_max_1, -1.0, clean_abs_diff)
         idx_2 = tl.argmax(abs_diff_masked, axis=0)
         
-        # Create the final strict 2:4 boolean mask
+        # Create strict 2:4 mask
         mask = is_max_1 | (block_indices == idx_2)
         
-        # Zero out the 2 least significant values
-        sparse_delta = tl.where(mask, diff, 0.0)
-        
-        # Store the 2:4 sparse delta
+        # Zero out the bottom 2 values and store
+        sparse_delta = tl.where(mask, clean_diff, 0.0)
         tl.store(base_out_ptr + t * stride_seq, sparse_delta)
-        
-        # Update the reference state ONLY for the elements we allowed through
-        ref_states = curr_states
