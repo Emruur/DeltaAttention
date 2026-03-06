@@ -1,0 +1,22 @@
+{
+    "task_name": "arc_challenge",
+    "timestamp": "2026-03-05T20:45:41.393920",
+    "experiment_type": "nm_delta",
+    "parameters": {
+        "delta_type": "nm",
+        "scale": 0.05,
+        "row_delta_threshold": 5.0,
+        "row_similarity_metric": "euclidean"
+    },
+    "shot": 0,
+    "sparsity": 0.8862002454085607,
+    "avg_attn_latency_ms": 0.0,
+    "accuracy": 0.24,
+    "metrics": {
+        "alias": "arc_challenge",
+        "acc,none": 0.24,
+        "acc_stderr,none": 0.042923469599092816,
+        "acc_norm,none": 0.26,
+        "acc_norm_stderr,none": 0.0440844002276808
+    }
+}
