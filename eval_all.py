@@ -61,7 +61,6 @@ EXPERIMENT_DEFINITIONS = {
     "nm_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [0,1,5],
             "row_sim": ["euclidean"]
         },
         "arg_builder": lambda p: [
@@ -72,8 +71,6 @@ EXPERIMENT_DEFINITIONS = {
         "injector": lambda args: {
             "delta_type": "nm",
             "scale": args.scale,
-            "row_delta_threshold": args.delta,
-            "row_similarity_metric": args.row_sim
         }
     }
 }

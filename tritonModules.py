@@ -127,3 +127,61 @@ def sparse_delta_mm_scatter_kernel(
         out_ptrs = out_head_ptr + m_offsets[:, None] * stride_om + active_cols[None, :] * stride_on
         out_mask = m_mask[:, None] & n_mask[None, :]
         tl.store(out_ptrs, acc.to(Out_ptr.dtype.element_ty), mask=out_mask)
+
+
+
+
+
+@triton.jit
+def fused_dynamic_24_delta_kernel(
+    states_ptr,       # [B * H, seq_len, head_dim]
+    out_ptr,          # [B * H, seq_len, head_dim]
+    stride_bh, stride_seq, stride_dim,
+    seq_len,
+    BLOCK_DIM: tl.constexpr = 4
+):
+    # 1. Map programs to specific batches/heads and specific 4-element chunks
+    bh_idx = tl.program_id(0)
+    chunk_idx = tl.program_id(1)
+    
+    # 2. Setup memory pointers for this specific 4-element block
+    dim_offsets = chunk_idx * BLOCK_DIM + tl.arange(0, BLOCK_DIM)
+    
+    base_state_ptr = states_ptr + bh_idx * stride_bh + dim_offsets * stride_dim
+    base_out_ptr   = out_ptr + bh_idx * stride_bh + dim_offsets * stride_dim
+    
+    # 3. Initialize the first step (t=0)
+    # The first token has no delta, so we output exactly 0.0 and set the initial reference state.
+    ref_states = tl.load(base_state_ptr + 0 * stride_seq)
+    tl.store(base_out_ptr + 0 * stride_seq, tl.zeros((BLOCK_DIM,), dtype=ref_states.dtype))
+
+    # 4. Iterate strictly down the sequence length
+    for t in range(1, seq_len):
+        # Load current states
+        curr_states = tl.load(base_state_ptr + t * stride_seq)
+        
+        # Calculate raw temporal difference
+        diff = curr_states - ref_states
+        abs_diff = tl.abs(diff)
+        
+        # --- THE 2:4 CORE LOGIC ---
+        # Get the indices that would sort the absolute differences descending.
+        # This guarantees exactly 2 winners, gracefully handling any exact ties.
+        sorted_indices = tl.argsort(abs_diff, descending=True)
+        
+        # Extract the original positions of the top 2 values
+        top_idx_0 = sorted_indices[0]
+        top_idx_1 = sorted_indices[1]
+        
+        # Create a strict boolean mask: True for the top 2, False for the bottom 2
+        block_indices = tl.arange(0, BLOCK_DIM)
+        mask = (block_indices == top_idx_0) | (block_indices == top_idx_1)
+        
+        # Zero out the 2 least significant values
+        sparse_delta = tl.where(mask, diff, 0.0)
+        
+        # Store the 2:4 sparse delta
+        tl.store(base_out_ptr + t * stride_seq, sparse_delta)
+        
+        # Update the reference state ONLY for the elements we allowed through
+        ref_states = tl.where(mask, curr_states, ref_states)
