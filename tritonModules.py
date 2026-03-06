@@ -131,7 +131,6 @@ def sparse_delta_mm_scatter_kernel(
 
 
 
-
 @triton.jit
 def fused_dynamic_24_delta_kernel(
     states_ptr,       # [B * H, seq_len, head_dim]
@@ -155,6 +154,9 @@ def fused_dynamic_24_delta_kernel(
     ref_states = tl.load(base_state_ptr + 0 * stride_seq)
     tl.store(base_out_ptr + 0 * stride_seq, tl.zeros((BLOCK_DIM,), dtype=ref_states.dtype))
 
+    # Static indices for the 4 elements in our block
+    block_indices = tl.arange(0, BLOCK_DIM)
+
     # 4. Iterate strictly down the sequence length
     for t in range(1, seq_len):
         # Load current states
@@ -164,18 +166,22 @@ def fused_dynamic_24_delta_kernel(
         diff = curr_states - ref_states
         abs_diff = tl.abs(diff)
         
-        # --- THE 2:4 CORE LOGIC ---
-        # Get the indices that would sort the absolute differences descending.
-        # This guarantees exactly 2 winners, gracefully handling any exact ties.
-        sorted_indices = tl.argsort(abs_diff, descending=True)
+        # --- THE 2:4 CORE LOGIC (Using argmax to avoid argsort) ---
+        # Find the index of the absolute maximum value
+        idx_1 = tl.argmax(abs_diff, axis=0)
         
-        # Extract the original positions of the top 2 values
-        top_idx_0 = sorted_indices[0]
-        top_idx_1 = sorted_indices[1]
+        # Create a mask for that first max element
+        is_max_1 = block_indices == idx_1
         
-        # Create a strict boolean mask: True for the top 2, False for the bottom 2
-        block_indices = tl.arange(0, BLOCK_DIM)
-        mask = (block_indices == top_idx_0) | (block_indices == top_idx_1)
+        # Mask out the first max by setting it to a negative number 
+        # (Since abs_diff is always >= 0, -1.0 guarantees it won't be picked again)
+        abs_diff_masked = tl.where(is_max_1, -1.0, abs_diff)
+        
+        # Find the index of the second maximum value
+        idx_2 = tl.argmax(abs_diff_masked, axis=0)
+        
+        # Create the final strict 2:4 boolean mask
+        mask = is_max_1 | (block_indices == idx_2)
         
         # Zero out the 2 least significant values
         sparse_delta = tl.where(mask, diff, 0.0)
