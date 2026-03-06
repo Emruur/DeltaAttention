@@ -190,4 +190,4 @@ def fused_dynamic_24_delta_kernel(
         tl.store(base_out_ptr + t * stride_seq, sparse_delta)
         
         # Update the reference state ONLY for the elements we allowed through
-        ref_states = tl.where(mask, curr_states, ref_states)
+        ref_states = curr_states
