@@ -61,7 +61,7 @@ if is_torch_flex_attn_available():
 import globVR
 import glob_set
 
-from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel, fused_dynamic_24_delta_kernel
+from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel
 
 
 
@@ -431,9 +431,8 @@ class BitNetAttention(nn.Module):
 
     def get_nm_delta_mat_triton(self, input_states, thresh):
         """
-        Orchestrates the fused Option B kernel:
-        Applies a temporal threshold to filter noise and update states,
-        then strictly enforces 2:4 structured sparsity.
+        Computes the temporal delta matrix and strictly enforces 2:4 structured sparsity.
+        Accelerated via Triton.
         """
         bsz, n_head, seq_len, head_dim = input_states.shape
         
@@ -450,8 +449,7 @@ class BitNetAttention(nn.Module):
 
         grid = (bsz * n_head, head_dim // 4)
 
-        # Pass thresh directly into the kernel
-        fused_dynamic_24_delta_kernel[grid](
+        fused_nm_delta_kernel[grid](
             states_3d, 
             out_3d,
             states_3d.stride(0), states_3d.stride(1), states_3d.stride(2),
@@ -461,7 +459,7 @@ class BitNetAttention(nn.Module):
         )
 
         return delta_out
-    
+
     def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean"):
         """
         Triton-accelerated structured delta matrix computation.
@@ -709,6 +707,65 @@ class BitNetAttention(nn.Module):
         output = torch.where(condition_mask, full_attn, out)
         return output
 
+    def nm_regular_delta_mm(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size):
+        """
+        Physically compresses the delta key matrix into the 2:4 semi-structured format.
+        Includes dynamic sequence padding to satisfy cuSPARSELt 16x16 alignment requirements.
+        """
+        n_head = self.num_heads
+        head_dim = regular_x.shape[-1]
+        
+        # 1. Prepare 3D Tensors
+        delta_k = delta_y.transpose(-1, -2).reshape(bsz * n_head, seq_len, head_dim)
+        reg_q = regular_x.reshape(bsz * n_head, seq_len, head_dim)
+        
+        # --- THE ALIGNMENT HACK ---
+        # Calculate how many tokens we need to add to make seq_len a multiple of 16
+        pad_len = (16 - (seq_len % 16)) % 16
+        
+        if pad_len > 0:
+            # Pad the seq_len dimension (which is the 2nd to last dim) with zeros
+            # F.pad format for the last 2 dims is (pad_left, pad_right, pad_top, pad_bottom)
+            delta_k_padded = torch.nn.functional.pad(delta_k, (0, 0, 0, pad_len))
+            reg_q_padded = torch.nn.functional.pad(reg_q, (0, 0, 0, pad_len))
+        else:
+            delta_k_padded = delta_k
+            reg_q_padded = reg_q
+            
+        padded_seq_len = seq_len + pad_len
+        
+        # Pre-allocate padded output
+        delta_out_2d = torch.empty((bsz * n_head, padded_seq_len, padded_seq_len), 
+                                   device=regular_x.device, dtype=regular_x.dtype)
+        
+        # --- 2. THE 2D HARDWARE LOOP ---
+        for i in range(bsz * n_head):
+            k_2d = delta_k_padded[i].to(torch.float16)
+            q_2d = reg_q_padded[i].to(torch.float16)
+            
+            # Compress (Now guaranteed to be a multiple of 16x16)
+            k_compressed = torch.sparse.to_sparse_semi_structured(k_2d)
+            
+            # Hardware-Accelerated MatMul
+            attn_slice = torch.nn.functional.linear(q_2d, k_compressed)
+            
+            delta_out_2d[i] = attn_slice.to(regular_x.dtype)
+            
+        # --- 3. SLICE THE PADDING OFF ---
+        # Chop it back down to the true sequence length
+        delta_out_2d = delta_out_2d[:, :seq_len, :seq_len]
+            
+        # 4. Reshape back to the original 4D Attention format
+        delta_out = delta_out_2d.view(bsz, n_head, seq_len, seq_len)
+        
+        # 5. Vectorized Cumulative Sum
+        delta_out = torch.cumsum(delta_out, dim=-1)
+
+        # 6. Patch Exact Attention for Sinks and Local Blocks
+        output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
+        
+        return output
+
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -758,7 +815,7 @@ class BitNetAttention(nn.Module):
                 torch.cuda.synchronize()
                 t_rd_start = time.time()
                 
-                key_delta_all = self.get_nm_delta_mat(key_states, globVR.row_delta_threshold)
+                key_delta_all = self.get_nm_delta_mat_triton(key_states, globVR.row_delta_threshold)
                 
                 torch.cuda.synchronize()
                 t_rd_end = time.time()
@@ -798,6 +855,8 @@ class BitNetAttention(nn.Module):
                 if globVR.delta_type== "row":
                     attn_weights = self.triton_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask) * self.scaling
 
+                elif globVR.delta_type== "nm":
+                    attn_weights = self.nm_regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size)) * self.scaling
                 else:
                     attn_weights = self.regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size)) * self.scaling
 

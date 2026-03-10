@@ -1,0 +1,21 @@
+{
+    "task_name": "openbookqa",
+    "timestamp": "2026-03-10T13:52:49.763764",
+    "experiment_type": "nm_delta",
+    "parameters": {
+        "delta_type": "nm",
+        "scale": 0.05,
+        "row_delta_threshold": 1.0
+    },
+    "shot": 0,
+    "sparsity": 0.5954156645168591,
+    "avg_attn_latency_ms": 0.0,
+    "accuracy": 0.27,
+    "metrics": {
+        "alias": "openbookqa",
+        "acc,none": 0.27,
+        "acc_stderr,none": 0.044619604333847394,
+        "acc_norm,none": 0.36,
+        "acc_norm_stderr,none": 0.04824181513244218
+    }
+}

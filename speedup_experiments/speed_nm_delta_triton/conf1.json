@@ -1,0 +1,17 @@
+{
+    "timestamp": "2026-03-10T14:14:17.989408",
+    "experiment_type": "nm_delta",
+    "parameters": {
+        "delta_type": "nm",
+        "scale": 0.05,
+        "row_delta_threshold": 0.0
+    },
+    "seq_len": 1024,
+    "total_avg_ms": 5856.25193825108,
+    "latency_breakdown_ms": {
+        "time_get_nm_delta": 0.2828681468963623,
+        "time_delta_mm_pattern": 185.0981112321218,
+        "time_forward_total": 189.18177366256714
+    },
+    "avg_sparsity": 0.47509774686807416
+}

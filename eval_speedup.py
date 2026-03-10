@@ -71,8 +71,21 @@ EXPERIMENT_DEFINITIONS = {
             "use_row_delta": True,
             "row_delta_threshold": args.delta,
             "row_similarity_metric": args.row_sim,
-            "scale": 0.05, # Block size scale
-            "sink_size": 64
+        }
+    },
+    "nm_delta": {
+        "grid": {
+            "delta": [0,0.5,1],
+            "seq_len": [1024, 2048],
+        },
+        "arg_builder": lambda p: [
+            "--seq_len", str(p["seq_len"]),
+            "--delta", str(p["delta"]), 
+        ],
+        "injector": lambda args: {
+            "delta_type": "nm",
+            "scale": args.scale,
+             "row_delta_threshold": args.delta,
         }
     }
 }
