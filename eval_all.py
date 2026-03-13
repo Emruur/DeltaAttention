@@ -86,6 +86,12 @@ EXPERIMENT_DEFINITIONS = {
             "mlp_delta_threshold": args.mlp_thresh # Set the current MLP threshold
         }
     },
+    "baseline": {
+        "injector": lambda args: {
+            "delta_pf_key_on": 0,              # Force attention delta OFF
+            "delta_mlp": "Regular",              # Turn MLP delta ON
+        }
+    },
     "combined_delta": {
         "grid": {
             "scale": [0.05],
