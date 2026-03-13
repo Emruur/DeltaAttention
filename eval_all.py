@@ -75,14 +75,14 @@ EXPERIMENT_DEFINITIONS = {
     },
     "mlp_delta": {
         "grid": {
-            "mlp_thresh": [ 0.6, 0.7, 0.8, 0.9] # Dedicated sweep for MLP threshold
+            "mlp_thresh": [8, 9, 10, 11, 12,13,14, 15, 16] # Dedicated sweep for MLP threshold
         },
         "arg_builder": lambda p: [
             "--mlp_thresh", str(p["mlp_thresh"]), 
         ],
         "injector": lambda args: {
             "delta_pf_key_on": 0,              # Force attention delta OFF
-            "delta_mlp": "Delta",              # Turn MLP delta ON
+            "delta_mlp": "Row",              # Turn MLP delta ON
             "mlp_delta_threshold": args.mlp_thresh # Set the current MLP threshold
         }
     },

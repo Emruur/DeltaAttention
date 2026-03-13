@@ -127,18 +127,91 @@ class BitNetMLP(nn.Module):
             
         return delta_all
 
+    def get_row_delta_mlp_mat(self, input_states, threshold, similarity_metric="euclidean"):
+        """
+        Computes a row-wise (structured) delta matrix for 3D MLP inputs.
+        Evaluates the entire token vector against the reference state.
+        """
+        bsz, seq_len, hidden_dim = input_states.shape
+        device = input_states.device
+        
+        # Pre-allocate mask
+        keep_mask = torch.zeros((bsz, seq_len), dtype=torch.bool, device=device)
+        keep_mask[:, 0] = True  # First token is always kept
+        
+        # List accumulation for fast Eager Mode execution
+        delta_list = [input_states[:, 0, :]]
+        ref_states = input_states[:, 0, :].clone() 
+
+        # Pre-compute threshold for euclidean to avoid squaring in the loop
+        thresh_sq = threshold ** 2 if similarity_metric == "euclidean" else None
+
+        for n in range(1, seq_len):
+            current_row = input_states[:, n, :]
+            
+            # Compute difference
+            diff = current_row - ref_states
+            
+            # --- METRIC CALCULATION ---
+            if similarity_metric == "cosine":
+                sim = torch.nn.functional.cosine_similarity(current_row, ref_states, dim=-1)
+                should_keep = sim < threshold
+                
+            elif similarity_metric == "euclidean":
+                sq_dist = torch.sum(diff * diff, dim=-1)
+                should_keep = sq_dist > thresh_sq
+                
+            elif similarity_metric == "l1":
+                dist = torch.sum(torch.abs(diff), dim=-1)
+                should_keep = dist > threshold
+                
+            elif similarity_metric == "max":
+                dist = torch.max(torch.abs(diff), dim=-1)[0]
+                should_keep = dist > threshold
+
+            elif similarity_metric == "kl":
+                p = torch.nn.functional.softmax(current_row, dim=-1)
+                q = torch.nn.functional.softmax(ref_states, dim=-1)
+                kl_div = torch.sum(p * (torch.log(p + 1e-10) - torch.log(q + 1e-10)), dim=-1)
+                should_keep = kl_div > threshold
+                
+            else:
+                raise ValueError(f"Unknown metric: {similarity_metric}")
+            
+            
+            # --- MASK & DELTA ---
+            keep_mask[:, n] = should_keep
+            
+            # CRITICAL FOR MLP: Zero out the difference if we aren't keeping it,
+            # so the cumsum down the line reconstructs the dense tensor correctly.
+            delta_step = torch.where(should_keep.unsqueeze(-1), diff, torch.zeros_like(diff))
+            delta_list.append(delta_step)
+            
+            # --- REFERENCE UPDATE ---
+            ref_states = torch.where(should_keep.unsqueeze(-1), current_row, ref_states)
+            
+        # Combine efficiently at the end
+        delta_all = torch.stack(delta_list, dim=1)
+        
+        return delta_all, keep_mask
+
     def forward(self, x):
         # x shape is (batch_size, seq_len, hidden_dim)
         seq_len = x.shape[1]
         
         # Toggle based on config AND ensure we are in the prefill stage (seq_len > 1)
-        if hasattr(globVR, 'delta_mlp') and globVR.delta_mlp == "Delta" and seq_len > 1:
+        if hasattr(globVR, 'delta_mlp') and globVR.delta_mlp != "Regular" and seq_len > 1:
             import glob_set
             
             thresh = getattr(globVR, 'mlp_delta_threshold', 0.0)
             
             # --- 1. Compute Regular Delta (3D) ---
-            delta_x = self.get_delta_mlp_mat(x, thresh)
+            keep_mask= None
+            
+            if globVR.delta_mlp == "Delta":
+                delta_x = self.get_delta_mlp_mat(x, thresh)
+            elif globVR.delta_mlp == "Row":
+                delta_x, keep_mask = self.get_row_delta_mlp_mat(x, thresh)
             
             # --- 2. Track Sparsity ---
             glob_set.compute_mlp_sparsity(delta_x, keep_mask=None)
