@@ -75,7 +75,7 @@ EXPERIMENT_DEFINITIONS = {
     },
     "mlp_delta": {
         "grid": {
-            "mlp_thresh": [0.0, 0.5, 1.0, 1.5, 2.0] # Dedicated sweep for MLP threshold
+            "mlp_thresh": [ 0.6, 0.7, 0.8, 0.9] # Dedicated sweep for MLP threshold
         },
         "arg_builder": lambda p: [
             "--mlp_thresh", str(p["mlp_thresh"]), 
