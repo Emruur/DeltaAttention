@@ -1,0 +1,22 @@
+{
+    "task_name": "arc_easy",
+    "timestamp": "2026-03-13T13:40:32.025075",
+    "experiment_type": "mlp_delta",
+    "parameters": {
+        "delta_pf_key_on": 0,
+        "delta_mlp": "Delta",
+        "mlp_delta_threshold": 0.7
+    },
+    "shot": 0,
+    "sparsity": 0.0,
+    "mlp_spars": 0.5334081859381982,
+    "avg_attn_latency_ms": 0.0,
+    "accuracy": 0.69,
+    "metrics": {
+        "alias": "arc_easy",
+        "acc,none": 0.69,
+        "acc_stderr,none": 0.04648231987117316,
+        "acc_norm,none": 0.72,
+        "acc_norm_stderr,none": 0.04512608598542127
+    }
+}
