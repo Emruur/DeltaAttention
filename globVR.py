@@ -62,8 +62,14 @@ delta_attn = {}
 # attn_pre = torch.tensor([]).cuda()
 
 
-
+## ROW DELTA ATTENTION
 delta_type = "regular" # regular, row, nm
 row_delta_threshold = 10
 row_similarity_metric= "cos"
+
+## DELTA MLP
+delta_mlp= "Delta"
+mlp_delta_threshold= 0
+
+
 

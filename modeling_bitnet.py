@@ -102,10 +102,65 @@ class BitNetMLP(nn.Module):
         self.act_fn = ACT2FN[config.hidden_act]
         self.ffn_sub_norm = BitNetRMSNorm(config.intermediate_size, eps=config.rms_norm_eps)
 
-    def forward(self, x):
-        down_proj = self.down_proj(self.ffn_sub_norm(self.act_fn(self.gate_proj(x)) * self.up_proj(x)))
-        return down_proj
+    def get_delta_mlp_mat(self, input_states, thresh):
+        # Compute the regular element-wise delta matrix for 3D MLP inputs
+        # input_states: size (bsz, seq_len, hidden_dim)
+        bsz, seq_len, hidden_dim = input_states.shape
+        
+        # Initialize with the first token
+        input_old = input_states[:, 0:1, :] # size: (bsz, 1, hidden_dim)
+        delta_all = input_old
+        
+        for n in range(1, seq_len):
+            input_new = input_states[:, n:n+1, :]
+            sub = input_new - input_old # size: (bsz, 1, hidden_dim)
+            
+            sub_pos = sub.abs()
+            delta_mask = sub_pos <= thresh
+            
+            # Zero out elements below the threshold
+            delta_row = sub.masked_fill(delta_mask, 0.0)
+            delta_all = torch.cat((delta_all, delta_row), dim=1)
+            
+            # Update reference state only where the threshold was exceeded
+            input_old = torch.where(delta_mask, input_old, input_new)
+            
+        return delta_all
 
+    def forward(self, x):
+        # x shape is (batch_size, seq_len, hidden_dim)
+        seq_len = x.shape[1]
+        
+        # Toggle based on config AND ensure we are in the prefill stage (seq_len > 1)
+        if hasattr(globVR, 'delta_mlp') and globVR.delta_mlp == "Delta" and seq_len > 1:
+            import glob_set
+            
+            thresh = getattr(globVR, 'mlp_delta_threshold', 0.0)
+            
+            # --- 1. Compute Regular Delta (3D) ---
+            delta_x = self.get_delta_mlp_mat(x, thresh)
+            
+            # --- 2. Track Sparsity ---
+            glob_set.compute_mlp_sparsity(delta_x, keep_mask=None)
+            
+            # --- 3. Project the Sparse Deltas ---
+            delta_gate = self.gate_proj(delta_x)
+            delta_up = self.up_proj(delta_x)
+            
+            # --- 4. Un-Delta (The Cumsum) ---
+            dense_gate = torch.cumsum(delta_gate, dim=1)
+            dense_up = torch.cumsum(delta_up, dim=1)
+            
+            # --- 5. Standard Non-Linearity and Down Projection ---
+            down_proj = self.down_proj(self.ffn_sub_norm(self.act_fn(dense_gate) * dense_up))
+            
+            return down_proj
+            
+        else:
+            # --- Decoding Stage & Regular Fallback ---
+            # If seq_len == 1 (decoding) OR delta_mlp is off, use the standard dense MLP
+            down_proj = self.down_proj(self.ffn_sub_norm(self.act_fn(self.gate_proj(x)) * self.up_proj(x)))
+            return down_proj
 
 def rotate_half(x):
     """Rotates half the hidden dims of the input."""

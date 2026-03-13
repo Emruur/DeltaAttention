@@ -25,6 +25,25 @@ def update_latency(metric_name, dt_seconds):
     globVR.latency_stats[metric_name]['time_ms'] += (dt_seconds * 1000)
     globVR.latency_stats[metric_name]['calls'] += 1
 
+
+
+def compute_mlp_sparsity(input_tensor, keep_mask=None):
+    
+    # Calculate current sparsity
+    if keep_mask is not None:
+        current_spars = torch.sum(~keep_mask).item() / keep_mask.numel()
+    else:
+        # Fallback: scan the dense delta matrix for exact zeros
+        current_spars = torch.sum(input_tensor == 0).item() / input_tensor.numel()
+        
+    # Update global tracking safely using Cumulative Moving Average
+    if not hasattr(globVR, 'mlp_spars_count'):
+        globVR.mlp_spars = 0.0
+        globVR.mlp_spars_count = 0
+        
+    globVR.mlp_spars = (globVR.mlp_spars * globVR.mlp_spars_count + current_spars) / (globVR.mlp_spars_count + 1)
+    globVR.mlp_spars_count += 1
+
 def build_glob(activation, n_data, n_layer, max_len, d_model):
     activation[n_data] = torch.zeros(n_layer, max_len, d_model).cuda()
     #globVR.k_act[n_data] = torch.zeros(n_layer, max_len, d_model)

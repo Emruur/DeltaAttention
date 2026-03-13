@@ -72,6 +72,38 @@ EXPERIMENT_DEFINITIONS = {
             "scale": args.scale,
              "row_delta_threshold": args.delta,
         }
+    },
+    "mlp_delta": {
+        "grid": {
+            "mlp_thresh": [0.0, 0.5, 1.0, 1.5, 2.0] # Dedicated sweep for MLP threshold
+        },
+        "arg_builder": lambda p: [
+            "--mlp_thresh", str(p["mlp_thresh"]), 
+        ],
+        "injector": lambda args: {
+            "delta_pf_key_on": 0,              # Force attention delta OFF
+            "delta_mlp": "Delta",              # Turn MLP delta ON
+            "mlp_delta_threshold": args.mlp_thresh # Set the current MLP threshold
+        }
+    },
+    "combined_delta": {
+        "grid": {
+            "scale": [0.05],
+            "thresh": [0.5, 1.0, 1.5],         # Attention thresholds
+            "mlp_thresh": [0.5, 1.0, 1.5]      # MLP thresholds
+        },
+        "arg_builder": lambda p: [
+            "--scale", str(p["scale"]),
+            "--thresh", str(p["thresh"]),
+            "--mlp_thresh", str(p["mlp_thresh"])
+        ],
+        "injector": lambda args: {
+            "delta_pf_key_on": 1,                  # Attention delta ON
+            "delta_mlp": "Delta",                  # MLP delta ON
+            "delta_pf_key_thresh": args.thresh,    # Injected from --thresh
+            "mlp_delta_threshold": args.mlp_thresh,# Injected from --mlp_thresh
+            "scale": args.scale
+        }
     }
 }
 
@@ -215,9 +247,13 @@ def run_worker_process(args, experiment_dir):
     
     for task in tasks:
         print(f"--- Running Task: {task} ---")
+        
+        # Reset Global Trackers for a clean run per task
         if hasattr(globVR, 'spars'): globVR.spars = 0.0
-        if hasattr(globVR, 'total_attn_time'):globVR.total_attn_time = 0.0
-        if hasattr(globVR, 'total_attn_calls'):globVR.total_attn_calls = 0
+        if hasattr(globVR, 'total_attn_time'): globVR.total_attn_time = 0.0
+        if hasattr(globVR, 'total_attn_calls'): globVR.total_attn_calls = 0
+        if hasattr(globVR, 'mlp_spars'): globVR.mlp_spars = 0.0
+        if hasattr(globVR, 'mlp_spars_count'): globVR.mlp_spars_count = 0
         
         # Aggressive cleaning before run
         torch.cuda.empty_cache()
@@ -236,6 +272,7 @@ def run_worker_process(args, experiment_dir):
                 avg_time = globVR.total_attn_time / globVR.total_attn_calls
 
             current_sparsity = getattr(globVR, 'spars', 0.0)
+            mlp_sparsity = getattr(globVR, 'mlp_spars', 0.0)
             raw_metrics = eval_output["results"].get(task, {})
 
             primary_acc = raw_metrics.get("acc,none") or raw_metrics.get("acc_norm,none") or raw_metrics.get("acc") or raw_metrics.get("exact_match,remove_whitespace")  or 0.0
@@ -247,12 +284,13 @@ def run_worker_process(args, experiment_dir):
                 "parameters": glob_settings, 
                 "shot": eval_config["shot"],
                 "sparsity": current_sparsity,
+                "mlp_spars": mlp_sparsity,
                 "avg_attn_latency_ms": avg_time,
                 "accuracy": primary_acc,
                 "metrics": raw_metrics
             }
             
-            print(f"Task: {task} | Sparsity: {current_sparsity} | Acc: {primary_acc}")
+            print(f"Task: {task} | Attn Sparsity: {current_sparsity:.4f} | MLP Sparsity: {mlp_sparsity:.4f} | Acc: {primary_acc:.4f}")
             save_single_task_result(config_dir, task, result_data)
             
             # Aggressive cleanup AFTER run
@@ -282,8 +320,11 @@ if __name__ == "__main__":
     # Shared Experiment Args
     parser.add_argument('--scale', default=0.05, type=float)
     
-    # Scale_Delta specific
+    # Scale_Delta specific (Attention)
     parser.add_argument('--thresh', default=0.6, type=float)
+    
+    # MLP_Delta specific
+    parser.add_argument('--mlp_thresh', default=0.0, type=float)
 
     # Row_Delta specific
     parser.add_argument('--delta', default=1.0, type=float)
@@ -325,6 +366,7 @@ if __name__ == "__main__":
                 "--shot", str(args.shot)
             ]
             
+            # The lambda builder pulls the right args
             cmd.extend(exp_def["arg_builder"](current_params))
             
             if args.conf_name:
