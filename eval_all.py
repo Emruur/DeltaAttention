@@ -75,15 +75,19 @@ EXPERIMENT_DEFINITIONS = {
     },
     "mlp_delta": {
         "grid": {
-            "mlp_thresh": [20,40,60,80,100] # Dedicated sweep for MLP threshold
+            "mlp_thresh": [0,0.5,1,2,3,4,5,8,10,15,20,30,40,60,100,200],
+            "row_sim": ["euclidean","cosine","l1","max","kl"],
+            
         },
         "arg_builder": lambda p: [
             "--mlp_thresh", str(p["mlp_thresh"]), 
+            "--row_sim", str(p["row_sim"])
         ],
         "injector": lambda args: {
             "delta_pf_key_on": 0,              # Force attention delta OFF
             "delta_mlp": "Row",              # Turn MLP delta ON
-            "mlp_delta_threshold": args.mlp_thresh # Set the current MLP threshold
+            "mlp_delta_threshold": args.mlp_thresh,
+            "row_similarity_metric": args.row_sim
         }
     },
     "baseline": {

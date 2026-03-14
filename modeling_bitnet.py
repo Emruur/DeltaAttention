@@ -211,7 +211,7 @@ class BitNetMLP(nn.Module):
             if globVR.delta_mlp == "Delta":
                 delta_x = self.get_delta_mlp_mat(x, thresh)
             elif globVR.delta_mlp == "Row":
-                delta_x, keep_mask = self.get_row_delta_mlp_mat(x, thresh)
+                delta_x, keep_mask = self.get_row_delta_mlp_mat(x, thresh, similarity_metric= globVR.row_similarity_metric)
             
             # --- 2. Track Sparsity ---
             glob_set.compute_mlp_sparsity(delta_x, keep_mask=None)
