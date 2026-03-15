@@ -75,7 +75,7 @@ EXPERIMENT_DEFINITIONS = {
     },
     "mlp_delta": {
         "grid": {
-            "mlp_thresh": [0.5,0.7,1,1.5,2]
+            "mlp_thresh": [0.1,0.2,0.3,0.4,0.6,0.8,0.9]
             
         },
         "arg_builder": lambda p: [
