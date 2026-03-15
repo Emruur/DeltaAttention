@@ -75,18 +75,16 @@ EXPERIMENT_DEFINITIONS = {
     },
     "mlp_delta": {
         "grid": {
-            "mlp_thresh": [0.5,0.7,1,1.5,2],
+            "mlp_thresh": [0.5,0.7,1,1.5,2]
             
         },
         "arg_builder": lambda p: [
-            "--mlp_thresh", str(p["mlp_thresh"]), 
-            "--row_sim", str(p["row_sim"])
+            "--mlp_thresh", str(p["mlp_thresh"])
         ],
         "injector": lambda args: {
             "delta_pf_key_on": 0,              # Force attention delta OFF
             "delta_mlp": "NM",              # Turn MLP delta ON
-            "mlp_delta_threshold": args.mlp_thresh,
-            "row_similarity_metric": args.row_sim
+            "mlp_delta_threshold": args.mlp_thresh
         }
     },
     "baseline": {
