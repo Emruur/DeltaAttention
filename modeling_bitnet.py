@@ -102,7 +102,7 @@ class BitNetMLP(nn.Module):
         self.act_fn = ACT2FN[config.hidden_act]
         self.ffn_sub_norm = BitNetRMSNorm(config.intermediate_size, eps=config.rms_norm_eps)
 
-    def get_delta_mlp_mat(self, input_states, thresh):
+    def get_delta_mlp_mat(self, input_states, thresh, nm=False):
         # Compute the regular element-wise delta matrix for 3D MLP inputs
         # input_states: size (bsz, seq_len, hidden_dim)
         bsz, seq_len, hidden_dim = input_states.shape
@@ -124,6 +124,32 @@ class BitNetMLP(nn.Module):
             
             # Update reference state only where the threshold was exceeded
             input_old = torch.where(delta_mask, input_old, input_new)
+            
+        # --- SECOND PASS: 2:4 Structured Sparsification ---
+        if nm:
+            if hidden_dim % 4 != 0:
+                raise ValueError(f"hidden_dim ({hidden_dim}) must be a multiple of 4 for 2:4 sparsity.")
+                
+            # Reshape the last dimension into chunks of 4
+            # Shape becomes: (bsz, seq_len, hidden_dim // 4, 4)
+            delta_reshaped = delta_all.view(bsz, seq_len, hidden_dim // 4, 4)
+            
+            # Find the 2 largest absolute values in each chunk of 4
+            _, topk_indices = torch.topk(delta_reshaped.abs(), k=2, dim=-1)
+            
+            # Create a boolean mask and scatter 'True' into the top 2 positions
+            mask_reshaped = torch.zeros_like(delta_reshaped, dtype=torch.bool, device=input_states.device)
+            mask_reshaped.scatter_(
+                dim=-1, 
+                index=topk_indices, 
+                src=torch.ones_like(topk_indices, dtype=torch.bool)
+            )
+            
+            # Apply the 2:4 mask (zero out the smallest 2 values per chunk)
+            delta_all = delta_reshaped.masked_fill(~mask_reshaped, 0.0)
+            
+            # Flatten back to the original 3D shape
+            delta_all = delta_all.view(bsz, seq_len, hidden_dim)
             
         return delta_all
 
@@ -210,6 +236,8 @@ class BitNetMLP(nn.Module):
             
             if globVR.delta_mlp == "Delta":
                 delta_x = self.get_delta_mlp_mat(x, thresh)
+            elif globVR.delta_mlp == "NM":
+                delta_x = self.get_delta_mlp_mat(x, thresh, nm=True)
             elif globVR.delta_mlp == "Row":
                 delta_x, keep_mask = self.get_row_delta_mlp_mat(x, thresh, similarity_metric= globVR.row_similarity_metric)
             

@@ -75,8 +75,7 @@ EXPERIMENT_DEFINITIONS = {
     },
     "mlp_delta": {
         "grid": {
-            "mlp_thresh": [0,0.5,1,2,3,4,5,8,10,15,20,30,40,60,100,200],
-            "row_sim": ["euclidean","cosine","l1","max","kl"],
+            "mlp_thresh": [0.5,0.7,1,1.5,2],
             
         },
         "arg_builder": lambda p: [
@@ -85,7 +84,7 @@ EXPERIMENT_DEFINITIONS = {
         ],
         "injector": lambda args: {
             "delta_pf_key_on": 0,              # Force attention delta OFF
-            "delta_mlp": "Row",              # Turn MLP delta ON
+            "delta_mlp": "NM",              # Turn MLP delta ON
             "mlp_delta_threshold": args.mlp_thresh,
             "row_similarity_metric": args.row_sim
         }
