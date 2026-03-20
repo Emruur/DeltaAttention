@@ -43,9 +43,9 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [10,15,20],
+            "delta": [0,15,20],
             "row_sim": ["euclidean"],
-            "divide_to": [4]
+            "divide_to": [1]
         },
         "arg_builder": lambda p: [
             "--scale", str(p["scale"]), 
