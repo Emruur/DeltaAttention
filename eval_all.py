@@ -54,6 +54,7 @@ EXPERIMENT_DEFINITIONS = {
         "injector": lambda args: {
             "delta_type": "row",
             "scale": args.scale,
+            "delta_mlp": "Regular", 
             "row_delta_threshold": args.delta,
             "row_similarity_metric": args.row_sim
         }
