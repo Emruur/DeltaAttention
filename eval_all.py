@@ -340,6 +340,8 @@ if __name__ == "__main__":
     # Row_Delta specific
     parser.add_argument('--delta', default=1.0, type=float)
     parser.add_argument('--row_sim', default="cos", type=str)
+
+    parser.add_argument('--divide_to', default=1, type=int)
     
     args = parser.parse_args()
 
