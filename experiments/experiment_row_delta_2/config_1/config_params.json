@@ -1,0 +1,6 @@
+{
+    "delta_type": "row",
+    "scale": 0.05,
+    "row_delta_threshold": 10.0,
+    "row_similarity_metric": "euclidean"
+}
