@@ -618,7 +618,7 @@ class BitNetAttention(nn.Module):
 
 
     #TODO working on
-    def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean",divideTo = 4):
+    def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean",divide_to = 4):
         """
         Partitioned Triton-accelerated structured delta matrix computation.
         Executes 'divideTo' parallel sequence chunks to eliminate O(L) bottlenecks.
@@ -635,13 +635,13 @@ class BitNetAttention(nn.Module):
         BLOCK_D = triton.next_power_of_2(head_dim)
         
         # Calculate chunk size (ceiling division to ensure all tokens are covered)
-        chunk_size = (seq_len + divideTo - 1) // divideTo
+        chunk_size = (seq_len + divide_to - 1) // divide_to
         
         if similarity_metric == "euclidean":
             threshold_sq = threshold ** 2
             
             # 2D Grid: (Total number of Batch-Heads, Number of Partitions)
-            grid = (bsz * n_head, divideTo)
+            grid = (bsz * n_head, divide_to)
             
             row_delta_euclidean_partitioned_kernel[grid](
                 input_states, delta_all, keep_mask,
@@ -792,7 +792,7 @@ class BitNetAttention(nn.Module):
             
             return output
 
-    def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divideTo=4):
+    def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=4):
         
         delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 
                             dtype=regular_x.dtype, device=regular_x.device)
@@ -845,7 +845,7 @@ class BitNetAttention(nn.Module):
 
         # --- BLOCK-WISE CUMSUM ---
         # 1. Calculate chunk size exactly as we did in the delta generation
-        chunk_size = (seq_len + divideTo - 1) // divideTo
+        chunk_size = (seq_len + divide_to - 1) // divide_to
         
         # 2. Pad sequence dimension if it's not perfectly divisible by chunk_size
         pad_len = (chunk_size - (seq_len % chunk_size)) % chunk_size
@@ -980,7 +980,7 @@ class BitNetAttention(nn.Module):
                 torch.cuda.synchronize()
                 t_rd_start = time.time()
                 
-                key_delta_all, keep_mask = self.get_row_delta_mat_triton(key_states, globVR.row_delta_threshold ,globVR.row_similarity_metric)
+                key_delta_all, keep_mask = self.get_row_delta_mat_triton(key_states, globVR.row_delta_threshold ,globVR.row_similarity_metric, globVR.divide_to)
                 
                 torch.cuda.synchronize()
                 t_rd_end = time.time()
@@ -1029,7 +1029,7 @@ class BitNetAttention(nn.Module):
                 
                 attn_weights= None
                 if globVR.delta_type== "row":
-                    attn_weights = self.triton_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask) * self.scaling
+                    attn_weights = self.triton_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to) * self.scaling
 
                 elif globVR.delta_type== "nm":
                     attn_weights = self.nm_regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size)) * self.scaling

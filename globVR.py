@@ -66,6 +66,7 @@ delta_attn = {}
 delta_type = "regular" # regular, row, nm
 row_delta_threshold = 10
 row_similarity_metric= "cos"
+divide_to = 1
 
 ## DELTA MLP
 delta_mlp= "Delta"

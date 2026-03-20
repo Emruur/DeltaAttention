@@ -44,19 +44,22 @@ EXPERIMENT_DEFINITIONS = {
         "grid": {
             "scale": [0.05], 
             "delta": [10,15,20],
-            "row_sim": ["euclidean"]
+            "row_sim": ["euclidean"],
+            "divide_to": [4]
         },
         "arg_builder": lambda p: [
             "--scale", str(p["scale"]), 
             "--delta", str(p["delta"]), 
-            "--row_sim", str(p["row_sim"])
+            "--row_sim", str(p["row_sim"]),
+            "--divide_to", str(p["divide_to"])
         ],
         "injector": lambda args: {
             "delta_type": "row",
             "scale": args.scale,
             "delta_mlp": "Regular", 
             "row_delta_threshold": args.delta,
-            "row_similarity_metric": args.row_sim
+            "row_similarity_metric": args.row_sim,
+            "divide_to": args.divide_to,
         }
     },
     "nm_delta": {
