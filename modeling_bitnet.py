@@ -618,7 +618,7 @@ class BitNetAttention(nn.Module):
 
 
     #TODO working on
-    def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean",divideTo = 16):
+    def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean",divideTo = 1):
         """
         Partitioned Triton-accelerated structured delta matrix computation.
         Executes 'divideTo' parallel sequence chunks to eliminate O(L) bottlenecks.
