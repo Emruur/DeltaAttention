@@ -196,8 +196,6 @@ def fused_nm_delta_kernel(
         
         tl.store(base_out_ptr + t * stride_seq, final_delta)
 
-
-
 @triton.jit
 def row_delta_euclidean_partitioned_kernel(
     in_ptr, delta_ptr, mask_ptr,          
@@ -219,7 +217,7 @@ def row_delta_euclidean_partitioned_kernel(
     start_seq = pid_p * chunk_size
     end_seq = tl.minimum(start_seq + chunk_size, seq_len)
     
-    # Early exit if partition is out of bounds (can happen with uneven division)
+    # Early exit if partition is out of bounds
     if start_seq >= seq_len:
         return
 
@@ -253,11 +251,13 @@ def row_delta_euclidean_partitioned_kernel(
         # Evaluate if distance exceeds threshold
         should_keep = sq_dist > threshold_sq
         
-        # Store delta and mask
+        # --- FIX 1: Force diff to 0.0 if dropping (Restores Accuracy) ---
+        final_delta = tl.where(should_keep, diff, 0.0)
+        
+        # Store masked delta and boolean mask
         curr_delta_ptrs = delta_seq_ptr + i * stride_in_s + offs_d * stride_in_d
-        tl.store(curr_delta_ptrs, diff, mask=mask_d)
+        tl.store(curr_delta_ptrs, final_delta, mask=mask_d)
         tl.store(mask_seq_ptr + i * stride_m_s, should_keep, mask=None)
         
-        # Dynamically update the reference state only if kept
-        if should_keep:
-            ref_state = curr_state
+        # --- FIX 2: Safe compiler update for reference state (Restores Sparsity) ---
+        ref_state = tl.where(should_keep, curr_state, ref_state)

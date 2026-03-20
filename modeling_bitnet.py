@@ -630,7 +630,7 @@ class BitNetAttention(nn.Module):
             input_states = input_states.contiguous()
 
         delta_all = torch.empty_like(input_states)
-        keep_mask = torch.empty((bsz, n_head, seq_len), dtype=torch.bool, device=device)
+        keep_mask = torch.zeros((bsz, n_head, seq_len), dtype=torch.bool, device=device)
         
         BLOCK_D = triton.next_power_of_2(head_dim)
         
