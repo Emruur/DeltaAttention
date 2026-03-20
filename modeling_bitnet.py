@@ -61,7 +61,7 @@ if is_torch_flex_attn_available():
 import globVR
 import glob_set
 
-from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel
+from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel, row_delta_euclidean_partitioned_kernel
 
 
 
@@ -616,44 +616,45 @@ class BitNetAttention(nn.Module):
 
         return delta_out
 
-    def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean"):
+
+    #TODO working on
+    def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean",divideTo = 16):
         """
-        Triton-accelerated structured delta matrix computation.
+        Partitioned Triton-accelerated structured delta matrix computation.
+        Executes 'divideTo' parallel sequence chunks to eliminate O(L) bottlenecks.
         """
         bsz, n_head, seq_len, head_dim = input_states.shape
         device = input_states.device
         
-        # Ensure memory is contiguous for safe pointer arithmetic
         if not input_states.is_contiguous():
             input_states = input_states.contiguous()
 
-        # Allocate outputs
         delta_all = torch.empty_like(input_states)
         keep_mask = torch.empty((bsz, n_head, seq_len), dtype=torch.bool, device=device)
         
-        # Triton requires block sizes to be powers of 2.
-        # If head_dim is 64 or 128, this just returns 64 or 128.
         BLOCK_D = triton.next_power_of_2(head_dim)
+        
+        # Calculate chunk size (ceiling division to ensure all tokens are covered)
+        chunk_size = (seq_len + divideTo - 1) // divideTo
         
         if similarity_metric == "euclidean":
             threshold_sq = threshold ** 2
             
-            # 2D Grid: We launch one program per batch and per head.
-            grid = (bsz, n_head)
+            # 2D Grid: (Total number of Batch-Heads, Number of Partitions)
+            grid = (bsz * n_head, divideTo)
             
-            row_delta_euclidean_kernel[grid](
+            row_delta_euclidean_partitioned_kernel[grid](
                 input_states, delta_all, keep_mask,
                 threshold_sq,
                 input_states.stride(0), input_states.stride(1), input_states.stride(2), input_states.stride(3),
                 keep_mask.stride(0), keep_mask.stride(1), keep_mask.stride(2),
-                seq_len, head_dim,
+                seq_len, head_dim, n_head, chunk_size,
                 BLOCK_D=BLOCK_D
             )
         else:
-            raise NotImplementedError(f"Triton kernel for '{similarity_metric}' is not yet implemented.")
+            raise NotImplementedError(f"Partitioned Triton kernel for '{similarity_metric}' is not yet implemented.")
             
         return delta_all, keep_mask
-    
     
     def direct_prune(self, input_states, thresh):
         # mask = input_states > thresh

@@ -195,3 +195,69 @@ def fused_nm_delta_kernel(
         final_delta = tl.where(mask_24, delta_row, 0.0)
         
         tl.store(base_out_ptr + t * stride_seq, final_delta)
+
+
+
+@triton.jit
+def row_delta_euclidean_partitioned_kernel(
+    in_ptr, delta_ptr, mask_ptr,          
+    threshold_sq,                         
+    stride_in_b, stride_in_h, stride_in_s, stride_in_d,  
+    stride_m_b, stride_m_h, stride_m_s,                  
+    seq_len, head_dim, num_heads, chunk_size,            
+    BLOCK_D: tl.constexpr                 
+):
+    # 1. 2D Grid Mapping
+    pid_bh = tl.program_id(0) # Combined Batch and Head
+    pid_p = tl.program_id(1)  # Partition ID (0 to divideTo - 1)
+    
+    # Decode batch and head
+    pid_b = pid_bh // num_heads
+    pid_h = pid_bh % num_heads
+    
+    # Calculate sequence bounds for this specific partition
+    start_seq = pid_p * chunk_size
+    end_seq = tl.minimum(start_seq + chunk_size, seq_len)
+    
+    # Early exit if partition is out of bounds (can happen with uneven division)
+    if start_seq >= seq_len:
+        return
+
+    # 2. Base memory addresses for this Batch & Head
+    in_seq_ptr = in_ptr + pid_b * stride_in_b + pid_h * stride_in_h
+    delta_seq_ptr = delta_ptr + pid_b * stride_in_b + pid_h * stride_in_h
+    mask_seq_ptr = mask_ptr + pid_b * stride_m_b + pid_h * stride_m_h
+    
+    offs_d = tl.arange(0, BLOCK_D)
+    mask_d = offs_d < head_dim
+    
+    # --- PROCESS FIRST TOKEN OF THIS PARTITION (THE LOCAL ANCHOR) ---
+    ptrs_start = in_seq_ptr + start_seq * stride_in_s + offs_d * stride_in_d
+    ref_state = tl.load(ptrs_start, mask=mask_d, other=0.0)
+    
+    # Store the anchor token as dense (delta = input) and keep_mask = True
+    delta_ptrs_start = delta_seq_ptr + start_seq * stride_in_s + offs_d * stride_in_d
+    tl.store(delta_ptrs_start, ref_state, mask=mask_d)
+    tl.store(mask_seq_ptr + start_seq * stride_m_s, 1, mask=None) 
+    
+    # --- PROCESS REMAINING TOKENS IN THE CHUNK ---
+    for i in range(start_seq + 1, end_seq):
+        # Load current token
+        curr_in_ptrs = in_seq_ptr + i * stride_in_s + offs_d * stride_in_d
+        curr_state = tl.load(curr_in_ptrs, mask=mask_d, other=0.0)
+        
+        # Compute difference and Euclidean distance squared
+        diff = curr_state - ref_state
+        sq_dist = tl.sum(diff * diff, axis=0)
+        
+        # Evaluate if distance exceeds threshold
+        should_keep = sq_dist > threshold_sq
+        
+        # Store delta and mask
+        curr_delta_ptrs = delta_seq_ptr + i * stride_in_s + offs_d * stride_in_d
+        tl.store(curr_delta_ptrs, diff, mask=mask_d)
+        tl.store(mask_seq_ptr + i * stride_m_s, should_keep, mask=None)
+        
+        # Dynamically update the reference state only if kept
+        if should_keep:
+            ref_state = curr_state
