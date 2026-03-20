@@ -1,0 +1,23 @@
+{
+    "task_name": "boolq",
+    "timestamp": "2026-03-20T17:37:42.928087",
+    "experiment_type": "row_delta",
+    "parameters": {
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 17.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 16
+    },
+    "shot": 0,
+    "sparsity": 0.5383227150492409,
+    "mlp_spars": 0.0,
+    "avg_attn_latency_ms": 0.0,
+    "accuracy": 0.8,
+    "metrics": {
+        "alias": "boolq",
+        "acc,none": 0.8,
+        "acc_stderr,none": 0.04020151261036846
+    }
+}
