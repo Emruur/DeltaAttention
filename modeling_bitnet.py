@@ -792,8 +792,7 @@ class BitNetAttention(nn.Module):
             
             return output
 
-    def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None):
-
+    def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divideTo=4):
         
         delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 
                             dtype=regular_x.dtype, device=regular_x.device)
@@ -844,13 +843,33 @@ class BitNetAttention(nn.Module):
         else:
             delta_out = torch.matmul(regular_x, delta_y)
 
-        # In-place cumsum to save memory
-        delta_out = torch.cumsum(delta_out, dim=-1)
+        # --- BLOCK-WISE CUMSUM ---
+        # 1. Calculate chunk size exactly as we did in the delta generation
+        chunk_size = (seq_len + divideTo - 1) // divideTo
+        
+        # 2. Pad sequence dimension if it's not perfectly divisible by chunk_size
+        pad_len = (chunk_size - (seq_len % chunk_size)) % chunk_size
+        if pad_len > 0:
+            # F.pad format for the last dim: (pad_left, pad_right)
+            delta_out_padded = torch.nn.functional.pad(delta_out, (0, pad_len))
+        else:
+            delta_out_padded = delta_out
+
+        # 3. Reshape to isolate the chunks
+        num_chunks = delta_out_padded.shape[-1] // chunk_size
+        # Shape becomes: (bsz, num_heads, q_len, num_chunks, chunk_size)
+        delta_out_blocked = delta_out_padded.view(bsz, self.num_heads, seq_len, num_chunks, chunk_size)
+
+        # 4. Perform cumsum ONLY within each chunk along the chunk_size dimension
+        delta_out_blocked = torch.cumsum(delta_out_blocked, dim=-1)
+
+        # 5. Flatten back to 4D and slice off any padding
+        delta_out = delta_out_blocked.view(bsz, self.num_heads, seq_len, -1)[..., :seq_len]
+        # -------------------------
 
         output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
         
         return output
-
     def regular_delta_mm(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size):
         delta_out = torch.matmul(regular_x, delta_y)
         output_base = delta_out[:,:,:,0].view(bsz,self.num_heads,dim_out, 1)
