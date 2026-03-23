@@ -1,0 +1,25 @@
+{
+    "task_name": "hellaswag",
+    "timestamp": "2026-03-23T15:29:04.671744",
+    "experiment_type": "row_delta",
+    "parameters": {
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 23.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 4
+    },
+    "shot": 0,
+    "sparsity": 0.701090064345173,
+    "mlp_spars": 0.0,
+    "avg_attn_latency_ms": 0.0,
+    "accuracy": 0.39,
+    "metrics": {
+        "alias": "hellaswag",
+        "acc,none": 0.39,
+        "acc_stderr,none": 0.04902071300001974,
+        "acc_norm,none": 0.45,
+        "acc_norm_stderr,none": 0.05
+    }
+}
