@@ -45,7 +45,7 @@ EXPERIMENT_DEFINITIONS = {
             "scale": [0.05], 
             "delta": [20,21,22,23,24,25,26,27,28,29,30],
             "row_sim": ["euclidean"],
-            "divide_to": [2,8,16,32,64]
+            "divide_to": [1,4]
         },
         "arg_builder": lambda p: [
             "--scale", str(p["scale"]), 
