@@ -58,19 +58,23 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "seq_len": [1024, 2048, 3072, 4096],
-            "delta": [15,20],
-            "row_sim": ["euclidean"]
+            "delta": [15, 19],
+            "row_sim": ["euclidean"],
+            "divide_to": [1, 2, 4]
         },
         "arg_builder": lambda p: [
             "--seq_len", str(p["seq_len"]),
             "--delta", str(p["delta"]), 
-            "--row_sim", str(p["row_sim"])
+            "--row_sim", str(p["row_sim"]),
+            "--divide_to", str(p["divide_to"])
         ],
         "injector": lambda args: {
             "delta_pf_key_on": 1,
             "use_row_delta": True,
+            "delta_type": "row",
             "row_delta_threshold": args.delta,
             "row_similarity_metric": args.row_sim,
+            "divide_to": args.divide_to,
         }
     },
     "nm_delta": {
@@ -88,6 +92,7 @@ EXPERIMENT_DEFINITIONS = {
              "row_delta_threshold": args.delta,
         }
     }
+    
 }
 
 # ==========================================
@@ -238,6 +243,7 @@ if __name__ == "__main__":
     parser.add_argument('--thresh', default=0.6, type=float)
     parser.add_argument('--delta', default=1.0, type=float)
     parser.add_argument('--row_sim', default="cos", type=str)
+    parser.add_argument('--divide_to', default=1, type=int)
 
     args = parser.parse_args()
 
