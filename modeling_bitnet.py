@@ -861,7 +861,7 @@ class BitNetAttention(nn.Module):
         delta_out_blocked = delta_out_padded.view(bsz, self.num_heads, seq_len, num_chunks, chunk_size)
 
         # 4. Perform cumsum ONLY within each chunk along the chunk_size dimension
-        delta_out_blocked = torch.cumsum(delta_out_blocked, dim=-1)
+        delta_out_blocked = delta_out_blocked.cumsum_(dim=-1)
 
         # 5. Flatten back to 4D and slice off any padding
         delta_out = delta_out_blocked.view(bsz, self.num_heads, seq_len, -1)[..., :seq_len]
