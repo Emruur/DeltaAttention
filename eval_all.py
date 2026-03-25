@@ -431,7 +431,7 @@ if __name__ == "__main__":
                 "--mode", "worker",
                 "--experiment_type", args.experiment_type,
                 "--exp_num", str(args.exp_num),
-                "--shot", str(args.shot)
+                "--shot", str(args.shot),
                 "--time_internal", args.time_internal
             ]
             
