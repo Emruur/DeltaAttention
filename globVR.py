@@ -74,3 +74,5 @@ mlp_delta_threshold= 0
 
 
 sequence_lengths = []
+
+time_internal = True # Controls if we do fine-grained timing with CUDA syncs

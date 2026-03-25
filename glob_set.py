@@ -13,6 +13,10 @@ def update_latency(metric_name, dt_seconds):
     """
     Structured latency tracker. Stores metrics in a dictionary in globVR.
     """
+    # If internal timing is disabled, do nothing.
+    if not getattr(globVR, 'time_internal', False):
+        return
+
     # Initialize the dictionary if it doesn't exist
     if not hasattr(globVR, 'latency_stats'):
         globVR.latency_stats = {}

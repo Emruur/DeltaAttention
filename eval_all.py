@@ -7,6 +7,7 @@ import numpy as np
 import re
 import gc
 import itertools
+import time
 import subprocess
 from datetime import datetime
 
@@ -200,17 +201,84 @@ def save_single_task_result(config_dir, task_name, result_data):
         json.dump(result_data, f, indent=4, cls=NpEncoder)
     print(f"[IO] Saved {os.path.basename(file_path)}")
 
+def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting):
+    """
+    Runs a single evaluation pass for a task with a specific timing setting.
+    Returns the results dictionary and the total wall-clock time.
+    """
+    print(f"    - Setting time_internal: {time_internal_setting}")
+    setattr(globVR, 'time_internal', time_internal_setting)
+
+    # Reset Global Trackers for a clean run
+    if hasattr(globVR, 'spars'): globVR.spars = 0.0
+    if hasattr(globVR, 'latency_stats'): globVR.latency_stats = {}
+    if hasattr(globVR, 'sequence_lengths'): globVR.sequence_lengths = []
+    if hasattr(globVR, 'mlp_spars'): globVR.mlp_spars = 0.0
+    if hasattr(globVR, 'mlp_spars_count'): globVR.mlp_spars_count = 0
+    
+    torch.cuda.empty_cache()
+    gc.collect()
+
+    start_time = time.time()
+    try:
+        eval_output = simple_evaluate(
+            model=lm_model,   
+            tasks=[task],
+            num_fewshot=eval_config["shot"],
+            limit=eval_config["limit"]
+        )
+    except Exception as e:
+        print(f"    - [Error] simple_evaluate failed for task {task}: {e}")
+        return None, 0
+    end_time = time.time()
+    total_time = end_time - start_time
+    print(f"    - Task '{task}' completed in {total_time:.2f} seconds.")
+
+    # Process latency stats from globVR
+    latency_breakdown = {}
+    if hasattr(globVR, 'latency_stats'):
+        for metric, stats in globVR.latency_stats.items():
+            if stats['calls'] > 0:
+                avg_ms = stats['time_ms'] / stats['calls']
+                latency_breakdown[metric] = avg_ms
+    
+    total_avg_ms = latency_breakdown.get('time_forward_total', 0.0)
+
+    # Calculate average sequence length
+    avg_seq_len = 0.0
+    if hasattr(globVR, 'sequence_lengths') and len(globVR.sequence_lengths) > 0:
+        avg_seq_len = np.mean(globVR.sequence_lengths)
+
+    current_sparsity = getattr(globVR, 'spars', 0.0)
+    mlp_sparsity = getattr(globVR, 'mlp_spars', 0.0)
+    raw_metrics = eval_output["results"].get(task, {})
+
+    primary_acc = raw_metrics.get("acc,none") or raw_metrics.get("acc_norm,none") or raw_metrics.get("acc") or raw_metrics.get("exact_match,remove_whitespace") or 0.0
+
+    result_data = {
+        "task_name": task,
+        "timestamp": datetime.now().isoformat(),
+        "shot": eval_config["shot"],
+        "sparsity": current_sparsity,
+        "mlp_spars": mlp_sparsity,
+        "avg_sequence_length": avg_seq_len,
+        "accuracy": primary_acc,
+        "timings": {
+            "total_avg_ms": total_avg_ms,
+            "latency_breakdown_ms": latency_breakdown,
+        },
+        "metrics": raw_metrics,
+    }
+    return result_data, total_time
+
 # ==========================================
 # WORKER FUNCTION
 # ==========================================
 def run_worker_process(args, experiment_dir):
     # 1. Base Settings
     eval_config = {
-        "shot": args.shot,
-        "limit": 100,
-        "batch_size": 1,
-        "device": "cuda",
-        "model_args": "pretrained=microsoft/bitnet-b1.58-2B-4T,trust_remote_code=False,dtype=bfloat16,attn_implementation=eager"
+        "shot": args.shot, "limit": 100, "batch_size": 1, "device": "cuda",
+        "model_args": "pretrained=microsoft/bitnet-b1.58-2B-4T,trust_remote_code=False,dtype=bfloat16,attn_implementation=eager",
     }
 
     # 2. Apply Experiment Specifics
@@ -259,74 +327,45 @@ def run_worker_process(args, experiment_dir):
     for task in tasks:
         print(f"--- Running Task: {task} ---")
         
-        # Reset Global Trackers for a clean run per task
-        if hasattr(globVR, 'spars'): globVR.spars = 0.0
-        if hasattr(globVR, 'latency_stats'): globVR.latency_stats = {}
-        if hasattr(globVR, 'sequence_lengths'): globVR.sequence_lengths = []
-        if hasattr(globVR, 'mlp_spars'): globVR.mlp_spars = 0.0
-        if hasattr(globVR, 'mlp_spars_count'): globVR.mlp_spars_count = 0
-        
-        # Aggressive cleaning before run
-        torch.cuda.empty_cache()
+        final_result_data = {}
+
+        # Pass 1: No internal syncs (for accurate wall-clock time)
+        if args.time_internal in ['no', 'both']:
+            print(f"  -> Pass: Measuring total benchmark time (internal syncs OFF)")
+            results, total_time = run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting=False)
+            if results:
+                final_result_data = results
+                final_result_data['total_benchmark_time_s'] = total_time
+                final_result_data["parameters"] = glob_settings
+                final_result_data["experiment_type"] = args.experiment_type
+            else:
+                print(f"  -> Skipping task {task} due to error in 'no-sync' pass.")
+                continue
+
+        # Pass 2: With internal syncs (for latency breakdown)
+        if args.time_internal in ['yes', 'both']:
+            print(f"  -> Pass: Measuring internal latency breakdown (internal syncs ON)")
+            results, total_time = run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting=True)
+            
+            if results:
+                if args.time_internal == 'both':
+                    final_result_data['timings'] = results.get('timings', {})
+                else: # 'yes' only
+                    final_result_data = results
+                    final_result_data['total_benchmark_time_s'] = total_time
+                    final_result_data["parameters"] = glob_settings
+                    final_result_data["experiment_type"] = args.experiment_type
+            else:
+                print(f"  -> Error in 'sync' pass for task {task}. Results may be incomplete.")
+
+        if final_result_data:
+            print(f"Task: {task} | Acc: {final_result_data.get('accuracy', 0.0):.4f} | Total Time: {final_result_data.get('total_benchmark_time_s', 0.0):.2f}s")
+            save_single_task_result(config_dir, task, final_result_data)
+        else:
+            print(f"[Error] No results generated for task {task}.")
+
         gc.collect()
-
-        try:
-            eval_output = simple_evaluate(
-                model=lm_model,   
-                tasks=[task],
-                num_fewshot=eval_config["shot"],
-                limit=eval_config["limit"]
-            )
-
-            # Process latency stats from globVR
-            latency_breakdown = {}
-            if hasattr(globVR, 'latency_stats'):
-                for metric, stats in globVR.latency_stats.items():
-                    if stats['calls'] > 0:
-                        avg_ms = stats['time_ms'] / stats['calls']
-                        latency_breakdown[metric] = avg_ms
-            
-            total_avg_ms = latency_breakdown.get('time_forward_total', 0.0)
-
-            # Calculate average sequence length
-            avg_seq_len = 0.0
-            if hasattr(globVR, 'sequence_lengths') and len(globVR.sequence_lengths) > 0:
-                avg_seq_len = np.mean(globVR.sequence_lengths)
-
-            current_sparsity = getattr(globVR, 'spars', 0.0)
-            mlp_sparsity = getattr(globVR, 'mlp_spars', 0.0)
-            raw_metrics = eval_output["results"].get(task, {})
-
-            primary_acc = raw_metrics.get("acc,none") or raw_metrics.get("acc_norm,none") or raw_metrics.get("acc") or raw_metrics.get("exact_match,remove_whitespace")  or 0.0
-
-            result_data = {
-                "task_name": task,
-                "timestamp": datetime.now().isoformat(),
-                "experiment_type": args.experiment_type,
-                "parameters": glob_settings, 
-                "shot": eval_config["shot"],
-                "sparsity": current_sparsity,
-                "mlp_spars": mlp_sparsity,
-                "avg_sequence_length": avg_seq_len,
-                "accuracy": primary_acc,
-                "timings": {
-                    "total_avg_ms": total_avg_ms,
-                    "latency_breakdown_ms": latency_breakdown,
-                },
-                "metrics": raw_metrics,
-            }
-            
-            print(f"Task: {task} | Attn Sparsity: {current_sparsity:.4f} | MLP Sparsity: {mlp_sparsity:.4f} | Acc: {primary_acc:.4f}")
-            save_single_task_result(config_dir, task, result_data)
-            
-            # Aggressive cleanup AFTER run
-            del eval_output
-            del raw_metrics
-            gc.collect()
-            torch.cuda.empty_cache()
-
-        except Exception as e:
-            print(f"[Error] Task {task} failed: {e}")
+        torch.cuda.empty_cache()
 
     print("[Worker] Finished. Exiting.")
 
@@ -342,6 +381,7 @@ if __name__ == "__main__":
     parser.add_argument('--shot', default=0, type=int)
     parser.add_argument('--exp_num', default=None, type=int)
     parser.add_argument('--conf_name', default=None, type=str)
+    parser.add_argument('--time_internal', type=str, default='yes', choices=['yes', 'no', 'both'])
     
     # Shared Experiment Args
     parser.add_argument('--scale', default=0.05, type=float)
@@ -392,6 +432,7 @@ if __name__ == "__main__":
                 "--experiment_type", args.experiment_type,
                 "--exp_num", str(args.exp_num),
                 "--shot", str(args.shot)
+                "--time_internal", args.time_internal
             ]
             
             # The lambda builder pulls the right args
