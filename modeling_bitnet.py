@@ -1349,6 +1349,9 @@ class BitNetModel(BitNetPreTrainedModel):
         if inputs_embeds is None:
             inputs_embeds = self.embed_tokens(input_ids)
 
+        if hasattr(globVR, "sequence_lengths"):
+            globVR.sequence_lengths.append(inputs_embeds.shape[1])
+
         if use_cache and past_key_values is None:
             past_key_values = DynamicCache()
 

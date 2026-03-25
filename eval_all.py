@@ -43,9 +43,9 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [15,16,17,18,19],
+            "delta": [15],
             "row_sim": ["euclidean"],
-            "divide_to": [1]
+            "divide_to": [1,4]
         },
         "arg_builder": lambda p: [
             "--scale", str(p["scale"]), 
@@ -261,8 +261,8 @@ def run_worker_process(args, experiment_dir):
         
         # Reset Global Trackers for a clean run per task
         if hasattr(globVR, 'spars'): globVR.spars = 0.0
-        if hasattr(globVR, 'total_attn_time'): globVR.total_attn_time = 0.0
-        if hasattr(globVR, 'total_attn_calls'): globVR.total_attn_calls = 0
+        if hasattr(globVR, 'latency_stats'): globVR.latency_stats = {}
+        if hasattr(globVR, 'sequence_lengths'): globVR.sequence_lengths = []
         if hasattr(globVR, 'mlp_spars'): globVR.mlp_spars = 0.0
         if hasattr(globVR, 'mlp_spars_count'): globVR.mlp_spars_count = 0
         
@@ -278,9 +278,20 @@ def run_worker_process(args, experiment_dir):
                 limit=eval_config["limit"]
             )
 
-            avg_time = 0.0
-            if hasattr(globVR, 'total_attn_calls') and globVR.total_attn_calls > 0:
-                avg_time = globVR.total_attn_time / globVR.total_attn_calls
+            # Process latency stats from globVR
+            latency_breakdown = {}
+            if hasattr(globVR, 'latency_stats'):
+                for metric, stats in globVR.latency_stats.items():
+                    if stats['calls'] > 0:
+                        avg_ms = stats['time_ms'] / stats['calls']
+                        latency_breakdown[metric] = avg_ms
+            
+            total_avg_ms = latency_breakdown.get('time_forward_total', 0.0)
+
+            # Calculate average sequence length
+            avg_seq_len = 0.0
+            if hasattr(globVR, 'sequence_lengths') and len(globVR.sequence_lengths) > 0:
+                avg_seq_len = np.mean(globVR.sequence_lengths)
 
             current_sparsity = getattr(globVR, 'spars', 0.0)
             mlp_sparsity = getattr(globVR, 'mlp_spars', 0.0)
@@ -296,9 +307,13 @@ def run_worker_process(args, experiment_dir):
                 "shot": eval_config["shot"],
                 "sparsity": current_sparsity,
                 "mlp_spars": mlp_sparsity,
-                "avg_attn_latency_ms": avg_time,
+                "avg_sequence_length": avg_seq_len,
                 "accuracy": primary_acc,
-                "metrics": raw_metrics
+                "timings": {
+                    "total_avg_ms": total_avg_ms,
+                    "latency_breakdown_ms": latency_breakdown,
+                },
+                "metrics": raw_metrics,
             }
             
             print(f"Task: {task} | Attn Sparsity: {current_sparsity:.4f} | MLP Sparsity: {mlp_sparsity:.4f} | Acc: {primary_acc:.4f}")
