@@ -1,0 +1,34 @@
+{
+    "task_name": "arc_easy",
+    "timestamp": "2026-03-25T21:15:55.641272",
+    "experiment_type": "row_delta",
+    "parameters": {
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 1
+    },
+    "shot": 0,
+    "sparsity": 0.3395496234699654,
+    "mlp_spars": 0.0,
+    "avg_sequence_length": 31.390532544378697,
+    "accuracy": 0.75,
+    "timings": {
+        "total_avg_ms": 0.8962137694424661,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.06035364120904746,
+            "time_sparse_matmul_triton": 0.12775925254445575,
+            "time_delta_mm_pattern": 0.3177708187517095,
+            "time_forward_total": 0.8962137694424661
+        }
+    },
+    "metrics": {
+        "alias": "arc_easy",
+        "acc,none": 0.75,
+        "acc_stderr,none": 0.04351941398892446,
+        "acc_norm,none": 0.78,
+        "acc_norm_stderr,none": 0.041633319989322605
+    }
+}
