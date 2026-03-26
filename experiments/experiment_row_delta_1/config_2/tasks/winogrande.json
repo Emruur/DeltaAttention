@@ -1,0 +1,34 @@
+{
+    "task_name": "winogrande",
+    "timestamp": "2026-03-26T11:48:46.977925",
+    "shot": 0,
+    "sparsity": 0.4880952992450839,
+    "mlp_spars": 0.0,
+    "avg_sequence_length": 21.375,
+    "accuracy": 0.78,
+    "timings": {
+        "total_avg_ms": 0.8571764628092448,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.048304994901021324,
+            "time_sparse_matmul_triton": 0.03079386552174886,
+            "time_delta_mm_pattern": 0.2990676164627075,
+            "time_forward_total": 0.8571764628092448
+        }
+    },
+    "metrics": {
+        "alias": "winogrande",
+        "acc,none": 0.78,
+        "acc_stderr,none": 0.04163331998932261
+    },
+    "total_benchmark_time_s": 28.63596510887146,
+    "parameters": {
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 4
+    },
+    "experiment_type": "row_delta",
+    "sync_pass_benchmark_time_s": 30.500722885131836
+}

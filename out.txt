@@ -1,100 +1,198 @@
 [Worker] Applying row_delta settings: {'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'divide_to': 1}
 [Worker] Loading Model...
-[Config] Created new directory: experiments/experiment_row_delta_3/config_1
+[Config] Created new directory: experiments/experiment_row_delta_1/config_1
+--- Running Task: arc_easy ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'arc_easy' completed in 34.55 seconds.
+Task: arc_easy | Acc: 0.7500 | Total Time: 34.55s
+[IO] Saved/Merged result to arc_easy.json
+--- Running Task: arc_challenge ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'arc_challenge' completed in 35.32 seconds.
+Task: arc_challenge | Acc: 0.5000 | Total Time: 35.32s
+[IO] Saved/Merged result to arc_challenge.json
+--- Running Task: openbookqa ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'openbookqa' completed in 32.68 seconds.
+Task: openbookqa | Acc: 0.2800 | Total Time: 32.68s
+[IO] Saved/Merged result to openbookqa.json
+--- Running Task: boolq ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'boolq' completed in 26.61 seconds.
+Task: boolq | Acc: 0.7400 | Total Time: 26.61s
+[IO] Saved/Merged result to boolq.json
+--- Running Task: hellaswag ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'hellaswag' completed in 38.96 seconds.
+Task: hellaswag | Acc: 0.5000 | Total Time: 38.96s
+[IO] Saved/Merged result to hellaswag.json
+--- Running Task: piqa ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'piqa' completed in 28.36 seconds.
+Task: piqa | Acc: 0.7300 | Total Time: 28.36s
+[IO] Saved/Merged result to piqa.json
+--- Running Task: winogrande ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'winogrande' completed in 29.10 seconds.
+Task: winogrande | Acc: 0.7700 | Total Time: 29.10s
+[IO] Saved/Merged result to winogrande.json
+[Worker] Finished. Exiting.
+[Worker] Applying row_delta settings: {'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'divide_to': 1}
+[Worker] Loading Model...
+[Config] Found existing directory: experiments/experiment_row_delta_1/config_1
 --- Running Task: arc_easy ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'arc_easy' completed in 36.40 seconds.
-Task: arc_easy | Acc: 0.7500 | Total Time: 36.40s
-[IO] Saved arc_easy.json
+    - Task 'arc_easy' completed in 36.80 seconds.
+Task: arc_easy | Acc: 0.7500 | Total Time: 36.80s
+[IO] Saved/Merged result to arc_easy.json
 --- Running Task: arc_challenge ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'arc_challenge' completed in 37.49 seconds.
-Task: arc_challenge | Acc: 0.5000 | Total Time: 37.49s
-[IO] Saved arc_challenge.json
+    - Task 'arc_challenge' completed in 37.84 seconds.
+Task: arc_challenge | Acc: 0.5000 | Total Time: 37.84s
+[IO] Saved/Merged result to arc_challenge.json
 --- Running Task: openbookqa ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'openbookqa' completed in 34.88 seconds.
-Task: openbookqa | Acc: 0.2800 | Total Time: 34.88s
-[IO] Saved openbookqa.json
+    - Task 'openbookqa' completed in 34.87 seconds.
+Task: openbookqa | Acc: 0.2800 | Total Time: 34.87s
+[IO] Saved/Merged result to openbookqa.json
 --- Running Task: boolq ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'boolq' completed in 27.22 seconds.
-Task: boolq | Acc: 0.7400 | Total Time: 27.22s
-[IO] Saved boolq.json
+    - Task 'boolq' completed in 27.48 seconds.
+Task: boolq | Acc: 0.7400 | Total Time: 27.48s
+[IO] Saved/Merged result to boolq.json
 --- Running Task: hellaswag ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'hellaswag' completed in 41.50 seconds.
-Task: hellaswag | Acc: 0.5000 | Total Time: 41.50s
-[IO] Saved hellaswag.json
+    - Task 'hellaswag' completed in 41.88 seconds.
+Task: hellaswag | Acc: 0.5000 | Total Time: 41.88s
+[IO] Saved/Merged result to hellaswag.json
 --- Running Task: piqa ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'piqa' completed in 29.80 seconds.
-Task: piqa | Acc: 0.7300 | Total Time: 29.80s
-[IO] Saved piqa.json
+    - Task 'piqa' completed in 29.90 seconds.
+Task: piqa | Acc: 0.7300 | Total Time: 29.90s
+[IO] Saved/Merged result to piqa.json
 --- Running Task: winogrande ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'winogrande' completed in 30.35 seconds.
-Task: winogrande | Acc: 0.7700 | Total Time: 30.35s
-[IO] Saved winogrande.json
+    - Task 'winogrande' completed in 31.42 seconds.
+Task: winogrande | Acc: 0.7700 | Total Time: 31.42s
+[IO] Saved/Merged result to winogrande.json
 [Worker] Finished. Exiting.
 [Worker] Applying row_delta settings: {'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'divide_to': 4}
 [Worker] Loading Model...
-[Config] Created new directory: experiments/experiment_row_delta_3/config_2
+[Config] Created new directory: experiments/experiment_row_delta_1/config_2
+--- Running Task: arc_easy ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'arc_easy' completed in 33.63 seconds.
+Task: arc_easy | Acc: 0.7500 | Total Time: 33.63s
+[IO] Saved/Merged result to arc_easy.json
+--- Running Task: arc_challenge ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'arc_challenge' completed in 34.88 seconds.
+Task: arc_challenge | Acc: 0.5100 | Total Time: 34.88s
+[IO] Saved/Merged result to arc_challenge.json
+--- Running Task: openbookqa ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'openbookqa' completed in 32.19 seconds.
+Task: openbookqa | Acc: 0.3100 | Total Time: 32.19s
+[IO] Saved/Merged result to openbookqa.json
+--- Running Task: boolq ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'boolq' completed in 26.38 seconds.
+Task: boolq | Acc: 0.7400 | Total Time: 26.38s
+[IO] Saved/Merged result to boolq.json
+--- Running Task: hellaswag ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'hellaswag' completed in 38.75 seconds.
+Task: hellaswag | Acc: 0.5000 | Total Time: 38.75s
+[IO] Saved/Merged result to hellaswag.json
+--- Running Task: piqa ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'piqa' completed in 28.46 seconds.
+Task: piqa | Acc: 0.7400 | Total Time: 28.46s
+[IO] Saved/Merged result to piqa.json
+--- Running Task: winogrande ---
+  -> Pass: Measuring total benchmark time (internal syncs OFF)
+    - Setting time_internal: False
+    - Task 'winogrande' completed in 28.64 seconds.
+Task: winogrande | Acc: 0.7800 | Total Time: 28.64s
+[IO] Saved/Merged result to winogrande.json
+[Worker] Finished. Exiting.
+[Worker] Applying row_delta settings: {'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'divide_to': 4}
+[Worker] Loading Model...
+[Config] Found existing directory: experiments/experiment_row_delta_1/config_2
 --- Running Task: arc_easy ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'arc_easy' completed in 35.85 seconds.
-Task: arc_easy | Acc: 0.7500 | Total Time: 35.85s
-[IO] Saved arc_easy.json
+    - Task 'arc_easy' completed in 36.31 seconds.
+Task: arc_easy | Acc: 0.7500 | Total Time: 36.31s
+[IO] Saved/Merged result to arc_easy.json
 --- Running Task: arc_challenge ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'arc_challenge' completed in 37.70 seconds.
-Task: arc_challenge | Acc: 0.5100 | Total Time: 37.70s
-[IO] Saved arc_challenge.json
+    - Task 'arc_challenge' completed in 37.59 seconds.
+Task: arc_challenge | Acc: 0.5100 | Total Time: 37.59s
+[IO] Saved/Merged result to arc_challenge.json
 --- Running Task: openbookqa ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'openbookqa' completed in 34.32 seconds.
-Task: openbookqa | Acc: 0.3100 | Total Time: 34.32s
-[IO] Saved openbookqa.json
+    - Task 'openbookqa' completed in 34.58 seconds.
+Task: openbookqa | Acc: 0.3100 | Total Time: 34.58s
+[IO] Saved/Merged result to openbookqa.json
 --- Running Task: boolq ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'boolq' completed in 27.13 seconds.
-Task: boolq | Acc: 0.7400 | Total Time: 27.13s
-[IO] Saved boolq.json
+    - Task 'boolq' completed in 26.85 seconds.
+Task: boolq | Acc: 0.7400 | Total Time: 26.85s
+[IO] Saved/Merged result to boolq.json
 --- Running Task: hellaswag ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'hellaswag' completed in 40.98 seconds.
-Task: hellaswag | Acc: 0.5000 | Total Time: 40.98s
-[IO] Saved hellaswag.json
+    - Task 'hellaswag' completed in 41.26 seconds.
+Task: hellaswag | Acc: 0.5000 | Total Time: 41.26s
+[IO] Saved/Merged result to hellaswag.json
 --- Running Task: piqa ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'piqa' completed in 29.41 seconds.
-Task: piqa | Acc: 0.7400 | Total Time: 29.41s
-[IO] Saved piqa.json
+    - Task 'piqa' completed in 29.39 seconds.
+Task: piqa | Acc: 0.7400 | Total Time: 29.39s
+[IO] Saved/Merged result to piqa.json
 --- Running Task: winogrande ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'winogrande' completed in 30.00 seconds.
-Task: winogrande | Acc: 0.7800 | Total Time: 30.00s
-[IO] Saved winogrande.json
+    - Task 'winogrande' completed in 30.50 seconds.
+Task: winogrande | Acc: 0.7800 | Total Time: 30.50s
+[IO] Saved/Merged result to winogrande.json
 [Worker] Finished. Exiting.
 [Master] Starting row_delta Grid Search.
 [Master] Parameters: ['scale', 'delta', 'row_sim', 'divide_to']
 [Master] Total Experiments: 2
-[Master] Experiment ID: 3
+[Master] Experiment ID: 1
 
 === Step 1/2: {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 1} ===
+[Master] Spawning separate 'yes' and 'no' sync processes for {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 1}
+[Master] Running worker with --time_internal no
+[Master] Running worker with --time_internal yes
 
 === Step 2/2: {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 4} ===
+[Master] Spawning separate 'yes' and 'no' sync processes for {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 4}
+[Master] Running worker with --time_internal no
+[Master] Running worker with --time_internal yes

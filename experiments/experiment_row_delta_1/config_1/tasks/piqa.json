@@ -1,0 +1,36 @@
+{
+    "task_name": "piqa",
+    "timestamp": "2026-03-26T11:39:45.158923",
+    "shot": 0,
+    "sparsity": 0.3637667787840295,
+    "mlp_spars": 0.0,
+    "avg_sequence_length": 35.265,
+    "accuracy": 0.73,
+    "timings": {
+        "total_avg_ms": 0.9027983744939169,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.0549692710240682,
+            "time_sparse_matmul_triton": 0.03266986211140951,
+            "time_delta_mm_pattern": 0.30449803670247394,
+            "time_forward_total": 0.9027983744939169
+        }
+    },
+    "metrics": {
+        "alias": "piqa",
+        "acc,none": 0.73,
+        "acc_stderr,none": 0.044619604333847394,
+        "acc_norm,none": 0.79,
+        "acc_norm_stderr,none": 0.040936018074033256
+    },
+    "total_benchmark_time_s": 28.35599994659424,
+    "parameters": {
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 1
+    },
+    "experiment_type": "row_delta",
+    "sync_pass_benchmark_time_s": 29.895514965057373
+}
