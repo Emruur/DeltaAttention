@@ -6,7 +6,6 @@ import torch
 import numpy as np
 import re
 import gc
-import itertools
 import time
 import subprocess
 from datetime import datetime
@@ -183,23 +182,54 @@ def get_or_create_config_dir(base_exp_dir, delta_config):
     print(f"[Config] Created new directory: {new_dir_path}")
     return new_dir_path
 
+
 def save_single_task_result(config_dir, task_name, result_data):
     tasks_dir = os.path.join(config_dir, "tasks")
-    base_filename = f"{task_name}.json"
-    file_path = os.path.join(tasks_dir, base_filename)
-    
-    if os.path.exists(file_path):
-        counter = 1
-        while True:
-            new_path = os.path.join(tasks_dir, f"{task_name}_{counter}.json")
-            if not os.path.exists(new_path):
-                file_path = new_path
-                break
-            counter += 1
-    
-    with open(file_path, 'w') as f:
-        json.dump(result_data, f, indent=4, cls=NpEncoder)
-    print(f"[IO] Saved {os.path.basename(file_path)}")
+    file_path = os.path.join(tasks_dir, f"{task_name}.json")
+    lock_path = file_path + ".lock"
+
+    # Simple spin lock
+    while os.path.exists(lock_path):
+        time.sleep(0.2)
+
+    try:
+        # Acquire lock
+        with open(lock_path, 'w') as f: pass
+
+        # Read existing data if it exists
+        existing_data = {}
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                try:
+                    existing_data = json.load(f)
+                except json.JSONDecodeError:
+                    pass # Ignore corrupt file, will be overwritten
+
+        # Check if the current run is the 'sync' run (has breakdown)
+        is_sync_run = "timings" in result_data and result_data["timings"].get("latency_breakdown_ms")
+
+        if is_sync_run:
+            # This is the 'yes' pass. Only add its timings to the existing data.
+            existing_data['timings'] = result_data.get('timings', {})
+            # Also store its own benchmark time for debugging
+            existing_data['sync_pass_benchmark_time_s'] = result_data.get('total_benchmark_time_s')
+            final_data = existing_data
+        else:
+            # This is the 'no' pass. It's the primary source of data.
+            # Overwrite everything EXCEPT for the timings, which might have been written by the 'yes' pass.
+            timings_to_preserve = existing_data.get('timings', {})
+            final_data = result_data
+            final_data['timings'] = timings_to_preserve
+        
+        # Write back the merged data
+        with open(file_path, 'w') as f:
+            json.dump(final_data, f, indent=4, cls=NpEncoder)
+        print(f"[IO] Saved/Merged result to {os.path.basename(file_path)}")
+
+    finally:
+        # Release lock
+        if os.path.exists(lock_path):
+            os.remove(lock_path)
 
 def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting):
     """
@@ -327,39 +357,22 @@ def run_worker_process(args, experiment_dir):
     for task in tasks:
         print(f"--- Running Task: {task} ---")
         
-        final_result_data = {}
-
-        # Pass 1: No internal syncs (for accurate wall-clock time)
-        if args.time_internal in ['no', 'both']:
-            print(f"  -> Pass: Measuring total benchmark time (internal syncs OFF)")
-            results, total_time = run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting=False)
-            if results:
-                final_result_data = results
-                final_result_data['total_benchmark_time_s'] = total_time
-                final_result_data["parameters"] = glob_settings
-                final_result_data["experiment_type"] = args.experiment_type
-            else:
-                print(f"  -> Skipping task {task} due to error in 'no-sync' pass.")
-                continue
-
-        # Pass 2: With internal syncs (for latency breakdown)
-        if args.time_internal in ['yes', 'both']:
+        is_sync_setting = (args.time_internal == 'yes')
+        
+        if is_sync_setting:
             print(f"  -> Pass: Measuring internal latency breakdown (internal syncs ON)")
-            results, total_time = run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting=True)
-            
-            if results:
-                if args.time_internal == 'both':
-                    final_result_data['timings'] = results.get('timings', {})
-                else: # 'yes' only
-                    final_result_data = results
-                    final_result_data['total_benchmark_time_s'] = total_time
-                    final_result_data["parameters"] = glob_settings
-                    final_result_data["experiment_type"] = args.experiment_type
-            else:
-                print(f"  -> Error in 'sync' pass for task {task}. Results may be incomplete.")
+        else:
+            print(f"  -> Pass: Measuring total benchmark time (internal syncs OFF)")
 
-        if final_result_data:
-            print(f"Task: {task} | Acc: {final_result_data.get('accuracy', 0.0):.4f} | Total Time: {final_result_data.get('total_benchmark_time_s', 0.0):.2f}s")
+        results, total_time = run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting=is_sync_setting)
+
+        if results:
+            final_result_data = results
+            final_result_data['total_benchmark_time_s'] = total_time
+            final_result_data["parameters"] = glob_settings
+            final_result_data["experiment_type"] = args.experiment_type
+            
+            print(f"Task: {task} | Acc: {final_result_data.get('accuracy', 0.0):.4f} | Total Time: {total_time:.2f}s")
             save_single_task_result(config_dir, task, final_result_data)
         else:
             print(f"[Error] No results generated for task {task}.")
@@ -377,11 +390,11 @@ if __name__ == "__main__":
     
     # Core Args
     parser.add_argument('--mode', type=str, default='master', choices=['master', 'worker'])
-    parser.add_argument('--experiment_type', type=str, required=True, choices=EXPERIMENT_DEFINITIONS.keys())
+    parser.add_argument('--experiment_type', type=str, required=True, default='row_delta',choices=EXPERIMENT_DEFINITIONS.keys())
     parser.add_argument('--shot', default=0, type=int)
     parser.add_argument('--exp_num', default=None, type=int)
     parser.add_argument('--conf_name', default=None, type=str)
-    parser.add_argument('--time_internal', type=str, default='yes', choices=['yes', 'no', 'both'])
+    parser.add_argument('--time_internal', type=str, default='both', choices=['yes', 'no', 'both'])
     
     # Shared Experiment Args
     parser.add_argument('--scale', default=0.05, type=float)
@@ -410,42 +423,43 @@ if __name__ == "__main__":
             args.exp_num = get_next_id(base_storage_path, prefix=f"experiment_{args.experiment_type}_")
         
         exp_def = EXPERIMENT_DEFINITIONS[args.experiment_type]
-        grid_params = exp_def["grid"]
+        grid_params = exp_def.get("grid", {})
         
-        keys = list(grid_params.keys())
-        values = list(grid_params.values())
-        param_grid = list(itertools.product(*values))
+        import itertools
+        keys = list(grid_params.keys()) if grid_params else []
+        values = list(grid_params.values()) if grid_params else []
+        param_grid = list(itertools.product(*values)) if grid_params else [{}]
         
         print(f"[Master] Starting {args.experiment_type} Grid Search.")
         print(f"[Master] Parameters: {keys}")
         print(f"[Master] Total Experiments: {len(param_grid)}")
         print(f"[Master] Experiment ID: {args.exp_num}")
 
-        for i, combination in enumerate(param_grid):
-            current_params = dict(zip(keys, combination))
+        for i, combo in enumerate(param_grid):
+            current_params = dict(zip(keys, combo)) if keys else {}
             
             print(f"\n=== Step {i+1}/{len(param_grid)}: {current_params} ===")
             
-            cmd = [
-                sys.executable, sys.argv[0],
-                "--mode", "worker",
-                "--experiment_type", args.experiment_type,
-                "--exp_num", str(args.exp_num),
-                "--shot", str(args.shot),
-                "--time_internal", args.time_internal
-            ]
-            
-            # The lambda builder pulls the right args
-            cmd.extend(exp_def["arg_builder"](current_params))
-            
-            if args.conf_name:
-                cmd.extend(["--conf_name", args.conf_name])
+            time_modes_to_run = [args.time_internal]
+            if args.time_internal == 'both':
+                print(f"[Master] Spawning separate 'yes' and 'no' sync processes for {current_params}")
+                time_modes_to_run = ['no', 'yes']
 
-            try:
-                # Passing the modified env to the subprocess
-                subprocess.run(cmd, check=True)
-            except subprocess.CalledProcessError as e:
-                print(f"[Master] Worker failed for {current_params}. Continuing...")
+            for time_mode in time_modes_to_run:
+                cmd = [
+                    sys.executable, sys.argv[0], "--mode", "worker",
+                    "--experiment_type", args.experiment_type, "--exp_num", str(args.exp_num),
+                    "--shot", str(args.shot), "--time_internal", time_mode,
+                ]
+                
+                if "arg_builder" in exp_def:
+                    cmd.extend(exp_def["arg_builder"](current_params))
+                
+                try:
+                    print(f"[Master] Running worker with --time_internal {time_mode}")
+                    subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"[Master] Worker failed for {current_params} with time_mode={time_mode}. Continuing...")
 
     # -----------------------------------------------------------
     # WORKER MODE

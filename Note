@@ -1,0 +1,1 @@
+When run with false no timing information is stored. Timing the overall runtime of the whole benchamrk should be a default behaviour of the script. 
