@@ -813,9 +813,9 @@ class BitNetAttention(nn.Module):
                 1
             )
 
-            # Ensure tensors are contiguous for safe pointer math
-            regular_x = regular_x.contiguous()
-            delta_y = delta_y.contiguous()
+            #FIXME this will lead to uncoalasced access but no unecessary memory allocation
+            # regular_x = regular_x.contiguous()
+            # delta_y = delta_y.contiguous()
             
             if getattr(globVR, 'time_internal', False):
                 torch.cuda.synchronize()
