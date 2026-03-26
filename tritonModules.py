@@ -93,7 +93,7 @@ def sparse_delta_mm_scatter_kernel(
     
     # Setup base pointers
     q_head_ptr = Q_ptr + batch_idx * stride_qb + head_idx * stride_qh
-    k_head_ptr = K_ptr + batch_idx * stride_kb + head_idx * stride_kh
+    k_head_ptr = K_ptr + batch_idx * stride_kb + kv_head_idx * stride_kh
     out_head_ptr = Out_ptr + batch_idx * stride_ob + head_idx * stride_oh
     idx_head_ptr = Indices_ptr + batch_idx * stride_ib + kv_head_idx * stride_ih
     

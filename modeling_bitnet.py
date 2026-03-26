@@ -1002,11 +1002,12 @@ class BitNetAttention(nn.Module):
             glob_set.store_delta(globVR.delta_key, self.layer_idx, key_delta_all, globVR.collect_delta_pf_key)
             blk_size = round(q_len*globVR.scale)
             new_scale = blk_size/q_len
-            if globVR.collect_delta_pf_key == 1:
-                glob_set.compute_sparsity_scale(key_delta_all, new_scale, keep_mask= keep_mask)
+            glob_set.compute_sparsity_scale(key_delta_all, new_scale, keep_mask= keep_mask)
                 
-            key_delta_all = repeat_kv(key_delta_all, self.num_key_value_groups)
+            if globVR.delta_type != "row":
+                key_delta_all = repeat_kv(key_delta_all, self.num_key_value_groups)
         
+
         key_states = repeat_kv(key_states, self.num_key_value_groups) 
         value_states = repeat_kv(value_states, self.num_key_value_groups)
 
