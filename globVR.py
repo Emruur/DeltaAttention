@@ -41,7 +41,7 @@ collect_delta_query = 0
 
 delta_pf_key_on = 1
 delta_pf_key_thresh = 0.6
-collect_delta_pf_key = 1
+collect_delta_pf_key = 0
 
 delta_key_on = 0
 delta_key_thresh = 0
