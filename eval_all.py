@@ -212,17 +212,24 @@ def run_worker_process(args, experiment_dir):
     for key, value in glob_settings.items():
         setattr(globVR, key, value)
 
-    # 3. Determine Tasks
-    if args.shot == 0:
-        tasks = ["arc_easy", "arc_challenge", "openbookqa", "boolq", "hellaswag", "piqa", "winogrande"]
-    elif args.shot == 5:
-        tasks = ["triviaqa", "mmlu"]
-        tasks = ["triviaqa"]
-    elif args.shot == 10:
-        tasks = ["commonsense_qa", "truthfulqa_mc2"]
-        tasks = ["commonsense_qa"]
+    all_possible_tasks = [
+        "arc_easy", "arc_challenge", "openbookqa", "boolq", 
+        "hellaswag", "piqa", "winogrande", "triviaqa", 
+        "mmlu", "commonsense_qa", "truthfulqa_mc2"
+    ]
+
+    if getattr(args, 'run_all_tasks', False):
+        tasks = all_possible_tasks
+        print(f"[Worker] '--run_all_tasks' triggered. Running {len(tasks)} tasks.")
     else:
-        tasks = ["arc_challenge"]
+        if args.shot == 0:
+            tasks = ["arc_easy", "arc_challenge", "openbookqa", "boolq", "hellaswag", "piqa", "winogrande"]
+        elif args.shot == 5:
+            tasks = ["triviaqa"]
+        elif args.shot == 10:
+            tasks = ["commonsense_qa"]
+        else:
+            tasks = ["arc_challenge"]
 
     # 4. Load Model
     print(f"[Worker] Loading Model...")
@@ -364,10 +371,22 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     
     total_avg_ms = latency_breakdown.get('time_forward_total', 0.0)
 
-    # Calculate average sequence length
-    avg_seq_len = 0.0
-    if hasattr(globVR, 'sequence_lengths') and len(globVR.sequence_lengths) > 0:
-        avg_seq_len = np.mean(globVR.sequence_lengths)
+    # Calculate sequence length statistics
+    seq_lengths = getattr(globVR, 'sequence_lengths', [])
+    
+    benchmark_stats = {
+        "num_passages": len(seq_lengths),
+        "seq_len_avg": 0.0,
+        "seq_len_min": 0,
+        "seq_len_max": 0,
+        "seq_len_std": 0.0
+    }
+
+    if seq_lengths:
+        benchmark_stats["seq_len_avg"] = float(np.mean(seq_lengths))
+        benchmark_stats["seq_len_min"] = int(np.min(seq_lengths))
+        benchmark_stats["seq_len_max"] = int(np.max(seq_lengths))
+        benchmark_stats["seq_len_std"] = float(np.std(seq_lengths))
 
     current_sparsity = getattr(globVR, 'spars', 0.0)
     mlp_sparsity = getattr(globVR, 'mlp_spars', 0.0)
@@ -381,7 +400,7 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
         "shot": eval_config["shot"],
         "sparsity": current_sparsity,
         "mlp_spars": mlp_sparsity,
-        "avg_sequence_length": avg_seq_len,
+        "benchmark_stats": benchmark_stats, # Inserted the new stats object here
         "accuracy": primary_acc,
         "timings": {
             "total_avg_ms": total_avg_ms,
@@ -419,6 +438,7 @@ if __name__ == "__main__":
     parser.add_argument('--row_sim', default="cos", type=str)
 
     parser.add_argument('--divide_to', default=1, type=int)
+    parser.add_argument('--run_all_tasks', action='store_true', help="Run all predefined tasks at once")
     
     args = parser.parse_args()
 
@@ -460,6 +480,8 @@ if __name__ == "__main__":
                     "--experiment_type", args.experiment_type, "--exp_num", str(args.exp_num),
                     "--shot", str(args.shot), "--time_internal", time_mode,
                 ]
+                if getattr(args, 'run_all_tasks', False):
+                    cmd.append("--run_all_tasks")
                 
                 if "arg_builder" in exp_def:
                     cmd.extend(exp_def["arg_builder"](current_params))
