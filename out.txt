@@ -2,92 +2,92 @@
 [Worker] Loading Model...
 [Config] Created new directory: experiments/experiment_row_delta_3/config_1
 --- Running Task: arc_easy ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'arc_easy' completed in 34.09 seconds.
-Task: arc_easy | Acc: 0.7500 | Total Time: 34.09s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'arc_easy' completed in 36.40 seconds.
+Task: arc_easy | Acc: 0.7500 | Total Time: 36.40s
 [IO] Saved arc_easy.json
 --- Running Task: arc_challenge ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'arc_challenge' completed in 34.77 seconds.
-Task: arc_challenge | Acc: 0.5000 | Total Time: 34.77s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'arc_challenge' completed in 37.49 seconds.
+Task: arc_challenge | Acc: 0.5000 | Total Time: 37.49s
 [IO] Saved arc_challenge.json
 --- Running Task: openbookqa ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'openbookqa' completed in 32.44 seconds.
-Task: openbookqa | Acc: 0.2800 | Total Time: 32.44s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'openbookqa' completed in 34.88 seconds.
+Task: openbookqa | Acc: 0.2800 | Total Time: 34.88s
 [IO] Saved openbookqa.json
 --- Running Task: boolq ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'boolq' completed in 26.58 seconds.
-Task: boolq | Acc: 0.7400 | Total Time: 26.58s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'boolq' completed in 27.22 seconds.
+Task: boolq | Acc: 0.7400 | Total Time: 27.22s
 [IO] Saved boolq.json
 --- Running Task: hellaswag ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'hellaswag' completed in 38.66 seconds.
-Task: hellaswag | Acc: 0.5000 | Total Time: 38.66s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'hellaswag' completed in 41.50 seconds.
+Task: hellaswag | Acc: 0.5000 | Total Time: 41.50s
 [IO] Saved hellaswag.json
 --- Running Task: piqa ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'piqa' completed in 28.10 seconds.
-Task: piqa | Acc: 0.7300 | Total Time: 28.10s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'piqa' completed in 29.80 seconds.
+Task: piqa | Acc: 0.7300 | Total Time: 29.80s
 [IO] Saved piqa.json
 --- Running Task: winogrande ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'winogrande' completed in 28.67 seconds.
-Task: winogrande | Acc: 0.7700 | Total Time: 28.67s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'winogrande' completed in 30.35 seconds.
+Task: winogrande | Acc: 0.7700 | Total Time: 30.35s
 [IO] Saved winogrande.json
 [Worker] Finished. Exiting.
 [Worker] Applying row_delta settings: {'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'divide_to': 4}
 [Worker] Loading Model...
 [Config] Created new directory: experiments/experiment_row_delta_3/config_2
 --- Running Task: arc_easy ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'arc_easy' completed in 34.29 seconds.
-Task: arc_easy | Acc: 0.7500 | Total Time: 34.29s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'arc_easy' completed in 35.85 seconds.
+Task: arc_easy | Acc: 0.7500 | Total Time: 35.85s
 [IO] Saved arc_easy.json
 --- Running Task: arc_challenge ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'arc_challenge' completed in 34.63 seconds.
-Task: arc_challenge | Acc: 0.5100 | Total Time: 34.63s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'arc_challenge' completed in 37.70 seconds.
+Task: arc_challenge | Acc: 0.5100 | Total Time: 37.70s
 [IO] Saved arc_challenge.json
 --- Running Task: openbookqa ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'openbookqa' completed in 32.49 seconds.
-Task: openbookqa | Acc: 0.3100 | Total Time: 32.49s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'openbookqa' completed in 34.32 seconds.
+Task: openbookqa | Acc: 0.3100 | Total Time: 34.32s
 [IO] Saved openbookqa.json
 --- Running Task: boolq ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'boolq' completed in 26.54 seconds.
-Task: boolq | Acc: 0.7400 | Total Time: 26.54s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'boolq' completed in 27.13 seconds.
+Task: boolq | Acc: 0.7400 | Total Time: 27.13s
 [IO] Saved boolq.json
 --- Running Task: hellaswag ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'hellaswag' completed in 38.98 seconds.
-Task: hellaswag | Acc: 0.5000 | Total Time: 38.98s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'hellaswag' completed in 40.98 seconds.
+Task: hellaswag | Acc: 0.5000 | Total Time: 40.98s
 [IO] Saved hellaswag.json
 --- Running Task: piqa ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'piqa' completed in 28.60 seconds.
-Task: piqa | Acc: 0.7400 | Total Time: 28.60s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'piqa' completed in 29.41 seconds.
+Task: piqa | Acc: 0.7400 | Total Time: 29.41s
 [IO] Saved piqa.json
 --- Running Task: winogrande ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'winogrande' completed in 29.00 seconds.
-Task: winogrande | Acc: 0.7800 | Total Time: 29.00s
+  -> Pass: Measuring internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'winogrande' completed in 30.00 seconds.
+Task: winogrande | Acc: 0.7800 | Total Time: 30.00s
 [IO] Saved winogrande.json
 [Worker] Finished. Exiting.
 [Master] Starting row_delta Grid Search.
