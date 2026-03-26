@@ -1037,9 +1037,17 @@ class BitNetAttention(nn.Module):
                     t_mm_end = time.time()
                     glob_set.update_latency('time_delta_mm_pattern', t_mm_end - t_mm_start)
             else:
-
+                # --- PATCH APPLIED HERE ---
+                if getattr(globVR, 'time_internal', False):
+                    torch.cuda.synchronize()
+                    t_mm_start = time.time()
                 
                 attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) * self.scaling
+
+                if getattr(globVR, 'time_internal', False):
+                    torch.cuda.synchronize()
+                    t_mm_end = time.time()
+                    glob_set.update_latency('time_regular_matmul', t_mm_end - t_mm_start)
         else:
             if globVR.delta_key_on == 1:
                 attn_weights = self.regular_delta_vm_window(query_states, key_delta_all.transpose(2,3), key_states.transpose(2,3), bsz, key_states.shape[2]) * self.scaling
