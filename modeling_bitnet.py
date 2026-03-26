@@ -1019,12 +1019,13 @@ class BitNetAttention(nn.Module):
 
                 attn_weights= None
                 if globVR.delta_type== "row":
-                    attn_weights = self.triton_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to) * self.scaling
+                    attn_weights = self.triton_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to)
                 elif globVR.delta_type== "nm":
-                    attn_weights = self.nm_regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size)) * self.scaling
+                    attn_weights = self.nm_regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
                 else:
-                    attn_weights = self.regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size)) * self.scaling
+                    attn_weights = self.regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
 
+                attn_weights.mul_(self.scaling)
                 if getattr(globVR, 'time_internal', False):
                     torch.cuda.synchronize()
                     t_mm_end = time.time()
@@ -1035,7 +1036,8 @@ class BitNetAttention(nn.Module):
                     torch.cuda.synchronize()
                     t_mm_start = time.time()
                 
-                attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) * self.scaling
+                attn_weights = torch.matmul(query_states, key_states.transpose(2, 3))
+                attn_weights.mul_(self.scaling)
 
                 if getattr(globVR, 'time_internal', False):
                     torch.cuda.synchronize()
@@ -1049,7 +1051,7 @@ class BitNetAttention(nn.Module):
         
         if attention_mask is not None:
             causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
-            attn_weights = attn_weights + causal_mask
+            attn_weights.add_(causal_mask)
 
         attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query_states.dtype)
         attn_weights = nn.functional.dropout(attn_weights, p=0.0, training=self.training)
