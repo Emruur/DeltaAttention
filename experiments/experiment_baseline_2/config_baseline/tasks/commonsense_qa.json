@@ -1,0 +1,34 @@
+{
+    "task_name": "commonsense_qa",
+    "timestamp": "2026-03-26T13:46:20.850121",
+    "shot": 0,
+    "sparsity": 0.0,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 100,
+        "seq_len_avg": 42.85,
+        "seq_len_min": 33,
+        "seq_len_max": 69,
+        "seq_len_std": 6.383376849285964
+    },
+    "accuracy": 0.64,
+    "timings": {
+        "total_avg_ms": 0.45976702372233075,
+        "latency_breakdown_ms": {
+            "time_regular_matmul": 0.025007963180541992,
+            "time_forward_total": 0.45976702372233075
+        }
+    },
+    "metrics": {
+        "alias": "commonsense_qa",
+        "acc,none": 0.64,
+        "acc_stderr,none": 0.04824181513244218
+    },
+    "total_benchmark_time_s": 26.204352140426636,
+    "parameters": {
+        "delta_pf_key_on": 0,
+        "delta_mlp": "Regular"
+    },
+    "experiment_type": "baseline",
+    "sync_pass_benchmark_time_s": 26.368863821029663
+}
