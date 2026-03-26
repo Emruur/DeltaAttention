@@ -1,145 +1,149 @@
 [Worker] Applying row_delta settings: {'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'divide_to': 1}
 [Worker] '--run_all_tasks' triggered. Running 11 tasks.
 [Worker] Loading Model...
-[Config] Created new directory: experiments/experiment_row_delta_2/config_1
+[Config] Created new directory: experiments/experiment_row_delta_3/config_1
 --- Running Task: arc_easy ---
   -> Pass: Measuring total benchmark time (internal syncs OFF)
     - Setting time_internal: False
-    - Task 'arc_easy' completed in 39.47 seconds.
-Task: arc_easy | Acc: 0.7500 | Total Time: 39.47s
+    - Task 'arc_easy' completed in 32.51 seconds.
+Task: arc_easy | Acc: 0.7500 | Total Time: 32.51s
 [IO] Saved/Merged result to arc_easy.json
 --- Running Task: arc_challenge ---
   -> Pass: Measuring total benchmark time (internal syncs OFF)
     - Setting time_internal: False
-    - Task 'arc_challenge' completed in 37.30 seconds.
-Task: arc_challenge | Acc: 0.5000 | Total Time: 37.30s
+    - Task 'arc_challenge' completed in 32.19 seconds.
+Task: arc_challenge | Acc: 0.5000 | Total Time: 32.19s
 [IO] Saved/Merged result to arc_challenge.json
 --- Running Task: openbookqa ---
   -> Pass: Measuring total benchmark time (internal syncs OFF)
     - Setting time_internal: False
-    - Task 'openbookqa' completed in 35.17 seconds.
-Task: openbookqa | Acc: 0.2800 | Total Time: 35.17s
+    - Task 'openbookqa' completed in 30.79 seconds.
+Task: openbookqa | Acc: 0.2800 | Total Time: 30.79s
 [IO] Saved/Merged result to openbookqa.json
 --- Running Task: boolq ---
   -> Pass: Measuring total benchmark time (internal syncs OFF)
     - Setting time_internal: False
-    - Task 'boolq' completed in 28.79 seconds.
-Task: boolq | Acc: 0.7400 | Total Time: 28.79s
+    - Task 'boolq' completed in 25.87 seconds.
+Task: boolq | Acc: 0.7400 | Total Time: 25.87s
 [IO] Saved/Merged result to boolq.json
 --- Running Task: hellaswag ---
   -> Pass: Measuring total benchmark time (internal syncs OFF)
     - Setting time_internal: False
-    - Task 'hellaswag' completed in 41.27 seconds.
-Task: hellaswag | Acc: 0.5000 | Total Time: 41.27s
+    - Task 'hellaswag' completed in 35.88 seconds.
+Task: hellaswag | Acc: 0.5000 | Total Time: 35.88s
 [IO] Saved/Merged result to hellaswag.json
 --- Running Task: piqa ---
   -> Pass: Measuring total benchmark time (internal syncs OFF)
     - Setting time_internal: False
-    - Task 'piqa' completed in 30.57 seconds.
-Task: piqa | Acc: 0.7300 | Total Time: 30.57s
+    - Task 'piqa' completed in 27.11 seconds.
+Task: piqa | Acc: 0.7300 | Total Time: 27.11s
 [IO] Saved/Merged result to piqa.json
 --- Running Task: winogrande ---
   -> Pass: Measuring total benchmark time (internal syncs OFF)
     - Setting time_internal: False
-    - Task 'winogrande' completed in 31.80 seconds.
-Task: winogrande | Acc: 0.7700 | Total Time: 31.80s
+    - Task 'winogrande' completed in 27.72 seconds.
+Task: winogrande | Acc: 0.7700 | Total Time: 27.72s
 [IO] Saved/Merged result to winogrande.json
 --- Running Task: triviaqa ---
   -> Pass: Measuring total benchmark time (internal syncs OFF)
     - Setting time_internal: False
-    - Task 'triviaqa' completed in 63.59 seconds.
-Task: triviaqa | Acc: 0.0100 | Total Time: 63.59s
+    - Task 'triviaqa' completed in 59.61 seconds.
+Task: triviaqa | Acc: 0.0100 | Total Time: 59.61s
 [IO] Saved/Merged result to triviaqa.json
 --- Running Task: mmlu ---
   -> Pass: Measuring total benchmark time (internal syncs OFF)
     - Setting time_internal: False
-    - [Error] simple_evaluate failed for task mmlu: CUDA out of memory. Tried to allocate 74.00 MiB. GPU 0 has a total capacity of 7.75 GiB of which 38.38 MiB is free. Including non-PyTorch memory, this process has 7.64 GiB memory in use. Of the allocated memory 7.32 GiB is allocated by PyTorch, and 198.85 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
-[Error] No results generated for task mmlu.
+    - Task 'mmlu' completed in 319.82 seconds.
+Task: mmlu | Acc: 0.5225 | Total Time: 319.82s
+[IO] Saved/Merged result to mmlu.json
 --- Running Task: commonsense_qa ---
   -> Pass: Measuring total benchmark time (internal syncs OFF)
     - Setting time_internal: False
-    - Task 'commonsense_qa' completed in 27.02 seconds.
-Task: commonsense_qa | Acc: 0.5800 | Total Time: 27.02s
+    - Task 'commonsense_qa' completed in 23.91 seconds.
+Task: commonsense_qa | Acc: 0.5800 | Total Time: 23.91s
 [IO] Saved/Merged result to commonsense_qa.json
 --- Running Task: truthfulqa_mc2 ---
   -> Pass: Measuring total benchmark time (internal syncs OFF)
     - Setting time_internal: False
-    - [Error] simple_evaluate failed for task truthfulqa_mc2: CUDA out of memory. Tried to allocate 50.00 MiB. GPU 0 has a total capacity of 7.75 GiB of which 28.38 MiB is free. Including non-PyTorch memory, this process has 7.65 GiB memory in use. Of the allocated memory 7.38 GiB is allocated by PyTorch, and 148.16 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
-[Error] No results generated for task truthfulqa_mc2.
+    - Task 'truthfulqa_mc2' completed in 64.01 seconds.
+Task: truthfulqa_mc2 | Acc: 0.4706 | Total Time: 64.01s
+[IO] Saved/Merged result to truthfulqa_mc2.json
 [Worker] Finished. Exiting.
 [Worker] Applying row_delta settings: {'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'divide_to': 1}
 [Worker] '--run_all_tasks' triggered. Running 11 tasks.
 [Worker] Loading Model...
-[Config] Found existing directory: experiments/experiment_row_delta_2/config_1
+[Config] Found existing directory: experiments/experiment_row_delta_3/config_1
 --- Running Task: arc_easy ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'arc_easy' completed in 39.11 seconds.
-Task: arc_easy | Acc: 0.7500 | Total Time: 39.11s
+    - Task 'arc_easy' completed in 35.60 seconds.
+Task: arc_easy | Acc: 0.7500 | Total Time: 35.60s
 [IO] Saved/Merged result to arc_easy.json
 --- Running Task: arc_challenge ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'arc_challenge' completed in 40.46 seconds.
-Task: arc_challenge | Acc: 0.5000 | Total Time: 40.46s
+    - Task 'arc_challenge' completed in 37.00 seconds.
+Task: arc_challenge | Acc: 0.5000 | Total Time: 37.00s
 [IO] Saved/Merged result to arc_challenge.json
 --- Running Task: openbookqa ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'openbookqa' completed in 37.68 seconds.
-Task: openbookqa | Acc: 0.2800 | Total Time: 37.68s
+    - Task 'openbookqa' completed in 33.72 seconds.
+Task: openbookqa | Acc: 0.2800 | Total Time: 33.72s
 [IO] Saved/Merged result to openbookqa.json
 --- Running Task: boolq ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'boolq' completed in 30.10 seconds.
-Task: boolq | Acc: 0.7400 | Total Time: 30.10s
+    - Task 'boolq' completed in 27.20 seconds.
+Task: boolq | Acc: 0.7400 | Total Time: 27.20s
 [IO] Saved/Merged result to boolq.json
 --- Running Task: hellaswag ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'hellaswag' completed in 44.74 seconds.
-Task: hellaswag | Acc: 0.5000 | Total Time: 44.74s
+    - Task 'hellaswag' completed in 40.14 seconds.
+Task: hellaswag | Acc: 0.5000 | Total Time: 40.14s
 [IO] Saved/Merged result to hellaswag.json
 --- Running Task: piqa ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'piqa' completed in 32.86 seconds.
-Task: piqa | Acc: 0.7300 | Total Time: 32.86s
+    - Task 'piqa' completed in 29.46 seconds.
+Task: piqa | Acc: 0.7300 | Total Time: 29.46s
 [IO] Saved/Merged result to piqa.json
 --- Running Task: winogrande ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'winogrande' completed in 34.18 seconds.
-Task: winogrande | Acc: 0.7700 | Total Time: 34.18s
+    - Task 'winogrande' completed in 29.76 seconds.
+Task: winogrande | Acc: 0.7700 | Total Time: 29.76s
 [IO] Saved/Merged result to winogrande.json
 --- Running Task: triviaqa ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'triviaqa' completed in 75.08 seconds.
-Task: triviaqa | Acc: 0.0100 | Total Time: 75.08s
+    - Task 'triviaqa' completed in 70.66 seconds.
+Task: triviaqa | Acc: 0.0100 | Total Time: 70.66s
 [IO] Saved/Merged result to triviaqa.json
 --- Running Task: mmlu ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - [Error] simple_evaluate failed for task mmlu: CUDA out of memory. Tried to allocate 74.00 MiB. GPU 0 has a total capacity of 7.75 GiB of which 38.38 MiB is free. Including non-PyTorch memory, this process has 7.64 GiB memory in use. Of the allocated memory 7.32 GiB is allocated by PyTorch, and 198.85 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
-[Error] No results generated for task mmlu.
+    - Task 'mmlu' completed in 395.48 seconds.
+Task: mmlu | Acc: 0.5225 | Total Time: 395.48s
+[IO] Saved/Merged result to mmlu.json
 --- Running Task: commonsense_qa ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - Task 'commonsense_qa' completed in 27.60 seconds.
-Task: commonsense_qa | Acc: 0.5800 | Total Time: 27.60s
+    - Task 'commonsense_qa' completed in 25.04 seconds.
+Task: commonsense_qa | Acc: 0.5800 | Total Time: 25.04s
 [IO] Saved/Merged result to commonsense_qa.json
 --- Running Task: truthfulqa_mc2 ---
   -> Pass: Measuring internal latency breakdown (internal syncs ON)
     - Setting time_internal: True
-    - [Error] simple_evaluate failed for task truthfulqa_mc2: CUDA out of memory. Tried to allocate 50.00 MiB. GPU 0 has a total capacity of 7.75 GiB of which 26.38 MiB is free. Including non-PyTorch memory, this process has 7.65 GiB memory in use. Of the allocated memory 7.38 GiB is allocated by PyTorch, and 150.16 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
-[Error] No results generated for task truthfulqa_mc2.
+    - Task 'truthfulqa_mc2' completed in 73.24 seconds.
+Task: truthfulqa_mc2 | Acc: 0.4706 | Total Time: 73.24s
+[IO] Saved/Merged result to truthfulqa_mc2.json
 [Worker] Finished. Exiting.
 [Master] Starting row_delta Grid Search.
 [Master] Parameters: ['scale', 'delta', 'row_sim', 'divide_to']
 [Master] Total Experiments: 1
-[Master] Experiment ID: 2
+[Master] Experiment ID: 3
 
 === Step 1/1: {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 1} ===
 [Master] Spawning separate 'yes' and 'no' sync processes for {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 1}

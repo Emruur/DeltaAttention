@@ -1,0 +1,42 @@
+{
+    "task_name": "arc_challenge",
+    "timestamp": "2026-03-26T15:54:56.512206",
+    "shot": 0,
+    "sparsity": 0.4358274917003789,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 375,
+        "seq_len_avg": 37.94133333333333,
+        "seq_len_min": 13,
+        "seq_len_max": 89,
+        "seq_len_std": 18.246804968419966
+    },
+    "accuracy": 0.5,
+    "timings": {
+        "total_avg_ms": 0.9002151701185438,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.0555896970960829,
+            "time_sparse_matmul_triton": 0.032501475016276045,
+            "time_delta_mm_pattern": 0.3029995600382487,
+            "time_forward_total": 0.9002151701185438
+        }
+    },
+    "metrics": {
+        "alias": "arc_challenge",
+        "acc,none": 0.5,
+        "acc_stderr,none": 0.050251890762960605,
+        "acc_norm,none": 0.51,
+        "acc_norm_stderr,none": 0.05024183937956912
+    },
+    "total_benchmark_time_s": 35.3924286365509,
+    "parameters": {
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 1
+    },
+    "experiment_type": "row_delta",
+    "sync_pass_benchmark_time_s": 38.253623485565186
+}
