@@ -839,28 +839,21 @@ class BitNetAttention(nn.Module):
         else:
             delta_out = torch.matmul(regular_x, delta_y)
 
-        # --- BLOCK-WISE CUMSUM ---
-        # 1. Calculate chunk size exactly as we did in the delta generation
+        # --- ZERO-ALLOCATION PARALLEL CUMSUM ---
         chunk_size = (seq_len + divide_to - 1) // divide_to
         
-        # 2. Pad sequence dimension if it's not perfectly divisible by chunk_size
-        pad_len = (chunk_size - (seq_len % chunk_size)) % chunk_size
-        if pad_len > 0:
-            # F.pad format for the last dim: (pad_left, pad_right)
-            delta_out_padded = torch.nn.functional.pad(delta_out, (0, pad_len))
-        else:
-            delta_out_padded = delta_out
-
-        # 3. Reshape to isolate the chunks
-        num_chunks = delta_out_padded.shape[-1] // chunk_size
-        # Shape becomes: (bsz, num_heads, q_len, num_chunks, chunk_size)
-        delta_out_blocked = delta_out_padded.view(bsz, self.num_heads, seq_len, num_chunks, chunk_size)
-
-        # 4. Perform cumsum ONLY within each chunk along the chunk_size dimension
-        delta_out_blocked = delta_out_blocked.cumsum_(dim=-1)
-
-        # 5. Flatten back to 4D and slice off any padding
-        delta_out = delta_out_blocked.view(bsz, self.num_heads, seq_len, -1)[..., :seq_len]
+        # 1. Find the largest part of the sequence that divides perfectly
+        main_len = seq_len - (seq_len % chunk_size)
+        num_chunks = main_len // chunk_size
+        
+        # 2. Process the main chunks IN PARALLEL (Zero memory allocation!)
+        if main_len > 0:
+            # We slice the divisible part, view it, and cumsum in one kernel
+            delta_out[..., :main_len].view(bsz, self.num_heads, seq_len, num_chunks, chunk_size).cumsum_(dim=-1)
+            
+        # 3. Process the leftover tail (e.g., the last 10 tokens)
+        if main_len < seq_len:
+            delta_out[..., main_len:].cumsum_(dim=-1)
         # -------------------------
 
         output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
