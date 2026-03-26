@@ -1,0 +1,42 @@
+{
+    "task_name": "openbookqa",
+    "timestamp": "2026-03-26T14:53:33.781845",
+    "shot": 0,
+    "sparsity": 0.35766803637110944,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 310,
+        "seq_len_avg": 14.670967741935485,
+        "seq_len_min": 3,
+        "seq_len_max": 73,
+        "seq_len_std": 9.985867224471086
+    },
+    "accuracy": 0.28,
+    "timings": {
+        "total_avg_ms": 0.7966902948194935,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.04952925507740308,
+            "time_sparse_matmul_triton": 0.031227296398532008,
+            "time_delta_mm_pattern": 0.21861050718574113,
+            "time_forward_total": 0.7966902948194935
+        }
+    },
+    "metrics": {
+        "alias": "openbookqa",
+        "acc,none": 0.28,
+        "acc_stderr,none": 0.045126085985421276,
+        "acc_norm,none": 0.42,
+        "acc_norm_stderr,none": 0.049604496374885836
+    },
+    "total_benchmark_time_s": 35.68665862083435,
+    "parameters": {
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 1
+    },
+    "experiment_type": "row_delta",
+    "sync_pass_benchmark_time_s": 38.261446714401245
+}
