@@ -1,0 +1,42 @@
+{
+    "task_name": "hellaswag",
+    "timestamp": "2026-03-26T17:54:11.614403",
+    "shot": 0,
+    "sparsity": 0.5482553456342336,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 400,
+        "seq_len_avg": 42.6125,
+        "seq_len_min": 17,
+        "seq_len_max": 88,
+        "seq_len_std": 11.689411608374478
+    },
+    "accuracy": 0.5,
+    "timings": {
+        "total_avg_ms": 0.8561105728149414,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.05485232671101888,
+            "time_sparse_matmul_triton": 0.0309334397315979,
+            "time_delta_mm_pattern": 0.2975258231163025,
+            "time_forward_total": 0.8561105728149414
+        }
+    },
+    "metrics": {
+        "alias": "hellaswag",
+        "acc,none": 0.5,
+        "acc_stderr,none": 0.050251890762960605,
+        "acc_norm,none": 0.65,
+        "acc_norm_stderr,none": 0.047937248544110196
+    },
+    "total_benchmark_time_s": 38.109912633895874,
+    "parameters": {
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 1
+    },
+    "experiment_type": "row_delta",
+    "sync_pass_benchmark_time_s": 40.7714946269989
+}

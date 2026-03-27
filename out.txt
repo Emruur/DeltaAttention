@@ -1,151 +1,22 @@
-[Worker] Applying row_delta settings: {'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'divide_to': 1}
-[Worker] '--run_all_tasks' triggered. Running 11 tasks.
-[Worker] Loading Model...
-[Config] Created new directory: experiments/experiment_row_delta_3/config_1
---- Running Task: arc_easy ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'arc_easy' completed in 32.51 seconds.
-Task: arc_easy | Acc: 0.7500 | Total Time: 32.51s
-[IO] Saved/Merged result to arc_easy.json
---- Running Task: arc_challenge ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'arc_challenge' completed in 32.19 seconds.
-Task: arc_challenge | Acc: 0.5000 | Total Time: 32.19s
-[IO] Saved/Merged result to arc_challenge.json
---- Running Task: openbookqa ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'openbookqa' completed in 30.79 seconds.
-Task: openbookqa | Acc: 0.2800 | Total Time: 30.79s
-[IO] Saved/Merged result to openbookqa.json
---- Running Task: boolq ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'boolq' completed in 25.87 seconds.
-Task: boolq | Acc: 0.7400 | Total Time: 25.87s
-[IO] Saved/Merged result to boolq.json
---- Running Task: hellaswag ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'hellaswag' completed in 35.88 seconds.
-Task: hellaswag | Acc: 0.5000 | Total Time: 35.88s
-[IO] Saved/Merged result to hellaswag.json
---- Running Task: piqa ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'piqa' completed in 27.11 seconds.
-Task: piqa | Acc: 0.7300 | Total Time: 27.11s
-[IO] Saved/Merged result to piqa.json
---- Running Task: winogrande ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'winogrande' completed in 27.72 seconds.
-Task: winogrande | Acc: 0.7700 | Total Time: 27.72s
-[IO] Saved/Merged result to winogrande.json
---- Running Task: triviaqa ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'triviaqa' completed in 59.61 seconds.
-Task: triviaqa | Acc: 0.0100 | Total Time: 59.61s
-[IO] Saved/Merged result to triviaqa.json
---- Running Task: mmlu ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'mmlu' completed in 319.82 seconds.
-Task: mmlu | Acc: 0.5225 | Total Time: 319.82s
-[IO] Saved/Merged result to mmlu.json
---- Running Task: commonsense_qa ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'commonsense_qa' completed in 23.91 seconds.
-Task: commonsense_qa | Acc: 0.5800 | Total Time: 23.91s
-[IO] Saved/Merged result to commonsense_qa.json
---- Running Task: truthfulqa_mc2 ---
-  -> Pass: Measuring total benchmark time (internal syncs OFF)
-    - Setting time_internal: False
-    - Task 'truthfulqa_mc2' completed in 64.01 seconds.
-Task: truthfulqa_mc2 | Acc: 0.4706 | Total Time: 64.01s
-[IO] Saved/Merged result to truthfulqa_mc2.json
-[Worker] Finished. Exiting.
-[Worker] Applying row_delta settings: {'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'divide_to': 1}
-[Worker] '--run_all_tasks' triggered. Running 11 tasks.
-[Worker] Loading Model...
-[Config] Found existing directory: experiments/experiment_row_delta_3/config_1
---- Running Task: arc_easy ---
-  -> Pass: Measuring internal latency breakdown (internal syncs ON)
-    - Setting time_internal: True
-    - Task 'arc_easy' completed in 35.60 seconds.
-Task: arc_easy | Acc: 0.7500 | Total Time: 35.60s
-[IO] Saved/Merged result to arc_easy.json
---- Running Task: arc_challenge ---
-  -> Pass: Measuring internal latency breakdown (internal syncs ON)
-    - Setting time_internal: True
-    - Task 'arc_challenge' completed in 37.00 seconds.
-Task: arc_challenge | Acc: 0.5000 | Total Time: 37.00s
-[IO] Saved/Merged result to arc_challenge.json
---- Running Task: openbookqa ---
-  -> Pass: Measuring internal latency breakdown (internal syncs ON)
-    - Setting time_internal: True
-    - Task 'openbookqa' completed in 33.72 seconds.
-Task: openbookqa | Acc: 0.2800 | Total Time: 33.72s
-[IO] Saved/Merged result to openbookqa.json
---- Running Task: boolq ---
-  -> Pass: Measuring internal latency breakdown (internal syncs ON)
-    - Setting time_internal: True
-    - Task 'boolq' completed in 27.20 seconds.
-Task: boolq | Acc: 0.7400 | Total Time: 27.20s
-[IO] Saved/Merged result to boolq.json
---- Running Task: hellaswag ---
-  -> Pass: Measuring internal latency breakdown (internal syncs ON)
-    - Setting time_internal: True
-    - Task 'hellaswag' completed in 40.14 seconds.
-Task: hellaswag | Acc: 0.5000 | Total Time: 40.14s
-[IO] Saved/Merged result to hellaswag.json
---- Running Task: piqa ---
-  -> Pass: Measuring internal latency breakdown (internal syncs ON)
-    - Setting time_internal: True
-    - Task 'piqa' completed in 29.46 seconds.
-Task: piqa | Acc: 0.7300 | Total Time: 29.46s
-[IO] Saved/Merged result to piqa.json
---- Running Task: winogrande ---
-  -> Pass: Measuring internal latency breakdown (internal syncs ON)
-    - Setting time_internal: True
-    - Task 'winogrande' completed in 29.76 seconds.
-Task: winogrande | Acc: 0.7700 | Total Time: 29.76s
-[IO] Saved/Merged result to winogrande.json
---- Running Task: triviaqa ---
-  -> Pass: Measuring internal latency breakdown (internal syncs ON)
-    - Setting time_internal: True
-    - Task 'triviaqa' completed in 70.66 seconds.
-Task: triviaqa | Acc: 0.0100 | Total Time: 70.66s
-[IO] Saved/Merged result to triviaqa.json
---- Running Task: mmlu ---
-  -> Pass: Measuring internal latency breakdown (internal syncs ON)
-    - Setting time_internal: True
-    - Task 'mmlu' completed in 395.48 seconds.
-Task: mmlu | Acc: 0.5225 | Total Time: 395.48s
-[IO] Saved/Merged result to mmlu.json
---- Running Task: commonsense_qa ---
-  -> Pass: Measuring internal latency breakdown (internal syncs ON)
-    - Setting time_internal: True
-    - Task 'commonsense_qa' completed in 25.04 seconds.
-Task: commonsense_qa | Acc: 0.5800 | Total Time: 25.04s
-[IO] Saved/Merged result to commonsense_qa.json
---- Running Task: truthfulqa_mc2 ---
-  -> Pass: Measuring internal latency breakdown (internal syncs ON)
-    - Setting time_internal: True
-    - Task 'truthfulqa_mc2' completed in 73.24 seconds.
-Task: truthfulqa_mc2 | Acc: 0.4706 | Total Time: 73.24s
-[IO] Saved/Merged result to truthfulqa_mc2.json
-[Worker] Finished. Exiting.
-[Master] Starting row_delta Grid Search.
-[Master] Parameters: ['scale', 'delta', 'row_sim', 'divide_to']
-[Master] Total Experiments: 1
-[Master] Experiment ID: 3
+   [Bench] Warming up (10 iters)...
+   [Bench] Measuring (20 iters)...
+   [Bench] Avg Total: 1120.69ms
+   [Bench] Avg Attn:  6.50ms
+[Result] SeqLen 1024: 1120.69ms
+   [Bench] Warming up (10 iters)...
+   [Bench] Measuring (20 iters)...
+   [Bench] Avg Total: 1106.32ms
+   [Bench] Avg Attn:  6.40ms
+[Result] SeqLen 1024: 1106.32ms
+   [Bench] Warming up (10 iters)...
+   [Bench] Measuring (20 iters)...
+   [Bench] Avg Total: 1112.12ms
+   [Bench] Avg Attn:  6.25ms
+[Result] SeqLen 1024: 1112.12ms
+[Master] Starting row_delta (ID: 4)
 
-=== Step 1/1: {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 1} ===
-[Master] Spawning separate 'yes' and 'no' sync processes for {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 1}
-[Master] Running worker with --time_internal no
-[Master] Running worker with --time_internal yes
+=== Progress 1/3 | {'seq_len': 1024, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 1} ===
+
+=== Progress 2/3 | {'seq_len': 1024, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 2} ===
+
+=== Progress 3/3 | {'seq_len': 1024, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 4} ===
