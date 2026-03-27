@@ -804,8 +804,8 @@ class BitNetAttention(nn.Module):
                     t_matmul_start = time.time()
 
                 scores_packed = torch.matmul(
-                    regular_x.to(torch.float32), 
-                    k_packed_q.to(torch.float32)
+                    regular_x, 
+                    k_packed_q
                 ).to(regular_x.dtype)
 
                 if getattr(globVR, 'time_internal', False):
