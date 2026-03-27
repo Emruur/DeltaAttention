@@ -1020,7 +1020,7 @@ class BitNetAttention(nn.Module):
 
                 attn_weights= None
                 if globVR.delta_type== "row":
-                    attn_weights = self.regular_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to)
+                    attn_weights = self.triton_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to)
                 elif globVR.delta_type== "nm":
                     attn_weights = self.nm_regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
                 else:
