@@ -58,9 +58,9 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "seq_len": [1024],
-            "delta": [15],
+            "delta": [10,12,15],
             "row_sim": ["euclidean"],
-            "divide_to": [1,2,4]
+            "divide_to": [1,2,4,8,16]
         },
         "arg_builder": lambda p: [
             "--seq_len", str(p["seq_len"]),
