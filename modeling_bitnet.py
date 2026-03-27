@@ -748,36 +748,62 @@ class BitNetAttention(nn.Module):
 
         return out
 
-    def regular_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to= None):
+    def regular_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=None):
             
-            # --- OPTIMIZED PATH ---
-            delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 
-                                dtype=regular_x.dtype, device=regular_x.device)
-
             if keep_mask is not None:
-                for b in range(bsz):
-                    for h in range(self.num_heads):
-                        kv_head_idx = h // self.num_key_value_groups
-                        mask_h = keep_mask[b, kv_head_idx]
+                # Find the maximum number of active keys across all batches/heads
+                counts = keep_mask.sum(dim=-1)
+                max_active = counts.max().item()
 
-                        # --- ADD THIS DEBUG PRINT ---
-                                            
-                        # 1. Slice Active Keys (Sparse Method)
-                        active_k = delta_y[b, h][:, mask_h].contiguous()
-                        
-                        if active_k.shape[1] > 0:
-                            if getattr(globVR, 'time_internal', False):
-                                torch.cuda.synchronize()
-                                t_sm_start = time.time()
-                                active_scores = torch.matmul(regular_x[b, h].to(torch.float32), active_k.to(torch.float32))
-                                torch.cuda.synchronize()
-                                t_sm_end = time.time()
-                                glob_set.update_latency('time_sparse_matmul', t_sm_end - t_sm_start)
-                            else:
-                                active_scores = torch.matmul(regular_x[b, h].to(torch.float32), active_k.to(torch.float32))
+                if max_active == 0:
+                    delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
+                else:
+                    if getattr(globVR, 'time_internal', False):
+                        torch.cuda.synchronize()
+                        t_sm_start = time.time()
 
-                            delta_out[b, h, :, mask_h] = active_scores.to(delta_out.dtype)
-                                
+                    # --- 1. GATHER (Pack Active Keys) ---
+                    # Use seq_len as the "Garbage Bin" index for inactive tokens
+                    seq_idx = torch.arange(seq_len, dtype=torch.long, device=keep_mask.device)
+                    sort_keys = torch.where(keep_mask, seq_idx, seq_len)
+                    
+                    # Sort and slice to exactly max_active
+                    active_indices = sort_keys.sort(dim=-1)[0][:, :, :max_active]
+
+                    # Pad delta_y with a zero-column at the end
+                    # Shape: [bsz, num_kv_heads, head_dim, seq_len + 1]
+                    delta_y_padded = torch.nn.functional.pad(delta_y, (0, 1))
+                    
+                    # Gather the active columns
+                    gather_idx = active_indices.unsqueeze(2).expand(-1, -1, delta_y.shape[2], -1)
+                    k_packed = torch.gather(delta_y_padded, dim=3, index=gather_idx)
+
+                    # Expand K and indices to match the number of Query Heads (for GQA/MQA)
+                    k_packed_q = torch.repeat_interleave(k_packed, self.num_key_value_groups, dim=1)
+                    active_indices_q = torch.repeat_interleave(active_indices, self.num_key_value_groups, dim=1)
+
+                    # --- 2. COMPUTE (Single Dense MatMul) ---
+                    # Because K is contiguous and densely packed, cuBLAS will scream through this
+                    scores_packed = torch.matmul(regular_x.to(torch.float32), k_packed_q.to(torch.float32)).to(regular_x.dtype)
+
+                    # --- 3. SCATTER ---
+                    # Create a padded output tensor to safely absorb the garbage bin scatters
+                    delta_out_padded = torch.zeros(bsz, self.num_heads, seq_len, seq_len + 1, 
+                                                   dtype=regular_x.dtype, device=regular_x.device)
+                    
+                    scatter_idx = active_indices_q.unsqueeze(2).expand(-1, -1, seq_len, -1)
+                    
+                    # Scatter back into original sequence positions
+                    delta_out_padded.scatter_(dim=3, index=scatter_idx, src=scores_packed)
+
+                    # Slice off the Garbage Bin
+                    delta_out = delta_out_padded[:, :, :, :seq_len]
+
+                    if getattr(globVR, 'time_internal', False):
+                        torch.cuda.synchronize()
+                        t_sm_end = time.time()
+                        glob_set.update_latency('time_sparse_matmul', t_sm_end - t_sm_start)
+                                    
             else:
                 delta_out = torch.matmul(regular_x, delta_y)
 
@@ -787,7 +813,6 @@ class BitNetAttention(nn.Module):
             output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
             
             return output
-
     def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=4):
         
         delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 
