@@ -292,38 +292,42 @@ def _triton_gather_expand(
 
 
 @triton.jit
-def _triton_scatter(
-    scores_packed, active_indices, delta_out,
-    stride_sp_b, stride_sp_q, stride_sp_l, stride_sp_a,
-    stride_idx_b, stride_idx_h, stride_idx_a,
-    stride_out_b, stride_out_q, stride_out_l, stride_out_s,
-    num_q_heads, num_groups, seq_len, max_active,
-    BLOCK_L: tl.constexpr
+def _triton_expand_cumsum(
+    packed_cumsum, cumsum_mask, delta_out,
+    stride_pc_b, stride_pc_h, stride_pc_q, stride_pc_a,
+    stride_cm_b, stride_cm_h, stride_cm_k,
+    stride_out_b, stride_out_h, stride_out_q, stride_out_k,
+    num_heads, num_groups, seq_len_q, seq_len_k,
+    BLOCK_Q: tl.constexpr, BLOCK_K: tl.constexpr
 ):
     """
-    Scatters the tightly packed cuBLAS results back into the sparse L x L attention matrix.
+    Broadcasts the pre-cumsummed packed scores back to a dense matrix
+    using the cumsum_mask as an O(1) routing index. ZERO scattered writes.
     """
-    pid_bq = tl.program_id(0)
-    pid_a = tl.program_id(1)
-    pid_l_chunk = tl.program_id(2)
+    pid_bh = tl.program_id(0)
+    pid_q = tl.program_id(1)
+    pid_k = tl.program_id(2)
 
-    b = pid_bq // num_q_heads
-    q = pid_bq % num_q_heads
-    kv_h = q // num_groups
+    b = pid_bh // num_heads
+    h = pid_bh % num_heads
+    kv_h = h // num_groups
 
-    # Locate the original sequence index
-    idx_offset = b * stride_idx_b + kv_h * stride_idx_h + pid_a * stride_idx_a
-    orig_idx = tl.load(active_indices + idx_offset)
+    offs_q = pid_q * BLOCK_Q + tl.arange(0, BLOCK_Q)
+    offs_k = pid_k * BLOCK_K + tl.arange(0, BLOCK_K)
 
-    # Only process if this is a valid token (not a pad token)
-    if orig_idx < seq_len:
-        offsets_l = pid_l_chunk * BLOCK_L + tl.arange(0, BLOCK_L)
-        mask_l = offsets_l < seq_len
+    mask_q = offs_q < seq_len_q
+    mask_k = offs_k < seq_len_k
 
-        # Load the computed scores
-        sp_offset = b * stride_sp_b + q * stride_sp_q + offsets_l * stride_sp_l + pid_a * stride_sp_a
-        vals = tl.load(scores_packed + sp_offset, mask=mask_l, other=0.0)
+    # 1. Load the routing index from the cumsum_mask
+    cm_ptrs = cumsum_mask + b * stride_cm_b + kv_h * stride_cm_h + offs_k * stride_cm_k
+    cm_vals = tl.load(cm_ptrs, mask=mask_k, other=0)
 
-        # Scatter back into the sparse attention map
-        out_offset = b * stride_out_b + q * stride_out_q + offsets_l * stride_out_l + orig_idx * stride_out_s
-        tl.store(delta_out + out_offset, vals, mask=mask_l)
+    # 2. Map dense coordinates directly to the packed coordinates
+    pc_ptrs = packed_cumsum + b * stride_pc_b + h * stride_pc_h + offs_q[:, None] * stride_pc_q + cm_vals[None, :] * stride_pc_a
+    
+    mask_load = mask_q[:, None] & mask_k[None, :]
+    vals = tl.load(pc_ptrs, mask=mask_load, other=0.0)
+
+    # 3. Contiguous, coalesced store (No scattered writes!)
+    out_ptrs = delta_out + b * stride_out_b + h * stride_out_h + offs_q[:, None] * stride_out_q + offs_k[None, :] * stride_out_k
+    tl.store(out_ptrs, vals, mask=mask_load)

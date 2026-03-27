@@ -61,7 +61,7 @@ if is_torch_flex_attn_available():
 import globVR
 import glob_set
 
-from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel, row_delta_euclidean_partitioned_kernel, _triton_gather_expand, _triton_scatter
+from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel, row_delta_euclidean_partitioned_kernel, _triton_gather_expand, _triton_expand_cumsum
 
 
 
@@ -766,18 +766,12 @@ class BitNetAttention(nn.Module):
                 active_indices = sort_keys.sort(dim=-1)[0][:, :, :max_active].to(torch.int32)
 
                 # ==========================================
-                # --- 2. TRITON GATHER & EXPAND (TIMED) ---
+                # --- 2. TRITON GATHER & EXPAND ---
                 # ==========================================
-                if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_gather_start = time.time()
+                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); t_gather_start = time.time()
 
                 head_dim = delta_y.shape[2]
-                k_packed_q = torch.empty(
-                    (bsz, self.num_heads, head_dim, max_active), 
-                    dtype=delta_y.dtype, 
-                    device=delta_y.device
-                )
+                k_packed_q = torch.empty((bsz, self.num_heads, head_dim, max_active), dtype=delta_y.dtype, device=delta_y.device)
                 
                 BLOCK_D = triton.next_power_of_2(head_dim)
                 grid_gather = (bsz * self.num_heads, max_active)
@@ -791,98 +785,69 @@ class BitNetAttention(nn.Module):
                     BLOCK_D=BLOCK_D
                 )
 
-                if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_gather_end = time.time()
-                    glob_set.update_latency('time_gather_expand', t_gather_end - t_gather_start)
+                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_gather_expand', time.time() - t_gather_start)
 
                 # ==========================================
-                # --- 3. DENSE MATMUL [cuBLAS] (TIMED) ---
+                # --- 3. DENSE MATMUL [cuBLAS] ---
                 # ==========================================
-                if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_matmul_start = time.time()
+                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); t_matmul_start = time.time()
 
-                scores_packed = torch.matmul(
-                    regular_x, 
-                    k_packed_q
-                ).to(regular_x.dtype)
+                scores_packed = torch.matmul(regular_x, k_packed_q)
 
-                if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_matmul_end = time.time()
-                    glob_set.update_latency('time_dense_matmul', t_matmul_end - t_matmul_start)
+                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_dense_matmul', time.time() - t_matmul_start)
 
                 # ==========================================
-                # --- 4. TRITON SCATTER (TIMED) ---
+                # --- 4. SMALL CUMSUM & ROUTING (NEW!) ---
                 # ==========================================
-                if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_scatter_start = time.time()
+                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); t_cumsum_start = time.time()
 
-                delta_out = torch.zeros(
-                    bsz, self.num_heads, seq_len, seq_len, 
-                    dtype=regular_x.dtype, 
-                    device=regular_x.device
-                )
+                # Pad the active scores with a zero column on the left and cumsum
+                padded_scores = torch.nn.functional.pad(scores_packed, (1, 0))
+                packed_cumsum = torch.cumsum(padded_scores, dim=-1)
+
+                # Cumsum the boolean mask to create our O(1) routing index
+                cumsum_mask = torch.cumsum(keep_mask.to(torch.int32), dim=-1)
+
+                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_small_cumsum', time.time() - t_cumsum_start)
+
+                # ==========================================
+                # --- 5. O(1) TRITON EXPAND (REPLACES SCATTER) ---
+                # ==========================================
+                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); t_expand_start = time.time()
+
+                # Use empty instead of zeros to save 0.25ms of allocation time
+                delta_out = torch.empty(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
                 
-                BLOCK_L = 128
-                grid_scatter = (bsz * self.num_heads, max_active, triton.cdiv(seq_len, BLOCK_L))
+                BLOCK_Q = 64
+                BLOCK_K = 64
+                grid_expand = (bsz * self.num_heads, triton.cdiv(seq_len, BLOCK_Q), triton.cdiv(seq_len, BLOCK_K))
                 
-                _triton_scatter[grid_scatter](
-                    scores_packed, active_indices, delta_out,
-                    scores_packed.stride(0), scores_packed.stride(1), scores_packed.stride(2), scores_packed.stride(3),
-                    active_indices.stride(0), active_indices.stride(1), active_indices.stride(2),
+                _triton_expand_cumsum[grid_expand](
+                    packed_cumsum, cumsum_mask, delta_out,
+                    packed_cumsum.stride(0), packed_cumsum.stride(1), packed_cumsum.stride(2), packed_cumsum.stride(3),
+                    cumsum_mask.stride(0), cumsum_mask.stride(1), cumsum_mask.stride(2),
                     delta_out.stride(0), delta_out.stride(1), delta_out.stride(2), delta_out.stride(3),
-                    self.num_heads, self.num_key_value_groups, seq_len, max_active,
-                    BLOCK_L=BLOCK_L
+                    self.num_heads, self.num_key_value_groups, seq_len, seq_len,
+                    BLOCK_Q=BLOCK_Q, BLOCK_K=BLOCK_K
                 )
 
-                if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_scatter_end = time.time()
-                    glob_set.update_latency('time_triton_scatter', t_scatter_end - t_scatter_start)
+                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_triton_expand', time.time() - t_expand_start)
 
-                # Total time for the sparse matmul block
-                if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_sm_end = time.time()
-                    glob_set.update_latency('time_sparse_matmul_total', t_sm_end - t_sm_start)
+                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_sparse_matmul_total', time.time() - t_sm_start)
                                     
         else:
-            delta_out = torch.matmul(regular_x, delta_y)
+            delta_out = torch.cumsum(torch.matmul(regular_x, delta_y), dim=-1)
 
         # ==========================================
-        # --- 5. CUMSUM (TIMED) ---
+        # --- 6. PATCH HYBRID ATTENTION ---
         # ==========================================
-        if getattr(globVR, 'time_internal', False):
-            torch.cuda.synchronize()
-            t_cumsum_start = time.time()
-
-        # In-place cumsum to save memory
-        delta_out = torch.cumsum(delta_out, dim=-1)
-
-        if getattr(globVR, 'time_internal', False):
-            torch.cuda.synchronize()
-            t_cumsum_end = time.time()
-            glob_set.update_latency('time_cumsum', t_cumsum_end - t_cumsum_start)
-
-        # ==========================================
-        # --- 6. PATCH HYBRID ATTENTION (TIMED) ---
-        # ==========================================
-        if getattr(globVR, 'time_internal', False):
-            torch.cuda.synchronize()
-            t_patch_start = time.time()
+        if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); t_patch_start = time.time()
 
         output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
         
-        if getattr(globVR, 'time_internal', False):
-            torch.cuda.synchronize()
-            t_patch_end = time.time()
-            glob_set.update_latency('time_patch_hybrid_attention', t_patch_end - t_patch_start)
+        if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_patch_hybrid_attention', time.time() - t_patch_start)
 
         return output
-    
     def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=4):
         
         delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 
