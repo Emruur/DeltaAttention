@@ -61,7 +61,7 @@ if is_torch_flex_attn_available():
 import globVR
 import glob_set
 
-from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel, row_delta_euclidean_partitioned_kernel
+from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel, row_delta_euclidean_partitioned_kernel, _triton_gather_expand, _triton_scatter
 
 
 
@@ -749,70 +749,88 @@ class BitNetAttention(nn.Module):
         return out
 
     def regular_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=None):
-            
-            if keep_mask is not None:
-                # Find the maximum number of active keys across all batches/heads
-                counts = keep_mask.sum(dim=-1)
-                max_active = counts.max().item()
+        if keep_mask is not None:
+            counts = keep_mask.sum(dim=-1)
+            max_active = counts.max().item()
 
-                if max_active == 0:
-                    delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
-                else:
-                    if getattr(globVR, 'time_internal', False):
-                        torch.cuda.synchronize()
-                        t_sm_start = time.time()
-
-                    # --- 1. GATHER (Pack Active Keys) ---
-                    # Use seq_len as the "Garbage Bin" index for inactive tokens
-                    seq_idx = torch.arange(seq_len, dtype=torch.long, device=keep_mask.device)
-                    sort_keys = torch.where(keep_mask, seq_idx, seq_len)
-                    
-                    # Sort and slice to exactly max_active
-                    active_indices = sort_keys.sort(dim=-1)[0][:, :, :max_active]
-
-                    # Pad delta_y with a zero-column at the end
-                    # Shape: [bsz, num_kv_heads, head_dim, seq_len + 1]
-                    delta_y_padded = torch.nn.functional.pad(delta_y, (0, 1))
-                    
-                    # Gather the active columns
-                    gather_idx = active_indices.unsqueeze(2).expand(-1, -1, delta_y.shape[2], -1)
-                    k_packed = torch.gather(delta_y_padded, dim=3, index=gather_idx)
-
-                    # Expand K and indices to match the number of Query Heads (for GQA/MQA)
-                    k_packed_q = torch.repeat_interleave(k_packed, self.num_key_value_groups, dim=1)
-                    active_indices_q = torch.repeat_interleave(active_indices, self.num_key_value_groups, dim=1)
-
-                    # --- 2. COMPUTE (Single Dense MatMul) ---
-                    # Because K is contiguous and densely packed, cuBLAS will scream through this
-                    scores_packed = torch.matmul(regular_x.to(torch.float32), k_packed_q.to(torch.float32)).to(regular_x.dtype)
-
-                    # --- 3. SCATTER ---
-                    # Create a padded output tensor to safely absorb the garbage bin scatters
-                    delta_out_padded = torch.zeros(bsz, self.num_heads, seq_len, seq_len + 1, 
-                                                   dtype=regular_x.dtype, device=regular_x.device)
-                    
-                    scatter_idx = active_indices_q.unsqueeze(2).expand(-1, -1, seq_len, -1)
-                    
-                    # Scatter back into original sequence positions
-                    delta_out_padded.scatter_(dim=3, index=scatter_idx, src=scores_packed)
-
-                    # Slice off the Garbage Bin
-                    delta_out = delta_out_padded[:, :, :, :seq_len]
-
-                    if getattr(globVR, 'time_internal', False):
-                        torch.cuda.synchronize()
-                        t_sm_end = time.time()
-                        glob_set.update_latency('time_sparse_matmul', t_sm_end - t_sm_start)
-                                    
+            if max_active == 0:
+                delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
             else:
-                delta_out = torch.matmul(regular_x, delta_y)
+                if getattr(globVR, 'time_internal', False):
+                    torch.cuda.synchronize()
+                    t_sm_start = time.time()
 
-            # In-place cumsum to save memory
-            delta_out = torch.cumsum(delta_out, dim=-1)
+                # --- 1. Get Active Indices ---
+                # Pushing inactive tokens to index 'seq_len' so they sort to the end
+                seq_idx = torch.arange(seq_len, dtype=torch.int32, device=keep_mask.device)
+                sort_keys = torch.where(keep_mask, seq_idx, seq_len)
+                active_indices = sort_keys.sort(dim=-1)[0][:, :, :max_active].to(torch.int32)
 
-            output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
-            
-            return output
+                # --- 2. TRITON GATHER & EXPAND ---
+                head_dim = delta_y.shape[2]
+                k_packed_q = torch.empty(
+                    (bsz, self.num_heads, head_dim, max_active), 
+                    dtype=delta_y.dtype, 
+                    device=delta_y.device
+                )
+                
+                BLOCK_D = triton.next_power_of_2(head_dim)
+                grid_gather = (bsz * self.num_heads, max_active)
+                
+                _triton_gather_expand[grid_gather](
+                    delta_y, active_indices, k_packed_q,
+                    delta_y.stride(0), delta_y.stride(1), delta_y.stride(2), delta_y.stride(3),
+                    active_indices.stride(0), active_indices.stride(1), active_indices.stride(2),
+                    k_packed_q.stride(0), k_packed_q.stride(1), k_packed_q.stride(2), k_packed_q.stride(3),
+                    self.num_heads, self.num_key_value_groups, seq_len, head_dim,
+                    BLOCK_D=BLOCK_D
+                )
+
+                # --- 3. DENSE MATMUL (cuBLAS) ---
+                # Regular_x: [B, num_heads, seq_len, head_dim] 
+                # k_packed_q: [B, num_heads, head_dim, max_active]
+                # Result scores: [B, num_heads, seq_len, max_active]
+                scores_packed = torch.matmul(
+                    regular_x.to(torch.float32), 
+                    k_packed_q.to(torch.float32)
+                ).to(regular_x.dtype)
+
+                # --- 4. TRITON SCATTER ---
+                delta_out = torch.zeros(
+                    bsz, self.num_heads, seq_len, seq_len, 
+                    dtype=regular_x.dtype, 
+                    device=regular_x.device
+                )
+                
+                BLOCK_L = 128
+                grid_scatter = (bsz * self.num_heads, max_active, triton.cdiv(seq_len, BLOCK_L))
+                
+                _triton_scatter[grid_scatter](
+                    scores_packed, active_indices, delta_out,
+                    scores_packed.stride(0), scores_packed.stride(1), scores_packed.stride(2), scores_packed.stride(3),
+                    active_indices.stride(0), active_indices.stride(1), active_indices.stride(2),
+                    delta_out.stride(0), delta_out.stride(1), delta_out.stride(2), delta_out.stride(3),
+                    self.num_heads, self.num_key_value_groups, seq_len, max_active,
+                    BLOCK_L=BLOCK_L
+                )
+
+                if getattr(globVR, 'time_internal', False):
+                    torch.cuda.synchronize()
+                    t_sm_end = time.time()
+                    glob_set.update_latency('time_sparse_matmul', t_sm_end - t_sm_start)
+                                    
+        else:
+            delta_out = torch.matmul(regular_x, delta_y)
+
+        # In-place cumsum to save memory
+        delta_out = torch.cumsum(delta_out, dim=-1)
+
+        output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
+        
+        return output
+    
+    
+    
     def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=4):
         
         delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 

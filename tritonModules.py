@@ -249,3 +249,81 @@ def row_delta_euclidean_partitioned_kernel(
         # Original block-uniform reference update
         if should_keep:
             ref_state = curr_state
+
+
+
+
+@triton.jit
+def _triton_gather_expand(
+    delta_y, active_indices, k_packed_q,
+    stride_dy_b, stride_dy_h, stride_dy_d, stride_dy_l,
+    stride_idx_b, stride_idx_h, stride_idx_a,
+    stride_out_b, stride_out_q, stride_out_d, stride_out_a,
+    num_q_heads, num_groups, seq_len, head_dim,
+    BLOCK_D: tl.constexpr
+):
+    """
+    Gathers active keys and expands them for GQA/MQA in a single fused pass.
+    """
+    pid_bq = tl.program_id(0)
+    pid_a = tl.program_id(1)
+
+    b = pid_bq // num_q_heads
+    q = pid_bq % num_q_heads
+    kv_h = q // num_groups
+
+    # Locate the original sequence index for this active element
+    idx_offset = b * stride_idx_b + kv_h * stride_idx_h + pid_a * stride_idx_a
+    orig_idx = tl.load(active_indices + idx_offset)
+
+    offsets_d = tl.arange(0, BLOCK_D)
+    mask_d = offsets_d < head_dim
+
+    # Calculate input offset. Mask out invalid indices (padded values)
+    dy_offset = b * stride_dy_b + kv_h * stride_dy_h + offsets_d * stride_dy_d + orig_idx * stride_dy_l
+    load_mask = mask_d & (orig_idx < seq_len)
+    
+    # Load from delta_y (writes 0.0 if it was padded/inactive)
+    vals = tl.load(delta_y + dy_offset, mask=load_mask, other=0.0)
+
+    # Store into densely packed tensor
+    out_offset = b * stride_out_b + q * stride_out_q + offsets_d * stride_out_d + pid_a * stride_out_a
+    tl.store(k_packed_q + out_offset, vals, mask=mask_d)
+
+
+@triton.jit
+def _triton_scatter(
+    scores_packed, active_indices, delta_out,
+    stride_sp_b, stride_sp_q, stride_sp_l, stride_sp_a,
+    stride_idx_b, stride_idx_h, stride_idx_a,
+    stride_out_b, stride_out_q, stride_out_l, stride_out_s,
+    num_q_heads, num_groups, seq_len, max_active,
+    BLOCK_L: tl.constexpr
+):
+    """
+    Scatters the tightly packed cuBLAS results back into the sparse L x L attention matrix.
+    """
+    pid_bq = tl.program_id(0)
+    pid_a = tl.program_id(1)
+    pid_l_chunk = tl.program_id(2)
+
+    b = pid_bq // num_q_heads
+    q = pid_bq % num_q_heads
+    kv_h = q // num_groups
+
+    # Locate the original sequence index
+    idx_offset = b * stride_idx_b + kv_h * stride_idx_h + pid_a * stride_idx_a
+    orig_idx = tl.load(active_indices + idx_offset)
+
+    # Only process if this is a valid token (not a pad token)
+    if orig_idx < seq_len:
+        offsets_l = pid_l_chunk * BLOCK_L + tl.arange(0, BLOCK_L)
+        mask_l = offsets_l < seq_len
+
+        # Load the computed scores
+        sp_offset = b * stride_sp_b + q * stride_sp_q + offsets_l * stride_sp_l + pid_a * stride_sp_a
+        vals = tl.load(scores_packed + sp_offset, mask=mask_l, other=0.0)
+
+        # Scatter back into the sparse attention map
+        out_offset = b * stride_out_b + q * stride_out_q + offsets_l * stride_out_l + orig_idx * stride_out_s
+        tl.store(delta_out + out_offset, vals, mask=mask_l)
