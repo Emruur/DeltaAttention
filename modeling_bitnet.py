@@ -761,12 +761,17 @@ class BitNetAttention(nn.Module):
                     t_sm_start = time.time()
 
                 # --- 1. Get Active Indices ---
-                # Pushing inactive tokens to index 'seq_len' so they sort to the end
                 seq_idx = torch.arange(seq_len, dtype=torch.int32, device=keep_mask.device)
                 sort_keys = torch.where(keep_mask, seq_idx, seq_len)
                 active_indices = sort_keys.sort(dim=-1)[0][:, :, :max_active].to(torch.int32)
 
-                # --- 2. TRITON GATHER & EXPAND ---
+                # ==========================================
+                # --- 2. TRITON GATHER & EXPAND (TIMED) ---
+                # ==========================================
+                if getattr(globVR, 'time_internal', False):
+                    torch.cuda.synchronize()
+                    t_gather_start = time.time()
+
                 head_dim = delta_y.shape[2]
                 k_packed_q = torch.empty(
                     (bsz, self.num_heads, head_dim, max_active), 
@@ -786,16 +791,35 @@ class BitNetAttention(nn.Module):
                     BLOCK_D=BLOCK_D
                 )
 
-                # --- 3. DENSE MATMUL (cuBLAS) ---
-                # Regular_x: [B, num_heads, seq_len, head_dim] 
-                # k_packed_q: [B, num_heads, head_dim, max_active]
-                # Result scores: [B, num_heads, seq_len, max_active]
+                if getattr(globVR, 'time_internal', False):
+                    torch.cuda.synchronize()
+                    t_gather_end = time.time()
+                    glob_set.update_latency('time_gather_expand', t_gather_end - t_gather_start)
+
+                # ==========================================
+                # --- 3. DENSE MATMUL [cuBLAS] (TIMED) ---
+                # ==========================================
+                if getattr(globVR, 'time_internal', False):
+                    torch.cuda.synchronize()
+                    t_matmul_start = time.time()
+
                 scores_packed = torch.matmul(
                     regular_x.to(torch.float32), 
                     k_packed_q.to(torch.float32)
                 ).to(regular_x.dtype)
 
-                # --- 4. TRITON SCATTER ---
+                if getattr(globVR, 'time_internal', False):
+                    torch.cuda.synchronize()
+                    t_matmul_end = time.time()
+                    glob_set.update_latency('time_dense_matmul', t_matmul_end - t_matmul_start)
+
+                # ==========================================
+                # --- 4. TRITON SCATTER (TIMED) ---
+                # ==========================================
+                if getattr(globVR, 'time_internal', False):
+                    torch.cuda.synchronize()
+                    t_scatter_start = time.time()
+
                 delta_out = torch.zeros(
                     bsz, self.num_heads, seq_len, seq_len, 
                     dtype=regular_x.dtype, 
@@ -816,20 +840,48 @@ class BitNetAttention(nn.Module):
 
                 if getattr(globVR, 'time_internal', False):
                     torch.cuda.synchronize()
+                    t_scatter_end = time.time()
+                    glob_set.update_latency('time_triton_scatter', t_scatter_end - t_scatter_start)
+
+                # Total time for the sparse matmul block
+                if getattr(globVR, 'time_internal', False):
+                    torch.cuda.synchronize()
                     t_sm_end = time.time()
-                    glob_set.update_latency('time_sparse_matmul', t_sm_end - t_sm_start)
+                    glob_set.update_latency('time_sparse_matmul_total', t_sm_end - t_sm_start)
                                     
         else:
             delta_out = torch.matmul(regular_x, delta_y)
 
+        # ==========================================
+        # --- 5. CUMSUM (TIMED) ---
+        # ==========================================
+        if getattr(globVR, 'time_internal', False):
+            torch.cuda.synchronize()
+            t_cumsum_start = time.time()
+
         # In-place cumsum to save memory
         delta_out = torch.cumsum(delta_out, dim=-1)
 
+        if getattr(globVR, 'time_internal', False):
+            torch.cuda.synchronize()
+            t_cumsum_end = time.time()
+            glob_set.update_latency('time_cumsum', t_cumsum_end - t_cumsum_start)
+
+        # ==========================================
+        # --- 6. PATCH HYBRID ATTENTION (TIMED) ---
+        # ==========================================
+        if getattr(globVR, 'time_internal', False):
+            torch.cuda.synchronize()
+            t_patch_start = time.time()
+
         output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
         
+        if getattr(globVR, 'time_internal', False):
+            torch.cuda.synchronize()
+            t_patch_end = time.time()
+            glob_set.update_latency('time_patch_hybrid_attention', t_patch_end - t_patch_start)
+
         return output
-    
-    
     
     def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=4):
         
@@ -902,6 +954,8 @@ class BitNetAttention(nn.Module):
         output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
         
         return output
+    
+    
     def regular_delta_mm(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size):
         delta_out = torch.matmul(regular_x, delta_y)
         output_base = delta_out[:,:,:,0].view(bsz,self.num_heads,dim_out, 1)
