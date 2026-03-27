@@ -30,7 +30,7 @@ AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
 EXPERIMENT_DEFINITIONS = {
     "baseline": {
         "grid": {
-            "seq_len": [1024, 2048, 3072],
+            "seq_len": [1024, 2048, 3072,4096],
         },
         "arg_builder": lambda p: ["--seq_len", str(p["seq_len"])],
         "injector": lambda args: {
