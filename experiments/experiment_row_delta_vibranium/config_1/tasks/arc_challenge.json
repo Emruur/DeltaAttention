@@ -1,0 +1,33 @@
+{
+    "task_name": "arc_challenge",
+    "timestamp": "2026-03-28T12:19:18.025343",
+    "shot": 0,
+    "sparsity": 0.2540307126415794,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 375,
+        "seq_len_avg": 38.94133333333333,
+        "seq_len_min": 14,
+        "seq_len_max": 90,
+        "seq_len_std": 18.246804968419966
+    },
+    "accuracy": 0.53,
+    "timings": {},
+    "metrics": {
+        "alias": "arc_challenge",
+        "acc,none": 0.53,
+        "acc_stderr,none": 0.050161355804659205,
+        "acc_norm,none": 0.53,
+        "acc_norm_stderr,none": 0.050161355804659205
+    },
+    "total_benchmark_time_s": 86.95249605178833,
+    "parameters": {
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 1
+    },
+    "experiment_type": "row_delta"
+}

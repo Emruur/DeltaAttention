@@ -1,0 +1,9 @@
+Config,Metric,arc_challenge,arc_easy,boolq,commonsense_qa,hellaswag,mmlu,openbookqa,piqa,triviaqa,truthfulqa_mc2,winogrande,Average
+Baseline,accuracy,0.52,0.8,0.75,0.64,0.51,0.531,0.28,0.72,0.0,0.472,0.78,0.546
+Baseline,sparsity,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+Baseline,total_avg_ms,0.459,0.472,0.582,0.46,0.454,0.53,0.447,0.458,0.424,0.617,0.458,0.487
+Baseline,total_benchmark_time_s,32.034,31.918,27.527,26.204,35.635,300.745,31.011,27.92,78.47,71.883,28.323,62.879
+Single_Run,accuracy,0.53,0.77,0.76,0.62,0.51,0.529,0.27,0.76,0.03,0.46,0.8,0.549
+Single_Run,sparsity,0.254,0.239,0.582,0.314,0.559,0.531,0.386,0.25,0.281,0.549,0.599,0.413
+Single_Run,total_avg_ms,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+Single_Run,total_benchmark_time_s,86.952,92.24,40.639,28.04,96.811,919.806,77.05,63.588,142.484,127.743,37.9,155.75

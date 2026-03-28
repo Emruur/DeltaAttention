@@ -20,6 +20,17 @@ from lm_eval.evaluator import simple_evaluate
 from transformers import AutoConfig, AutoModelForCausalLM
 from modeling_bitnet import BitNetForCausalLM, BitNetConfig
 
+# --- ADD THIS GLOBALLY TO FIX THE LM_EVAL JSON CRASH ---
+_original_json_default = json.JSONEncoder.default
+
+def safe_json_default(self, obj):
+    if isinstance(obj, (torch.dtype, torch.device)):
+        return str(obj)
+    return _original_json_default(self, obj)
+
+json.JSONEncoder.default = safe_json_default
+# --------------------------
+
 # Register Model and Config
 AutoConfig.register("bitnet", BitNetConfig, exist_ok=True)
 AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
@@ -43,7 +54,7 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [15],
+            "delta": [15,20],
             "row_sim": ["euclidean"],
             "divide_to": [1]
         },

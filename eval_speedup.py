@@ -30,7 +30,7 @@ AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
 EXPERIMENT_DEFINITIONS = {
     "baseline": {
         "grid": {
-            "seq_len": [1024,2048],
+            "seq_len": [1024,2048,3072],
         },
         "arg_builder": lambda p: ["--seq_len", str(p["seq_len"])],
         "injector": lambda args: {
@@ -42,7 +42,7 @@ EXPERIMENT_DEFINITIONS = {
     },
     "scale_delta": {
         "grid": {
-            "seq_len": [1024, 2048, 3072],
+            "seq_len": [3072],
             "scale": [0.05], 
             "thresh": [1]
         },
@@ -57,8 +57,8 @@ EXPERIMENT_DEFINITIONS = {
     },
     "row_delta": {
         "grid": {
-            "seq_len": [1024,2048],
-            "delta": [15],
+            "seq_len": [1024,2048,3072],
+            "delta": [15,20],
             "row_sim": ["euclidean"],
             "divide_to": [1]
         },

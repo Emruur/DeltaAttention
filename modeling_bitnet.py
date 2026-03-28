@@ -848,6 +848,8 @@ class BitNetAttention(nn.Module):
         if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_patch_hybrid_attention', time.time() - t_patch_start)
 
         return output
+    
+    
     def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=4):
         
         delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 
@@ -1603,8 +1605,10 @@ class BitNetForCausalLM(BitNetPreTrainedModel, GenerationMixin):
     _tp_plan = None
     _pp_plan = None
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, config, **kwargs):
+        kwargs.pop("dtype", None)
+        kwargs.pop("torch_dtype", None)
+        super().__init__(config, **kwargs)
         self.model = BitNetModel(config)
         self.vocab_size = config.vocab_size
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)

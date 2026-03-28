@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from pandas.plotting import table
 
 # Hardcoded baseline path
-BASELINE_PATH = "experiments/bitnet_baseline"
+BASELINE_PATH = "experiments/experiment_baseline_vibranium"
 
 def load_experiment_data(exp_dir):
     """Crawls an experiment directory and compiles all task JSONs into a DataFrame."""
