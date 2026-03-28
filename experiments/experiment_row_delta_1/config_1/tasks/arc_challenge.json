@@ -1,0 +1,11 @@
+{
+    "timings": {
+        "total_avg_ms": 5.524334017435709,
+        "latency_breakdown_ms": {
+            "time_get_delta_mat": 2.881165525648329,
+            "time_delta_mm_pattern": 0.7040073606703017,
+            "time_forward_total": 5.524334017435709
+        }
+    },
+    "sync_pass_benchmark_time_s": 89.74491715431213
+}
