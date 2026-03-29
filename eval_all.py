@@ -204,94 +204,6 @@ def get_or_create_config_dir(base_exp_dir, delta_config, force_dir_name=None):
     return new_dir_path
 
 
-def run_worker_process(args, experiment_dir):
-    # 1. Base Settings
-    eval_config = {
-        "shot": args.shot, "limit": 100, "batch_size": 1, "device": "cuda",
-        "model_args": "pretrained=microsoft/bitnet-b1.58-2B-4T,trust_remote_code=False,dtype=bfloat16,attn_implementation=eager",
-    }
-
-    # 2. Apply Experiment Specifics
-    if args.experiment_type not in EXPERIMENT_DEFINITIONS:
-        print(f"[Fatal] Unknown experiment type: {args.experiment_type}")
-        return
-
-    exp_def = EXPERIMENT_DEFINITIONS[args.experiment_type]
-    glob_settings = exp_def["injector"](args)
-
-    print(f"[Worker] Applying {args.experiment_type} settings: {glob_settings}")
-    
-    for key, value in glob_settings.items():
-        setattr(globVR, key, value)
-
-    all_possible_tasks = [
-        "arc_easy", "arc_challenge", "openbookqa", "boolq", 
-        "hellaswag", "piqa", "winogrande", "triviaqa", 
-        "mmlu", "commonsense_qa", "truthfulqa_mc2"
-    ]
-
-    if getattr(args, 'run_all_tasks', False):
-        tasks = all_possible_tasks
-        print(f"[Worker] '--run_all_tasks' triggered. Running {len(tasks)} tasks.")
-    else:
-        if args.shot == 0:
-            tasks = ["arc_easy", "arc_challenge", "openbookqa", "boolq", "hellaswag", "piqa", "winogrande"]
-        elif args.shot == 5:
-            tasks = ["triviaqa"]
-        elif args.shot == 10:
-            tasks = ["commonsense_qa"]
-        else:
-            tasks = ["arc_challenge"]
-
-    # 4. Load Model
-    print(f"[Worker] Loading Model...")
-    try:
-        model_class = lm_eval.api.registry.get_model("hf")
-        lm_model = model_class.create_from_arg_string(
-            eval_config["model_args"], 
-            {
-                "batch_size": eval_config["batch_size"],
-                "device": eval_config["device"]
-            }
-        )
-    except Exception as e:
-        print(f"[Fatal Worker Error] Model load failed: {e}")
-        return
-
-    # 5. Run Tasks
-    # Force the directory name if we are running the baseline
-    force_name = "config_baseline" if args.experiment_type == "baseline" else None
-    config_dir = get_or_create_config_dir(experiment_dir, glob_settings, force_dir_name=force_name)
-    
-    for task in tasks:
-        print(f"--- Running Task: {task} ---")
-        
-        is_sync_setting = (args.time_internal == 'yes')
-        
-        if is_sync_setting:
-            print(f"  -> Pass: Measuring internal latency breakdown (internal syncs ON)")
-        else:
-            print(f"  -> Pass: Measuring total benchmark time (internal syncs OFF)")
-
-        results, total_time = run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting=is_sync_setting)
-
-        if results:
-            final_result_data = results
-            final_result_data['total_benchmark_time_s'] = total_time
-            final_result_data["parameters"] = glob_settings
-            final_result_data["experiment_type"] = args.experiment_type
-            
-            print(f"Task: {task} | Acc: {final_result_data.get('accuracy', 0.0):.4f} | Total Time: {total_time:.2f}s")
-            save_single_task_result(config_dir, task, final_result_data)
-        else:
-            print(f"[Error] No results generated for task {task}.")
-
-        gc.collect()
-        torch.cuda.empty_cache()
-
-    print("[Worker] Finished. Exiting.")
-
-
 def save_single_task_result(config_dir, task_name, result_data):
     tasks_dir = os.path.join(config_dir, "tasks")
     file_path = os.path.join(tasks_dir, f"{task_name}.json")
@@ -305,40 +217,16 @@ def save_single_task_result(config_dir, task_name, result_data):
         # Acquire lock
         with open(lock_path, 'w') as f: pass
 
-        # Read existing data if it exists
-        existing_data = {}
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                try:
-                    existing_data = json.load(f)
-                except json.JSONDecodeError:
-                    pass # Ignore corrupt file, will be overwritten
-
-        # Check if the current run is the 'sync' run (has breakdown)
-        is_sync_run = "timings" in result_data and result_data["timings"].get("latency_breakdown_ms")
-
-        if is_sync_run:
-            # This is the 'yes' pass. Only add its timings to the existing data.
-            existing_data['timings'] = result_data.get('timings', {})
-            # Also store its own benchmark time for debugging
-            existing_data['sync_pass_benchmark_time_s'] = result_data.get('total_benchmark_time_s')
-            final_data = existing_data
-        else:
-            # This is the 'no' pass. It's the primary source of data.
-            # Overwrite everything EXCEPT for the timings, which might have been written by the 'yes' pass.
-            timings_to_preserve = existing_data.get('timings', {})
-            final_data = result_data
-            final_data['timings'] = timings_to_preserve
-        
-        # Write back the merged data
+        # Overwrite the file with the full payload every time
         with open(file_path, 'w') as f:
-            json.dump(final_data, f, indent=4, cls=NpEncoder)
-        print(f"[IO] Saved/Merged result to {os.path.basename(file_path)}")
+            json.dump(result_data, f, indent=4, cls=NpEncoder)
+        print(f"[IO] Saved full result to {os.path.basename(file_path)}")
 
     finally:
         # Release lock
         if os.path.exists(lock_path):
             os.remove(lock_path)
+
 
 def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting):
     """
@@ -425,6 +313,93 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     }
     return result_data, total_time
 
+
+def run_worker_process(args, experiment_dir):
+    # 1. Base Settings
+    eval_config = {
+        "shot": args.shot, "limit": 100, "batch_size": 1, "device": "cuda",
+        "model_args": "pretrained=microsoft/bitnet-b1.58-2B-4T,trust_remote_code=False,dtype=bfloat16,attn_implementation=eager",
+    }
+
+    # 2. Apply Experiment Specifics
+    if args.experiment_type not in EXPERIMENT_DEFINITIONS:
+        print(f"[Fatal] Unknown experiment type: {args.experiment_type}")
+        return
+
+    exp_def = EXPERIMENT_DEFINITIONS[args.experiment_type]
+    glob_settings = exp_def["injector"](args)
+
+    print(f"[Worker] Applying {args.experiment_type} settings: {glob_settings}")
+    
+    for key, value in glob_settings.items():
+        setattr(globVR, key, value)
+
+    all_possible_tasks = [
+        "arc_easy", "arc_challenge", "openbookqa", "boolq", 
+        "hellaswag", "piqa", "winogrande", "triviaqa", 
+        "mmlu", "commonsense_qa", "truthfulqa_mc2"
+    ]
+
+    if getattr(args, 'run_all_tasks', False):
+        tasks = all_possible_tasks
+        print(f"[Worker] '--run_all_tasks' triggered. Running {len(tasks)} tasks.")
+    else:
+        if args.shot == 0:
+            tasks = ["arc_easy", "arc_challenge", "openbookqa", "boolq", "hellaswag", "piqa", "winogrande"]
+        elif args.shot == 5:
+            tasks = ["triviaqa"]
+        elif args.shot == 10:
+            tasks = ["commonsense_qa"]
+        else:
+            tasks = ["arc_challenge"]
+
+    # 4. Load Model
+    print(f"[Worker] Loading Model...")
+    try:
+        model_class = lm_eval.api.registry.get_model("hf")
+        lm_model = model_class.create_from_arg_string(
+            eval_config["model_args"], 
+            {
+                "batch_size": eval_config["batch_size"],
+                "device": eval_config["device"]
+            }
+        )
+    except Exception as e:
+        print(f"[Fatal Worker Error] Model load failed: {e}")
+        return
+
+    # 5. Run Tasks
+    # Force the directory name if we are running the baseline
+    force_name = "config_baseline" if args.experiment_type == "baseline" else None
+    config_dir = get_or_create_config_dir(experiment_dir, glob_settings, force_dir_name=force_name)
+    
+    for task in tasks:
+        print(f"--- Running Task: {task} ---")
+        print(f"  -> Pass: Measuring total benchmark time AND internal latency breakdown (internal syncs ON)")
+
+        # Hardcode time_internal_setting to True
+        results, total_time = run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting=True)
+
+        if results:
+            final_result_data = results
+            final_result_data['total_benchmark_time_s'] = total_time
+            final_result_data["parameters"] = glob_settings
+            final_result_data["experiment_type"] = args.experiment_type
+            
+            print(f"Task: {task} | Acc: {final_result_data.get('accuracy', 0.0):.4f} | Total Time: {total_time:.2f}s")
+            
+            # Print the JSON to stdout so you always see the output in the console
+            print(json.dumps(final_result_data, indent=4, cls=NpEncoder))
+            
+            save_single_task_result(config_dir, task, final_result_data)
+        else:
+            print(f"[Error] No results generated for task {task}.")
+
+        gc.collect()
+        torch.cuda.empty_cache()
+
+    print("[Worker] Finished. Exiting.")
+
 # ==========================================
 # MAIN ENTRY POINT
 # ==========================================
@@ -437,7 +412,6 @@ if __name__ == "__main__":
     parser.add_argument('--shot', default=0, type=int)
     parser.add_argument('--exp_num', default=None, type=int)
     parser.add_argument('--conf_name', default=None, type=str)
-    parser.add_argument('--time_internal', type=str, default='both', choices=['yes', 'no', 'both'])
     
     # Shared Experiment Args
     parser.add_argument('--scale', default=0.05, type=float)
@@ -484,28 +458,23 @@ if __name__ == "__main__":
             
             print(f"\n=== Step {i+1}/{len(param_grid)}: {current_params} ===")
             
-            time_modes_to_run = [args.time_internal]
-            if args.time_internal == 'both':
-                print(f"[Master] Spawning separate 'yes' and 'no' sync processes for {current_params}")
-                time_modes_to_run = ['no', 'yes']
-
-            for time_mode in time_modes_to_run:
-                cmd = [
-                    sys.executable, sys.argv[0], "--mode", "worker",
-                    "--experiment_type", args.experiment_type, "--exp_num", str(args.exp_num),
-                    "--shot", str(args.shot), "--time_internal", time_mode,
-                ]
-                if getattr(args, 'run_all_tasks', False):
-                    cmd.append("--run_all_tasks")
-                
-                if "arg_builder" in exp_def:
-                    cmd.extend(exp_def["arg_builder"](current_params))
-                
-                try:
-                    print(f"[Master] Running worker with --time_internal {time_mode}")
-                    subprocess.run(cmd, check=True)
-                except subprocess.CalledProcessError as e:
-                    print(f"[Master] Worker failed for {current_params} with time_mode={time_mode}. Continuing...")
+            # Spawn ONE worker per config
+            cmd = [
+                sys.executable, sys.argv[0], "--mode", "worker",
+                "--experiment_type", args.experiment_type, "--exp_num", str(args.exp_num),
+                "--shot", str(args.shot)
+            ]
+            if getattr(args, 'run_all_tasks', False):
+                cmd.append("--run_all_tasks")
+            
+            if "arg_builder" in exp_def:
+                cmd.extend(exp_def["arg_builder"](current_params))
+            
+            try:
+                print(f"[Master] Running worker for {current_params}")
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"[Master] Worker failed for {current_params}. Continuing...")
 
     # -----------------------------------------------------------
     # WORKER MODE
