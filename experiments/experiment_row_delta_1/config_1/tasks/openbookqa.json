@@ -1,0 +1,17 @@
+{
+    "timings": {
+        "total_avg_ms": 0.8059354017178217,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.01208299361604957,
+            "time_gather_expand": 0.04783397844239008,
+            "time_dense_matmul": 0.026538831685489463,
+            "time_small_cumsum": 0.036431804096266146,
+            "time_triton_expand": 0.03218544853911284,
+            "time_sparse_matmul_total": 0.2243659901010093,
+            "time_patch_hybrid_attention": 0.08636845085003804,
+            "time_delta_mm_pattern": 0.3695931866765022,
+            "time_forward_total": 0.8059354017178217
+        }
+    },
+    "sync_pass_benchmark_time_s": 34.09345316886902
+}
