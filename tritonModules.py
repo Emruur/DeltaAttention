@@ -334,48 +334,88 @@ def _triton_expand_cumsum(
 
 
 
+import triton
+import triton.language as tl
+
 @triton.jit
-def _triton_fused_expand_cumsum(
-    scores_ptr, mask_ptr, out_ptr,
-    stride_sb, stride_sh, stride_sq, stride_sk,
-    stride_mb, stride_mh, stride_mk,
-    stride_ob, stride_oh, stride_oq, stride_ok,
-    seq_len,
-    BLOCK_K: tl.constexpr
+def opt_triton_expand_cumsum(
+    packed_cumsum_ptr, cumsum_mask_ptr, delta_out_ptr,
+    stride_pc_b, stride_pc_h, stride_pc_q, stride_pc_k,
+    stride_cm_b, stride_cm_h, stride_cm_k,
+    stride_out_b, stride_out_h, stride_out_q, stride_out_k,
+    num_heads, num_kv_groups, seq_len_q, seq_len_k,
+    BLOCK_Q: tl.constexpr, BLOCK_K: tl.constexpr
 ):
-    # Grid is 2D: (batch * num_heads, seq_len)
-    bh_id = tl.program_id(0)
-    q_id = tl.program_id(1)
+    # 1. Identify our position in the 3D Grid
+    pid_bh = tl.program_id(0)
+    pid_q = tl.program_id(1)
+    pid_k = tl.program_id(2)
 
-    # Calculate row offsets
-    mask_row_offset = bh_id * stride_mh
-    score_row_offset = bh_id * stride_sh + q_id * stride_sq
-    out_row_offset = bh_id * stride_oh + q_id * stride_oq
+    # 2. Decode Batch and Head IDs
+    batch_id = pid_bh // num_heads
+    head_id = pid_bh % num_heads
 
-    # Setup block indices
-    k_offsets = tl.arange(0, BLOCK_K)
-    k_mask = k_offsets < seq_len
+    # 3. Compute block offsets for Q and K dimensions
+    offs_q = pid_q * BLOCK_Q + tl.arange(0, BLOCK_Q)
+    offs_k = pid_k * BLOCK_K + tl.arange(0, BLOCK_K)
 
-    # 1. Load the boolean keep_mask for this batch/head
-    mask_ptrs = mask_ptr + mask_row_offset + k_offsets * stride_mk
-    keep_mask = tl.load(mask_ptrs, mask=k_mask, other=0)
+    # 4. Create bounds masks to prevent reading/writing out of bounds
+    mask_q = offs_q < seq_len_q
+    mask_k = offs_k < seq_len_k
 
-    # 2. Cumsum the mask to get routing indices 
-    # (Subtract 1 because indices are 0-based)
-    mask_ints = tl.where(keep_mask, 1, 0)
-    routing_indices = tl.cumsum(mask_ints, axis=0) - 1
+    # ==========================================
+    # STEP A: LOAD THE ROUTING INDICES (1D)
+    # ==========================================
+    # The cumsum_mask tells us how many active tokens exist up to position K.
+    # Shape of cumsum_mask is (bsz, num_heads, seq_len_k)
+    cm_ptrs = cumsum_mask_ptr + (
+        batch_id * stride_cm_b + 
+        head_id * stride_cm_h + 
+        offs_k * stride_cm_k
+    )
+    
+    # Load 1D row of routing indices. If out of bounds, return 0.
+    routing_idx = tl.load(cm_ptrs, mask=mask_k, other=0)
 
-    # 3. Sparse Scatter Load
-    # We only read from scores_packed if keep_mask is True. Otherwise, load 0.0.
-    read_ptrs = scores_ptr + score_row_offset + routing_indices * stride_sk
-    valid_read_mask = k_mask & keep_mask
-    sparse_scores = tl.load(read_ptrs, mask=valid_read_mask, other=0.0)
+    # ==========================================
+    # STEP B: PREPARE 2D POINTERS FOR UNPADDED FETCH
+    # ==========================================
+    # We want to map this to a 2D block of shape (BLOCK_Q, BLOCK_K)
+    # routing_idx > 0 means it's a valid mapped token. 0 means it was skipped/padded.
+    
+    # Broadcast Q to column vector (BLOCK_Q, 1) and K to row vector (1, BLOCK_K)
+    offs_q_2d = offs_q[:, None]
+    
+    # Shift index back by 1 because the unpadded tensor is 0-indexed
+    fetch_idx_2d = (routing_idx - 1)[None, :]
+    
+    # 2D Mask: Valid only if within Q/K sequence bounds AND the token is actually active
+    is_active_token = (routing_idx > 0)[None, :]
+    fetch_mask_2d = mask_q[:, None] & mask_k[None, :] & is_active_token
 
-    # 4. The Magic Fused Cumsum
-    # Doing the cumsum on the sparse array perfectly replicates the PyTorch logic 
-    # entirely in ultra-fast SRAM!
-    final_scores = tl.cumsum(sparse_scores, axis=0)
+    # Compute the 2D memory pointers for the unpadded packed_cumsum tensor
+    pc_ptrs = packed_cumsum_ptr + (
+        batch_id * stride_pc_b + 
+        head_id * stride_pc_h + 
+        offs_q_2d * stride_pc_q + 
+        fetch_idx_2d * stride_pc_k
+    )
 
-    # 5. Write to output
-    out_ptrs = out_ptr + out_row_offset + k_offsets * stride_ok
-    tl.store(out_ptrs, final_scores, mask=k_mask)
+    # ==========================================
+    # STEP C: PREDICATED LOAD & STORE
+    # ==========================================
+    # Fetch from the unpadded tensor. 
+    # If fetch_mask_2d is False, it skips memory and instantly loads 0.0!
+    vals = tl.load(pc_ptrs, mask=fetch_mask_2d, other=0.0)
+
+    # Compute final 2D pointers for the output tensor
+    out_ptrs = delta_out_ptr + (
+        batch_id * stride_out_b + 
+        head_id * stride_out_h + 
+        offs_q_2d * stride_out_q + 
+        offs_k[None, :] * stride_out_k
+    )
+
+    # Store the results. (We only need standard bounds checking here)
+    store_mask_2d = mask_q[:, None] & mask_k[None, :]
+    tl.store(out_ptrs, vals, mask=store_mask_2d)
