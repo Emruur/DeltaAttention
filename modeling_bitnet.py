@@ -886,8 +886,13 @@ class BitNetAttention(nn.Module):
 
             # --- 1. Get Active Indices (No .item() sync!) ---
             seq_idx = torch.arange(seq_len, dtype=torch.int32, device=keep_mask.device)
+            
+            # Push inactive to the back
             sort_keys = torch.where(keep_mask, seq_idx, seq_len)
-            active_indices = sort_keys.sort(dim=-1)[0].to(torch.int32)
+            sorted_indices = sort_keys.sort(dim=-1)[0]
+            
+            # THE FIX: Clamp the indices to seq_len - 1 to prevent Triton out-of-bounds read
+            active_indices = torch.clamp(sorted_indices, max=seq_len - 1).to(torch.int32)
 
             # ==========================================
             # --- 2. TRITON GATHER & EXPAND ---
@@ -926,7 +931,8 @@ class BitNetAttention(nn.Module):
                 end_evt_matmul = torch.cuda.Event(enable_timing=True)
                 start_evt_matmul.record()
 
-            scores_packed = torch.matmul(regular_x, k_packed_q)
+            # THE FIX: .contiguous() ensures cuBLAS doesn't choke on strided memory layouts
+            scores_packed = torch.matmul(regular_x.contiguous(), k_packed_q)
 
             if getattr(globVR, 'time_internal', False):
                 end_evt_matmul.record()
@@ -980,7 +986,8 @@ class BitNetAttention(nn.Module):
             glob_set.queue_event_pair('time_patch_hybrid_attention', start_evt_patch, end_evt_patch)
 
         return output
-    
+
+
     def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=4):
         
         delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 
