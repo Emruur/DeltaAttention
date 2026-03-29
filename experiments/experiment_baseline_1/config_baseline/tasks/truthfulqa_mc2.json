@@ -1,0 +1,10 @@
+{
+    "timings": {
+        "total_avg_ms": 0.5261093414143512,
+        "latency_breakdown_ms": {
+            "time_regular_matmul": 0.030301918966332858,
+            "time_forward_total": 0.5261093414143512
+        }
+    },
+    "sync_pass_benchmark_time_s": 60.38669013977051
+}
