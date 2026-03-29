@@ -876,117 +876,6 @@ class BitNetAttention(nn.Module):
             glob_set.queue_event_pair('time_patch_hybrid_attention', start_evt_patch, end_evt_patch)
 
         return output
-    
-    def fused_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=None):
-        if keep_mask is not None:
-            if getattr(globVR, 'time_internal', False):
-                start_evt_sm = torch.cuda.Event(enable_timing=True)
-                end_evt_sm = torch.cuda.Event(enable_timing=True)
-                start_evt_sm.record()
-
-            # --- 1. Get Active Indices (No .item() sync!) ---
-            seq_idx = torch.arange(seq_len, dtype=torch.int32, device=keep_mask.device)
-            
-            # Push inactive to the back
-            sort_keys = torch.where(keep_mask, seq_idx, seq_len)
-            sorted_indices = sort_keys.sort(dim=-1)[0]
-            
-            # THE FIX: Clamp the indices to seq_len - 1 to prevent Triton out-of-bounds read
-            active_indices = torch.clamp(sorted_indices, max=seq_len - 1).to(torch.int32)
-
-            # ==========================================
-            # --- 2. TRITON GATHER & EXPAND ---
-            # ==========================================
-            if getattr(globVR, 'time_internal', False):
-                start_evt_gather = torch.cuda.Event(enable_timing=True)
-                end_evt_gather = torch.cuda.Event(enable_timing=True)
-                start_evt_gather.record()
-
-            head_dim = delta_y.shape[2]
-            
-            # Pad k_packed_q to seq_len to avoid CPU sync
-            k_packed_q = torch.empty((bsz, self.num_heads, head_dim, seq_len), dtype=delta_y.dtype, device=delta_y.device)
-            
-            BLOCK_D = triton.next_power_of_2(head_dim)
-            grid_gather = (bsz * self.num_heads, seq_len)
-            
-            _triton_gather_expand[grid_gather](
-                delta_y, active_indices, k_packed_q,
-                delta_y.stride(0), delta_y.stride(1), delta_y.stride(2), delta_y.stride(3),
-                active_indices.stride(0), active_indices.stride(1), active_indices.stride(2),
-                k_packed_q.stride(0), k_packed_q.stride(1), k_packed_q.stride(2), k_packed_q.stride(3),
-                self.num_heads, self.num_key_value_groups, seq_len, head_dim,
-                BLOCK_D=BLOCK_D
-            )
-
-            if getattr(globVR, 'time_internal', False):
-                end_evt_gather.record()
-                glob_set.queue_event_pair('time_gather_expand', start_evt_gather, end_evt_gather)
-
-            # ==========================================
-            # --- 3. DENSE MATMUL [cuBLAS] ---
-            # ==========================================
-            if getattr(globVR, 'time_internal', False):
-                start_evt_matmul = torch.cuda.Event(enable_timing=True)
-                end_evt_matmul = torch.cuda.Event(enable_timing=True)
-                start_evt_matmul.record()
-
-            # THE FIX: .contiguous() ensures cuBLAS doesn't choke on strided memory layouts
-            scores_packed = torch.matmul(regular_x.contiguous(), k_packed_q)
-
-            if getattr(globVR, 'time_internal', False):
-                end_evt_matmul.record()
-                glob_set.queue_event_pair('time_dense_matmul', start_evt_matmul, end_evt_matmul)
-
-            # ==========================================
-            # --- 4. FUSED TRITON EXPAND & CUMSUM ---
-            # ==========================================
-            if getattr(globVR, 'time_internal', False):
-                start_evt_expand = torch.cuda.Event(enable_timing=True)
-                end_evt_expand = torch.cuda.Event(enable_timing=True)
-                start_evt_expand.record()
-
-            delta_out = torch.empty(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
-            
-            BLOCK_K = triton.next_power_of_2(seq_len)
-            grid_expand = (bsz * self.num_heads, seq_len)
-            
-            _triton_fused_expand_cumsum[grid_expand](
-                scores_packed, keep_mask, delta_out,
-                scores_packed.stride(0), scores_packed.stride(1), scores_packed.stride(2), scores_packed.stride(3),
-                keep_mask.stride(0), keep_mask.stride(1), keep_mask.stride(2),
-                delta_out.stride(0), delta_out.stride(1), delta_out.stride(2), delta_out.stride(3),
-                seq_len,
-                BLOCK_K=BLOCK_K
-            )
-
-            if getattr(globVR, 'time_internal', False):
-                end_evt_expand.record()
-                glob_set.queue_event_pair('time_triton_fused_expand', start_evt_expand, end_evt_expand)
-
-            if getattr(globVR, 'time_internal', False):
-                end_evt_sm.record()
-                glob_set.queue_event_pair('time_sparse_matmul_total', start_evt_sm, end_evt_sm)
-                                    
-        else:
-            delta_out = torch.cumsum(torch.matmul(regular_x, delta_y), dim=-1)
-
-        # ==========================================
-        # --- 5. PATCH HYBRID ATTENTION ---
-        # ==========================================
-        if getattr(globVR, 'time_internal', False):
-            start_evt_patch = torch.cuda.Event(enable_timing=True)
-            end_evt_patch = torch.cuda.Event(enable_timing=True)
-            start_evt_patch.record()
-
-        output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
-        
-        if getattr(globVR, 'time_internal', False):
-            end_evt_patch.record()
-            glob_set.queue_event_pair('time_patch_hybrid_attention', start_evt_patch, end_evt_patch)
-
-        return output
-
 
     def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=4):
         
@@ -1225,7 +1114,7 @@ class BitNetAttention(nn.Module):
                 attn_weights= None
                 if globVR.delta_type== "row":
                     #TODO
-                    attn_weights = self.fused_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to)
+                    attn_weights = self.triton_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to)
                 elif globVR.delta_type== "nm":
                     attn_weights = self.nm_regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
                 else:
