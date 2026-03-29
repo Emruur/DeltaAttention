@@ -334,9 +334,6 @@ def _triton_expand_cumsum(
 
 
 
-import triton
-import triton.language as tl
-
 @triton.jit
 def opt_triton_expand_cumsum(
     packed_cumsum_ptr, cumsum_mask_ptr, delta_out_ptr,
@@ -346,54 +343,37 @@ def opt_triton_expand_cumsum(
     num_heads, num_kv_groups, seq_len_q, seq_len_k,
     BLOCK_Q: tl.constexpr, BLOCK_K: tl.constexpr
 ):
-    # 1. Identify our position in the 3D Grid
     pid_bh = tl.program_id(0)
     pid_q = tl.program_id(1)
     pid_k = tl.program_id(2)
 
-    # 2. Decode Batch and Head IDs
     batch_id = pid_bh // num_heads
     head_id = pid_bh % num_heads
 
-    # 3. Compute block offsets for Q and K dimensions
     offs_q = pid_q * BLOCK_Q + tl.arange(0, BLOCK_Q)
     offs_k = pid_k * BLOCK_K + tl.arange(0, BLOCK_K)
 
-    # 4. Create bounds masks to prevent reading/writing out of bounds
     mask_q = offs_q < seq_len_q
     mask_k = offs_k < seq_len_k
 
-    # ==========================================
-    # STEP A: LOAD THE ROUTING INDICES (1D)
-    # ==========================================
-    # The cumsum_mask tells us how many active tokens exist up to position K.
-    # Shape of cumsum_mask is (bsz, num_heads, seq_len_k)
+    # --- STEP A: LOAD ROUTING INDICES ---
     cm_ptrs = cumsum_mask_ptr + (
         batch_id * stride_cm_b + 
         head_id * stride_cm_h + 
         offs_k * stride_cm_k
     )
-    
-    # Load 1D row of routing indices. If out of bounds, return 0.
     routing_idx = tl.load(cm_ptrs, mask=mask_k, other=0)
 
-    # ==========================================
-    # STEP B: PREPARE 2D POINTERS FOR UNPADDED FETCH
-    # ==========================================
-    # We want to map this to a 2D block of shape (BLOCK_Q, BLOCK_K)
-    # routing_idx > 0 means it's a valid mapped token. 0 means it was skipped/padded.
-    
-    # Broadcast Q to column vector (BLOCK_Q, 1) and K to row vector (1, BLOCK_K)
+    # --- STEP B: SAFE POINTER MATH (THE FIX) ---
     offs_q_2d = offs_q[:, None]
     
-    # Shift index back by 1 because the unpadded tensor is 0-indexed
-    fetch_idx_2d = (routing_idx - 1)[None, :]
+    # CLAMP the index to 0 to prevent calculating a negative memory address
+    safe_routing_idx = tl.where(routing_idx > 0, routing_idx - 1, 0)
+    fetch_idx_2d = safe_routing_idx[None, :]
     
-    # 2D Mask: Valid only if within Q/K sequence bounds AND the token is actually active
     is_active_token = (routing_idx > 0)[None, :]
     fetch_mask_2d = mask_q[:, None] & mask_k[None, :] & is_active_token
 
-    # Compute the 2D memory pointers for the unpadded packed_cumsum tensor
     pc_ptrs = packed_cumsum_ptr + (
         batch_id * stride_pc_b + 
         head_id * stride_pc_h + 
@@ -401,14 +381,9 @@ def opt_triton_expand_cumsum(
         fetch_idx_2d * stride_pc_k
     )
 
-    # ==========================================
-    # STEP C: PREDICATED LOAD & STORE
-    # ==========================================
-    # Fetch from the unpadded tensor. 
-    # If fetch_mask_2d is False, it skips memory and instantly loads 0.0!
+    # --- STEP C: PREDICATED LOAD & STORE ---
     vals = tl.load(pc_ptrs, mask=fetch_mask_2d, other=0.0)
 
-    # Compute final 2D pointers for the output tensor
     out_ptrs = delta_out_ptr + (
         batch_id * stride_out_b + 
         head_id * stride_out_h + 
@@ -416,6 +391,5 @@ def opt_triton_expand_cumsum(
         offs_k[None, :] * stride_out_k
     )
 
-    # Store the results. (We only need standard bounds checking here)
     store_mask_2d = mask_q[:, None] & mask_k[None, :]
     tl.store(out_ptrs, vals, mask=store_mask_2d)
