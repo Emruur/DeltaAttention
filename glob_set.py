@@ -29,6 +29,42 @@ def update_latency(metric_name, dt_seconds):
     globVR.latency_stats[metric_name]['time_ms'] += (dt_seconds * 1000)
     globVR.latency_stats[metric_name]['calls'] += 1
 
+def queue_event_pair(metric_name, start_evt, end_evt):
+    """
+    Queues a pair of CUDA events for deferred latency measurement.
+    """
+    if not getattr(globVR, 'time_internal', False):
+        return
+
+    if not hasattr(globVR, 'latency_events'):
+        globVR.latency_events = []
+        
+    globVR.latency_events.append((metric_name, start_evt, end_evt))
+
+def resolve_latency_events():
+    """
+    Resolves all queued CUDA events and populates latency_stats.
+    """
+    if not getattr(globVR, 'time_internal', False) or not hasattr(globVR, 'latency_events'):
+        return
+
+    if not hasattr(globVR, 'latency_stats'):
+        globVR.latency_stats = {}
+
+    # Make sure all events are complete
+    torch.cuda.synchronize()
+
+    for metric_name, start_evt, end_evt in globVR.latency_events:
+        if metric_name not in globVR.latency_stats:
+            globVR.latency_stats[metric_name] = {'time_ms': 0.0, 'calls': 0}
+            
+        dt_ms = start_evt.elapsed_time(end_evt)
+        globVR.latency_stats[metric_name]['time_ms'] += dt_ms
+        globVR.latency_stats[metric_name]['calls'] += 1
+
+    # Clear the queue
+    globVR.latency_events.clear()
+
 
 
 def compute_mlp_sparsity(input_tensor, keep_mask=None):

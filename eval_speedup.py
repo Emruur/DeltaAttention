@@ -147,6 +147,7 @@ def benchmark_latency(model, input_ids, warmup=10, repeats=20):
     # 2. Reset Statistics: Ensure we don't include warmup time in our metrics
     # We clear the dictionary that your glob_set.update_latency writes to.
     globVR.latency_stats = {}
+    globVR.latency_events = []
     if hasattr(globVR, 'spars'):
         globVR.spars = 0.0 
     
@@ -165,6 +166,8 @@ def benchmark_latency(model, input_ids, warmup=10, repeats=20):
     
     # 4. Process Results
     total_wall_clock_ms = ((t_end_total - t_start_total) / repeats) * 1000
+    
+    glob_set.resolve_latency_events()
     
     latency_breakdown = {}
     # Extract the stats that were populated during the 'repeats' loop

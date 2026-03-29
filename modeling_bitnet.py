@@ -757,8 +757,9 @@ class BitNetAttention(nn.Module):
                 delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
             else:
                 if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_sm_start = time.time()
+                    start_evt_sm = torch.cuda.Event(enable_timing=True)
+                    end_evt_sm = torch.cuda.Event(enable_timing=True)
+                    start_evt_sm.record()
 
                 # --- 1. Get Active Indices ---
                 seq_idx = torch.arange(seq_len, dtype=torch.int32, device=keep_mask.device)
@@ -768,7 +769,10 @@ class BitNetAttention(nn.Module):
                 # ==========================================
                 # --- 2. TRITON GATHER & EXPAND ---
                 # ==========================================
-                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); t_gather_start = time.time()
+                if getattr(globVR, 'time_internal', False):
+                    start_evt_gather = torch.cuda.Event(enable_timing=True)
+                    end_evt_gather = torch.cuda.Event(enable_timing=True)
+                    start_evt_gather.record()
 
                 head_dim = delta_y.shape[2]
                 k_packed_q = torch.empty((bsz, self.num_heads, head_dim, max_active), dtype=delta_y.dtype, device=delta_y.device)
@@ -785,21 +789,31 @@ class BitNetAttention(nn.Module):
                     BLOCK_D=BLOCK_D
                 )
 
-                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_gather_expand', time.time() - t_gather_start)
+                if getattr(globVR, 'time_internal', False):
+                    end_evt_gather.record()
+                    glob_set.queue_event_pair('time_gather_expand', start_evt_gather, end_evt_gather)
 
                 # ==========================================
                 # --- 3. DENSE MATMUL [cuBLAS] ---
                 # ==========================================
-                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); t_matmul_start = time.time()
+                if getattr(globVR, 'time_internal', False):
+                    start_evt_matmul = torch.cuda.Event(enable_timing=True)
+                    end_evt_matmul = torch.cuda.Event(enable_timing=True)
+                    start_evt_matmul.record()
 
                 scores_packed = torch.matmul(regular_x, k_packed_q)
 
-                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_dense_matmul', time.time() - t_matmul_start)
+                if getattr(globVR, 'time_internal', False):
+                    end_evt_matmul.record()
+                    glob_set.queue_event_pair('time_dense_matmul', start_evt_matmul, end_evt_matmul)
 
                 # ==========================================
                 # --- 4. SMALL CUMSUM & ROUTING (NEW!) ---
                 # ==========================================
-                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); t_cumsum_start = time.time()
+                if getattr(globVR, 'time_internal', False):
+                    start_evt_cumsum = torch.cuda.Event(enable_timing=True)
+                    end_evt_cumsum = torch.cuda.Event(enable_timing=True)
+                    start_evt_cumsum.record()
 
                 # Pad the active scores with a zero column on the left and cumsum
                 padded_scores = torch.nn.functional.pad(scores_packed, (1, 0))
@@ -808,12 +822,17 @@ class BitNetAttention(nn.Module):
                 # Cumsum the boolean mask to create our O(1) routing index
                 cumsum_mask = torch.cumsum(keep_mask.to(torch.int32), dim=-1)
 
-                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_small_cumsum', time.time() - t_cumsum_start)
+                if getattr(globVR, 'time_internal', False):
+                    end_evt_cumsum.record()
+                    glob_set.queue_event_pair('time_small_cumsum', start_evt_cumsum, end_evt_cumsum)
 
                 # ==========================================
                 # --- 5. O(1) TRITON EXPAND (REPLACES SCATTER) ---
                 # ==========================================
-                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); t_expand_start = time.time()
+                if getattr(globVR, 'time_internal', False):
+                    start_evt_expand = torch.cuda.Event(enable_timing=True)
+                    end_evt_expand = torch.cuda.Event(enable_timing=True)
+                    start_evt_expand.record()
 
                 # Use empty instead of zeros to save 0.25ms of allocation time
                 delta_out = torch.empty(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
@@ -831,9 +850,13 @@ class BitNetAttention(nn.Module):
                     BLOCK_Q=BLOCK_Q, BLOCK_K=BLOCK_K
                 )
 
-                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_triton_expand', time.time() - t_expand_start)
+                if getattr(globVR, 'time_internal', False):
+                    end_evt_expand.record()
+                    glob_set.queue_event_pair('time_triton_expand', start_evt_expand, end_evt_expand)
 
-                if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_sparse_matmul_total', time.time() - t_sm_start)
+                if getattr(globVR, 'time_internal', False):
+                    end_evt_sm.record()
+                    glob_set.queue_event_pair('time_sparse_matmul_total', start_evt_sm, end_evt_sm)
                                     
         else:
             delta_out = torch.cumsum(torch.matmul(regular_x, delta_y), dim=-1)
@@ -841,11 +864,16 @@ class BitNetAttention(nn.Module):
         # ==========================================
         # --- 6. PATCH HYBRID ATTENTION ---
         # ==========================================
-        if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); t_patch_start = time.time()
+        if getattr(globVR, 'time_internal', False):
+            start_evt_patch = torch.cuda.Event(enable_timing=True)
+            end_evt_patch = torch.cuda.Event(enable_timing=True)
+            start_evt_patch.record()
 
         output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
         
-        if getattr(globVR, 'time_internal', False): torch.cuda.synchronize(); glob_set.update_latency('time_patch_hybrid_attention', time.time() - t_patch_start)
+        if getattr(globVR, 'time_internal', False):
+            end_evt_patch.record()
+            glob_set.queue_event_pair('time_patch_hybrid_attention', start_evt_patch, end_evt_patch)
 
         return output
     
@@ -880,8 +908,9 @@ class BitNetAttention(nn.Module):
             delta_y = delta_y.contiguous()
             
             if getattr(globVR, 'time_internal', False):
-                torch.cuda.synchronize()
-                t_sm_start = time.time()
+                start_evt_sm_triton = torch.cuda.Event(enable_timing=True)
+                end_evt_sm_triton = torch.cuda.Event(enable_timing=True)
+                start_evt_sm_triton.record()
 
             sparse_delta_mm_scatter_kernel[grid](
                     regular_x, delta_y, delta_out, active_indices, counts,
@@ -894,9 +923,8 @@ class BitNetAttention(nn.Module):
                     BLOCK_M=64, BLOCK_N=64, BLOCK_D=BLOCK_D
                 )
             if getattr(globVR, 'time_internal', False):
-                torch.cuda.synchronize()
-                t_sm_end = time.time()
-                glob_set.update_latency('time_sparse_matmul_triton', t_sm_end - t_sm_start)
+                end_evt_sm_triton.record()
+                glob_set.queue_event_pair('time_sparse_matmul_triton', start_evt_sm_triton, end_evt_sm_triton)
                                 
         else:
             delta_out = torch.matmul(regular_x, delta_y)
@@ -1005,8 +1033,9 @@ class BitNetAttention(nn.Module):
         **kwargs: Unpack[FlashAttentionKwargs],
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         if getattr(globVR, 'time_internal', False):
-            torch.cuda.synchronize()
-            t_forward_start = time.time()
+            start_evt_forward = torch.cuda.Event(enable_timing=True)
+            end_evt_forward = torch.cuda.Event(enable_timing=True)
+            start_evt_forward.record()
 
         input_shape = hidden_states.shape[:-1]
         hidden_shape = (*input_shape, -1, self.head_dim)
@@ -1029,39 +1058,39 @@ class BitNetAttention(nn.Module):
         if query_states.shape[2] > 1 and globVR.delta_pf_key_on == 1:
             if globVR.delta_type == "row": 
                 if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_rd_start = time.time()
+                    start_evt_rd = torch.cuda.Event(enable_timing=True)
+                    end_evt_rd = torch.cuda.Event(enable_timing=True)
+                    start_evt_rd.record()
 
                 key_delta_all, keep_mask = self.get_row_delta_mat_triton(key_states, globVR.row_delta_threshold, globVR.row_similarity_metric, globVR.divide_to)
 
                 if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_rd_end = time.time()
-                    glob_set.update_latency('time_get_row_delta', t_rd_end - t_rd_start)
+                    end_evt_rd.record()
+                    glob_set.queue_event_pair('time_get_row_delta', start_evt_rd, end_evt_rd)
 
             elif globVR.delta_type == "nm": 
                 if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_rd_start = time.time()
+                    start_evt_nm = torch.cuda.Event(enable_timing=True)
+                    end_evt_nm = torch.cuda.Event(enable_timing=True)
+                    start_evt_nm.record()
 
                 key_delta_all = self.get_nm_delta_mat_triton(key_states, globVR.row_delta_threshold)
 
                 if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_rd_end = time.time()
-                    glob_set.update_latency('time_get_nm_delta', t_rd_end - t_rd_start)
+                    end_evt_nm.record()
+                    glob_set.queue_event_pair('time_get_nm_delta', start_evt_nm, end_evt_nm)
 
             else:
                 if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_ed_start = time.time()
+                    start_evt_ed = torch.cuda.Event(enable_timing=True)
+                    end_evt_ed = torch.cuda.Event(enable_timing=True)
+                    start_evt_ed.record()
 
                 key_delta_all = self.get_delta_mat(key_states, globVR.delta_pf_key_thresh)
 
                 if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_ed_end = time.time()
-                    glob_set.update_latency('time_get_delta_mat', t_ed_end - t_ed_start)
+                    end_evt_ed.record()
+                    glob_set.queue_event_pair('time_get_delta_mat', start_evt_ed, end_evt_ed)
 
             glob_set.store_delta(globVR.delta_key, self.layer_idx, key_delta_all, globVR.collect_delta_pf_key)
             blk_size = round(q_len*globVR.scale)
@@ -1079,8 +1108,9 @@ class BitNetAttention(nn.Module):
         if query_states.shape[2] > 1: 
             if globVR.delta_pf_key_on == 1:
                 if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_mm_start = time.time()
+                    start_evt_mm = torch.cuda.Event(enable_timing=True)
+                    end_evt_mm = torch.cuda.Event(enable_timing=True)
+                    start_evt_mm.record()
 
                 attn_weights= None
                 if globVR.delta_type== "row":
@@ -1092,22 +1122,21 @@ class BitNetAttention(nn.Module):
 
                 attn_weights.mul_(self.scaling)
                 if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_mm_end = time.time()
-                    glob_set.update_latency('time_delta_mm_pattern', t_mm_end - t_mm_start)
+                    end_evt_mm.record()
+                    glob_set.queue_event_pair('time_delta_mm_pattern', start_evt_mm, end_evt_mm)
             else:
                 # --- PATCH APPLIED HERE ---
                 if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_mm_start = time.time()
+                    start_evt_reg = torch.cuda.Event(enable_timing=True)
+                    end_evt_reg = torch.cuda.Event(enable_timing=True)
+                    start_evt_reg.record()
                 
                 attn_weights = torch.matmul(query_states, key_states.transpose(2, 3))
                 attn_weights.mul_(self.scaling)
 
                 if getattr(globVR, 'time_internal', False):
-                    torch.cuda.synchronize()
-                    t_mm_end = time.time()
-                    glob_set.update_latency('time_regular_matmul', t_mm_end - t_mm_start)
+                    end_evt_reg.record()
+                    glob_set.queue_event_pair('time_regular_matmul', start_evt_reg, end_evt_reg)
         else:
             if globVR.delta_key_on == 1:
                 attn_weights = self.regular_delta_vm_window(query_states, key_delta_all.transpose(2,3), key_states.transpose(2,3), bsz, key_states.shape[2]) * self.scaling
@@ -1129,9 +1158,8 @@ class BitNetAttention(nn.Module):
         attn_output = self.o_proj(attn_output)
 
         if getattr(globVR, 'time_internal', False):
-            torch.cuda.synchronize()
-            t_forward_end = time.time()
-            glob_set.update_latency('time_forward_total', t_forward_end - t_forward_start)
+            end_evt_forward.record()
+            glob_set.queue_event_pair('time_forward_total', start_evt_forward, end_evt_forward)
         return attn_output, attn_weights
 
 class BitNetDecoderLayer(GradientCheckpointingLayer):

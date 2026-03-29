@@ -15,6 +15,7 @@ from datetime import datetime
 # ==========================================
 
 import globVR
+import glob_set
 import lm_eval.api.registry
 from lm_eval.evaluator import simple_evaluate
 from transformers import AutoConfig, AutoModelForCausalLM
@@ -350,6 +351,7 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     # Reset Global Trackers for a clean run
     if hasattr(globVR, 'spars'): globVR.spars = 0.0
     if hasattr(globVR, 'latency_stats'): globVR.latency_stats = {}
+    if hasattr(globVR, 'latency_events'): globVR.latency_events = []
     if hasattr(globVR, 'sequence_lengths'): globVR.sequence_lengths = []
     if hasattr(globVR, 'mlp_spars'): globVR.mlp_spars = 0.0
     if hasattr(globVR, 'mlp_spars_count'): globVR.mlp_spars_count = 0
@@ -371,6 +373,8 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     end_time = time.time()
     total_time = end_time - start_time
     print(f"    - Task '{task}' completed in {total_time:.2f} seconds.")
+    
+    glob_set.resolve_latency_events()
 
     # Process latency stats from globVR
     latency_breakdown = {}
