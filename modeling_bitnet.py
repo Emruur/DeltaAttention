@@ -949,6 +949,135 @@ class BitNetAttention(nn.Module):
         
         return output
 
+    def opt_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=None):
+        if keep_mask is not None:
+            counts = keep_mask.sum(dim=-1)
+            max_active = counts.max().item()
+
+            if max_active == 0:
+                delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
+            else:
+                if getattr(globVR, 'time_internal', False):
+                    start_evt_sm = torch.cuda.Event(enable_timing=True)
+                    end_evt_sm = torch.cuda.Event(enable_timing=True)
+                    start_evt_sm.record()
+
+                # --- 1. Get Active Indices ---
+                seq_idx = torch.arange(seq_len, dtype=torch.int32, device=keep_mask.device)
+                sort_keys = torch.where(keep_mask, seq_idx, seq_len)
+                active_indices = sort_keys.sort(dim=-1)[0][:, :, :max_active].to(torch.int32)
+
+                # ==========================================
+                # --- 2. TRITON GATHER & EXPAND ---
+                # ==========================================
+                if getattr(globVR, 'time_internal', False):
+                    start_evt_gather = torch.cuda.Event(enable_timing=True)
+                    end_evt_gather = torch.cuda.Event(enable_timing=True)
+                    start_evt_gather.record()
+
+                head_dim = delta_y.shape[2]
+                #k_packed_q = torch.empty((bsz, self.num_heads, head_dim, max_active), dtype=delta_y.dtype, device=delta_y.device)
+                k_packed_q = torch.empty((bsz, self.num_heads, head_dim, max_active + 1), dtype=delta_y.dtype, device=delta_y.device)
+                k_packed_q[..., 0] = 0.0
+                k_packed_view = k_packed_q[..., 1:]
+
+                BLOCK_D = triton.next_power_of_2(head_dim)
+                grid_gather = (bsz * self.num_heads, max_active)
+                
+                _triton_gather_expand[grid_gather](
+                    delta_y, active_indices, k_packed_view,
+                    delta_y.stride(0), delta_y.stride(1), delta_y.stride(2), delta_y.stride(3),
+                    active_indices.stride(0), active_indices.stride(1), active_indices.stride(2),
+                    k_packed_view.stride(0), k_packed_view.stride(1), k_packed_view.stride(2), k_packed_view.stride(3),
+                    self.num_heads, self.num_key_value_groups, seq_len, head_dim,
+                    BLOCK_D=BLOCK_D
+                )
+
+                if getattr(globVR, 'time_internal', False):
+                    end_evt_gather.record()
+                    glob_set.queue_event_pair('time_gather_expand', start_evt_gather, end_evt_gather)
+
+                # ==========================================
+                # --- 3. DENSE MATMUL [cuBLAS] ---
+                # ==========================================
+                if getattr(globVR, 'time_internal', False):
+                    start_evt_matmul = torch.cuda.Event(enable_timing=True)
+                    end_evt_matmul = torch.cuda.Event(enable_timing=True)
+                    start_evt_matmul.record()
+
+                scores_packed = torch.matmul(regular_x, k_packed_q)
+
+                if getattr(globVR, 'time_internal', False):
+                    end_evt_matmul.record()
+                    glob_set.queue_event_pair('time_dense_matmul', start_evt_matmul, end_evt_matmul)
+
+                # ==========================================
+                # --- 4. SMALL CUMSUM & ROUTING (NEW!) ---
+                # ==========================================
+                if getattr(globVR, 'time_internal', False):
+                    start_evt_cumsum = torch.cuda.Event(enable_timing=True)
+                    end_evt_cumsum = torch.cuda.Event(enable_timing=True)
+                    start_evt_cumsum.record()
+
+                packed_cumsum = torch.cumsum(padded_scores, dim=-1)
+
+                # Cumsum the boolean mask to create our O(1) routing index
+                cumsum_mask = torch.cumsum(keep_mask.to(torch.int32), dim=-1)
+
+                if getattr(globVR, 'time_internal', False):
+                    end_evt_cumsum.record()
+                    glob_set.queue_event_pair('time_small_cumsum', start_evt_cumsum, end_evt_cumsum)
+
+                # ==========================================
+                # --- 5. O(1) TRITON EXPAND (REPLACES SCATTER) ---
+                # ==========================================
+                if getattr(globVR, 'time_internal', False):
+                    start_evt_expand = torch.cuda.Event(enable_timing=True)
+                    end_evt_expand = torch.cuda.Event(enable_timing=True)
+                    start_evt_expand.record()
+
+                # Use empty instead of zeros to save 0.25ms of allocation time
+                delta_out = torch.empty(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
+                
+                BLOCK_Q = 64
+                BLOCK_K = 64
+                grid_expand = (bsz * self.num_heads, triton.cdiv(seq_len, BLOCK_Q), triton.cdiv(seq_len, BLOCK_K))
+                
+                _triton_expand_cumsum[grid_expand](
+                    packed_cumsum, cumsum_mask, delta_out,
+                    packed_cumsum.stride(0), packed_cumsum.stride(1), packed_cumsum.stride(2), packed_cumsum.stride(3),
+                    cumsum_mask.stride(0), cumsum_mask.stride(1), cumsum_mask.stride(2),
+                    delta_out.stride(0), delta_out.stride(1), delta_out.stride(2), delta_out.stride(3),
+                    self.num_heads, self.num_key_value_groups, seq_len, seq_len,
+                    BLOCK_Q=BLOCK_Q, BLOCK_K=BLOCK_K
+                )
+
+                if getattr(globVR, 'time_internal', False):
+                    end_evt_expand.record()
+                    glob_set.queue_event_pair('time_triton_expand', start_evt_expand, end_evt_expand)
+
+                if getattr(globVR, 'time_internal', False):
+                    end_evt_sm.record()
+                    glob_set.queue_event_pair('time_sparse_matmul_total', start_evt_sm, end_evt_sm)
+                                    
+        else:
+            delta_out = torch.cumsum(torch.matmul(regular_x, delta_y), dim=-1)
+
+        # ==========================================
+        # --- 6. PATCH HYBRID ATTENTION ---
+        # ==========================================
+        if getattr(globVR, 'time_internal', False):
+            start_evt_patch = torch.cuda.Event(enable_timing=True)
+            end_evt_patch = torch.cuda.Event(enable_timing=True)
+            start_evt_patch.record()
+
+        output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
+        
+        if getattr(globVR, 'time_internal', False):
+            end_evt_patch.record()
+            glob_set.queue_event_pair('time_patch_hybrid_attention', start_evt_patch, end_evt_patch)
+
+        return output
 
 
     def regular_delta_mm(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size):
@@ -1115,7 +1244,7 @@ class BitNetAttention(nn.Module):
                 attn_weights= None
                 if globVR.delta_type== "row":
                     #TODO
-                    attn_weights = self.regular_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to)
+                    attn_weights = self.opt_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to)
                 elif globVR.delta_type== "nm":
                     attn_weights = self.nm_regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
                 else:
