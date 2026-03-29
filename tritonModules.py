@@ -331,3 +331,51 @@ def _triton_expand_cumsum(
     # 3. Contiguous, coalesced store (No scattered writes!)
     out_ptrs = delta_out + b * stride_out_b + h * stride_out_h + offs_q[:, None] * stride_out_q + offs_k[None, :] * stride_out_k
     tl.store(out_ptrs, vals, mask=mask_load)
+
+
+
+@triton.jit
+def _triton_fused_expand_cumsum(
+    scores_ptr, mask_ptr, out_ptr,
+    stride_sb, stride_sh, stride_sq, stride_sk,
+    stride_mb, stride_mh, stride_mk,
+    stride_ob, stride_oh, stride_oq, stride_ok,
+    seq_len,
+    BLOCK_K: tl.constexpr
+):
+    # Grid is 2D: (batch * num_heads, seq_len)
+    bh_id = tl.program_id(0)
+    q_id = tl.program_id(1)
+
+    # Calculate row offsets
+    mask_row_offset = bh_id * stride_mh
+    score_row_offset = bh_id * stride_sh + q_id * stride_sq
+    out_row_offset = bh_id * stride_oh + q_id * stride_oq
+
+    # Setup block indices
+    k_offsets = tl.arange(0, BLOCK_K)
+    k_mask = k_offsets < seq_len
+
+    # 1. Load the boolean keep_mask for this batch/head
+    mask_ptrs = mask_ptr + mask_row_offset + k_offsets * stride_mk
+    keep_mask = tl.load(mask_ptrs, mask=k_mask, other=0)
+
+    # 2. Cumsum the mask to get routing indices 
+    # (Subtract 1 because indices are 0-based)
+    mask_ints = tl.where(keep_mask, 1, 0)
+    routing_indices = tl.cumsum(mask_ints, axis=0) - 1
+
+    # 3. Sparse Scatter Load
+    # We only read from scores_packed if keep_mask is True. Otherwise, load 0.0.
+    read_ptrs = scores_ptr + score_row_offset + routing_indices * stride_sk
+    valid_read_mask = k_mask & keep_mask
+    sparse_scores = tl.load(read_ptrs, mask=valid_read_mask, other=0.0)
+
+    # 4. The Magic Fused Cumsum
+    # Doing the cumsum on the sparse array perfectly replicates the PyTorch logic 
+    # entirely in ultra-fast SRAM!
+    final_scores = tl.cumsum(sparse_scores, axis=0)
+
+    # 5. Write to output
+    out_ptrs = out_ptr + out_row_offset + k_offsets * stride_ok
+    tl.store(out_ptrs, final_scores, mask=k_mask)
