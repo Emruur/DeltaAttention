@@ -1005,7 +1005,7 @@ class BitNetAttention(nn.Module):
                     end_evt_matmul = torch.cuda.Event(enable_timing=True)
                     start_evt_matmul.record()
 
-                scores_packed = torch.matmul(regular_x, k_packed_q)
+                packed_cumsum = torch.matmul(regular_x, k_packed_q)
 
                 if getattr(globVR, 'time_internal', False):
                     end_evt_matmul.record()
@@ -1019,7 +1019,7 @@ class BitNetAttention(nn.Module):
                     end_evt_cumsum = torch.cuda.Event(enable_timing=True)
                     start_evt_cumsum.record()
 
-                packed_cumsum = torch.cumsum(scores_packed, dim=-1)
+                packed_cumsum.cumsum_(dim=-1)
 
                 # Cumsum the boolean mask to create our O(1) routing index
                 cumsum_mask = torch.cumsum(keep_mask.to(torch.int32), dim=-1)
