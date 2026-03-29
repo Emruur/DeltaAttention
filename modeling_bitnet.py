@@ -61,7 +61,7 @@ if is_torch_flex_attn_available():
 import globVR
 import glob_set
 
-from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel, row_delta_euclidean_partitioned_kernel, _triton_gather_expand, _triton_expand_cumsum, opt_triton_expand_cumsum
+from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel, row_delta_euclidean_partitioned_kernel, _triton_gather_expand, _triton_expand_cumsum
 
 
 
