@@ -1015,6 +1015,7 @@ class BitNetAttention(nn.Module):
 
                 if globVR.divide_to == 1:
                     k_packed, cumsum_mask, active_counts = self.get_row_delta_mat_triton_unpartitioned(key_states, globVR.row_delta_threshold, globVR.row_similarity_metric)
+                    key_delta_all = k_packed # Fix the UnboundLocalError alias
                 else:
                     key_delta_all, keep_mask = self.get_row_delta_mat_triton(key_states, globVR.row_delta_threshold, globVR.row_similarity_metric, globVR.divide_to)
 
@@ -1049,7 +1050,7 @@ class BitNetAttention(nn.Module):
             glob_set.store_delta(globVR.delta_key, self.layer_idx, key_delta_all, globVR.collect_delta_pf_key)
             blk_size = round(q_len*globVR.scale)
             new_scale = blk_size/q_len
-            glob_set.compute_sparsity_scale(key_delta_all, new_scale, keep_mask= keep_mask)
+            glob_set.compute_sparsity_scale(key_delta_all, new_scale, keep_mask= keep_mask, active_counts= active_counts)
                 
 
             # Match the number of query heads for multi headed attention

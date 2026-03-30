@@ -141,14 +141,25 @@ def compute_sparsity(input,len,switch):
             # print(globVR.spars)
     return
 
-def compute_sparsity_scale(input, scale, keep_mask=None):
+def compute_sparsity_scale(input, scale, keep_mask=None, active_counts=None):
     # 1. Calculate the current sparsity ratio
-    if keep_mask is not None:
+    if active_counts is not None:
+        # FASTEST PATH (Unpartitioned Kernel): 
+        # We already counted the exact number of kept tokens!
+        # input shape is [bsz, n_head, seq_len, head_dim]. active_counts is [bsz, n_head].
+        total_tokens = input.shape[0] * input.shape[1] * input.shape[2] 
+        kept_tokens = active_counts.sum().item()
+        
+        current_spars = ((total_tokens - kept_tokens) / total_tokens) * (1 - scale)
+
+    elif keep_mask is not None:
+        # FAST PATH (Partitioned Kernel):
         # ~keep_mask inverts the boolean tensor (True becomes False).
-        # Summing it counts exactly how many rows/elements were dropped.
         current_spars = (torch.sum(~keep_mask).item() / keep_mask.numel()) * (1 - scale)
+        
     else:
-        # Fallback: scan the dense delta matrix for exact zeros
+        # SLOW FALLBACK (Legacy exact exact match): 
+        # scan the dense delta matrix for exact zeros
         current_spars = (torch.sum(input == 0).item() / input.numel()) * (1 - scale)
         
     # 2. Update the global moving average
