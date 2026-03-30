@@ -611,17 +611,32 @@ class BitNetAttention(nn.Module):
         return out
 
     def opt_packed_mm_pattern_dn(
-        self, k_packed, cumsum_mask, regular_x, regular_y, 
-        bsz, seq_len, dim_out, blk_size
-    ):
+    self, k_packed, cumsum_mask, active_counts, regular_x, regular_y, 
+    bsz, seq_len, dim_out, blk_size
+):
         """
         Streamlined Matrix Multiplication for pre-packed key matrices.
-        Bypasses Triton gather and CPU sorting.
+        Dynamically slices padding based on active_counts.
         """
         if getattr(globVR, 'time_internal', False):
             start_evt_sm = torch.cuda.Event(enable_timing=True)
             end_evt_sm = torch.cuda.Event(enable_timing=True)
             start_evt_sm.record()
+
+        # ==========================================
+        # --- 0. THE DYNAMIC SLICE ---
+        # ==========================================
+        # Find the maximum number of kept tokens in this specific batch
+        max_active = active_counts.max().item()
+
+        # Edge case: If the threshold was so high we dropped literally everything
+        if max_active == 0:
+            delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
+            return self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
+
+        # Slice off the padding! 
+        # k_packed goes from [B, H, 2048, D] -> [B, H, max_active, D]
+        k_packed_sliced = k_packed[:, :, :max_active, :]
 
         # ==========================================
         # --- 1. DENSE MATMUL [cuBLAS] ---
@@ -631,27 +646,26 @@ class BitNetAttention(nn.Module):
             end_evt_matmul = torch.cuda.Event(enable_timing=True)
             start_evt_matmul.record()
 
-        # --- THE FIX: Expand KV heads to match Query heads for GQA ---
-        # FIXME 
-        k_packed_repeated = repeat_kv(k_packed, self.num_key_value_groups)
+        # Expand KV heads to match Query heads for GQA
+        k_packed_repeated = repeat_kv(k_packed_sliced, self.num_key_value_groups)
         
-        # Now torch.matmul sees 20 heads vs 20 heads and executes perfectly
-        packed_cumsum = torch.matmul(regular_x, k_packed_repeated.transpose(-1, -2))
+        # MatMul Output is now [B, H, 2048, max_active] instead of 2048x2048!
+        packed_scores = torch.matmul(regular_x, k_packed_repeated.transpose(-1, -2))
 
         if getattr(globVR, 'time_internal', False):
             end_evt_matmul.record()
             glob_set.queue_event_pair('time_dense_matmul', start_evt_matmul, end_evt_matmul)
 
         # ==========================================
-        # --- 2. SMALL CUMSUM ---
+        # --- 2. THE (ACTUALLY) SMALL CUMSUM ---
         # ==========================================
         if getattr(globVR, 'time_internal', False):
             start_evt_cumsum = torch.cuda.Event(enable_timing=True)
             end_evt_cumsum = torch.cuda.Event(enable_timing=True)
             start_evt_cumsum.record()
 
-        # We only need to cumsum the scores; the routing mask is already done!
-        packed_cumsum.cumsum_(dim=-1)
+        # Now this only runs across `max_active` elements per row!
+        packed_scores.cumsum_(dim=-1)
 
         if getattr(globVR, 'time_internal', False):
             end_evt_cumsum.record()
@@ -672,8 +686,8 @@ class BitNetAttention(nn.Module):
         grid_expand = (bsz * self.num_heads, triton.cdiv(seq_len, BLOCK_Q), triton.cdiv(seq_len, BLOCK_K))
         
         _triton_expand_cumsum[grid_expand](
-            packed_cumsum, cumsum_mask, delta_out,
-            packed_cumsum.stride(0), packed_cumsum.stride(1), packed_cumsum.stride(2), packed_cumsum.stride(3),
+            packed_scores, cumsum_mask, delta_out,
+            packed_scores.stride(0), packed_scores.stride(1), packed_scores.stride(2), packed_scores.stride(3),
             cumsum_mask.stride(0), cumsum_mask.stride(1), cumsum_mask.stride(2),
             delta_out.stride(0), delta_out.stride(1), delta_out.stride(2), delta_out.stride(3),
             self.num_heads, self.num_key_value_groups, seq_len, seq_len,
@@ -694,7 +708,7 @@ class BitNetAttention(nn.Module):
         output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
         
         return output
-
+    
     def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=4):
         
         delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, 
@@ -1077,7 +1091,7 @@ class BitNetAttention(nn.Module):
                 if globVR.delta_type== "row":
                     # Row delta attention computation
                     if globVR.divide_to == 1:
-                        attn_weights = self.opt_packed_mm_pattern_dn(k_packed, cumsum_mask, query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
+                        attn_weights = self.opt_packed_mm_pattern_dn(k_packed, cumsum_mask, active_counts,query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
                     else:
                         attn_weights = self.opt_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to)
 
