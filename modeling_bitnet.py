@@ -1042,6 +1042,8 @@ class BitNetAttention(nn.Module):
         bsz, q_len, _ = hidden_states.size()
 
         keep_mask = None
+        active_counts = None   # <-- Add this!
+        chunk_counts = None    # <-- Add this just to be safe!
 
         ## (1) DELTA MATRIX CALCULATION
         if query_states.shape[2] > 1 and globVR.delta_pf_key_on == 1:
