@@ -29,13 +29,16 @@ def fused_row_delta_pack_kernel(
     ptrs_0 = in_seq_ptr + 0 * stride_in_s + offs_d * stride_in_d
     ref_state = tl.load(ptrs_0, mask=mask_d, other=0.0)
     
-    # Write Token 0 to the first slot of the packed tensor
+    # Write Token 0 to the first slot (index 0)
     packed_ptrs_0 = packed_seq_ptr + 0 * stride_pd_a + offs_d * stride_pd_d
     tl.store(packed_ptrs_0, ref_state, mask=mask_d)
     
-    # Token 0 is always kept, so the running count starts at 1
-    active_idx = 1
+    # Token 0 is at index 0, so its routing mask is 0.
+    active_idx = 0
     tl.store(cm_seq_ptr + 0 * stride_cm_s, active_idx) 
+    
+    # Now increment because the NEXT kept token belongs in slot 1
+    active_idx += 1 
     
     # --- TEMPORAL LOOP ---
     for i in range(1, seq_len):
@@ -47,18 +50,20 @@ def fused_row_delta_pack_kernel(
         
         should_keep = sq_dist > threshold_sq
         
-        # If we keep it, pack it tightly using active_idx
         if should_keep:
+            # active_idx points to the next available slot
             curr_packed_ptrs = packed_seq_ptr + active_idx * stride_pd_a + offs_d * stride_pd_d
             tl.store(curr_packed_ptrs, diff, mask=mask_d)
             ref_state = curr_state
-            active_idx += 1
             
-        # Write the current active_idx to the cumsum_mask. 
-        # This completely replaces the PyTorch torch.cumsum() step!
-        tl.store(cm_seq_ptr + i * stride_cm_s, active_idx)
-        
-    # Finally, store the total number of active keys for this head
+            # Store the index we JUST wrote to, then increment
+            tl.store(cm_seq_ptr + i * stride_cm_s, active_idx)
+            active_idx += 1
+        else:
+            # If we skip, route this token's answer to the PREVIOUS kept token
+            tl.store(cm_seq_ptr + i * stride_cm_s, active_idx - 1)
+            
+    # The total count of active tokens is still exactly active_idx
     count_ptr = counts_ptr + pid_b * stride_c_b + pid_h * stride_c_h
     tl.store(count_ptr, active_idx)
 
