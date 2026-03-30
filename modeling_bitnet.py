@@ -457,7 +457,7 @@ class BitNetAttention(nn.Module):
             threshold_sq = threshold ** 2
             
             # Grid: 1D grid over Batch * Heads (No sequence partitioning!)
-            grid = (bsz ,bug fixn_head)
+            grid = (bsz ,n_head)
             
             # Launch the fused kernel we drafted earlier
             fused_row_delta_pack_kernel[grid](
