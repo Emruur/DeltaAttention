@@ -61,7 +61,7 @@ if is_torch_flex_attn_available():
 import globVR
 import glob_set
 
-from tritonModules import row_delta_euclidean_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel, row_delta_euclidean_partitioned_kernel, _triton_gather_expand, _triton_expand_cumsum
+from tritonModules import fused_row_delta_pack_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel, row_delta_euclidean_partitioned_kernel, _triton_gather_expand, _triton_expand_cumsum
 
 
 
@@ -396,195 +396,7 @@ class BitNetAttention(nn.Module):
             input_old = torch.where(delta_mask, input_old, input_new)
         
         return delta_all
-
-    def get_row_delta_mat(self, input_states, threshold, similarity_metric="cosine"):
-        """
-        Computes a row-wise (structured) delta matrix and a keep-mask.
-        OPTIMIZED FOR SPEED: Does not zero-out skipped rows.
-        """
-        bsz, n_head, seq_len, head_dim = input_states.shape
-        device = input_states.device
-        
-        # 1. OPTIMIZATION: Use empty_like to skip the massive zero-initialization overhead
-        delta_all = torch.empty_like(input_states)
-        
-        # Initialize the Boolean Map
-        keep_mask = torch.zeros((bsz, n_head, seq_len), dtype=torch.bool, device=device)
-        
-        # --- FIRST TOKEN HANDLING ---
-        delta_all[:, :, 0, :] = input_states[:, :, 0, :]
-        keep_mask[:, :, 0] = True
-        
-        # Initialize reference states
-        ref_states = input_states[:, :, 0, :].clone() 
-
-        for n in range(1, seq_len):
-            current_row = input_states[:, :, n, :]
-            
-            # --- METRIC CALCULATION ---
-            # Directly calculating `should_keep` to avoid extra NOT operations
-            if similarity_metric == "cosine":
-                sim = torch.nn.functional.cosine_similarity(current_row, ref_states, dim=-1)
-                should_keep = sim < threshold
-                
-            elif similarity_metric == "euclidean":
-                # OPTIMIZATION: Squared distance is much faster than torch.norm (which does a sqrt)
-                sq_dist = torch.sum((current_row - ref_states) ** 2, dim=-1)
-                should_keep = sq_dist > (threshold ** 2)
-                
-            elif similarity_metric == "l1":
-                dist = torch.norm(current_row - ref_states, p=1, dim=-1)
-                should_keep = dist > threshold
-                
-            elif similarity_metric == "max":
-                dist = torch.max(torch.abs(current_row - ref_states), dim=-1)[0]
-                should_keep = dist > threshold
-
-            elif similarity_metric == "kl":
-                p = torch.nn.functional.softmax(current_row, dim=-1)
-                q = torch.nn.functional.softmax(ref_states, dim=-1)
-                kl_div = torch.sum(p * (torch.log(p + 1e-10) - torch.log(q + 1e-10)), dim=-1)
-                should_keep = kl_div > threshold
-                
-            else:
-                raise ValueError(f"Unknown metric: {similarity_metric}")
-
-            # --- MASK GENERATION ---
-            keep_mask[:, :, n] = should_keep
-
-            # --- DELTA CALCULATION ---
-            # OPTIMIZATION: Unconditionally write the delta. 
-            # We removed torch.where() and torch.zeros_like().
-            delta_all[:, :, n, :] = current_row - ref_states
-            
-            # --- REFERENCE UPDATE ---
-            # Update reference ONLY if the row was significant enough to be kept
-            mask_broadcast = should_keep.unsqueeze(-1)
-            ref_states = torch.where(mask_broadcast, current_row, ref_states)
-            
-        return delta_all, keep_mask
     
-    def get_row_delta_mat_fast(self, input_states, threshold, similarity_metric="cosine"):
-        bsz, n_head, seq_len, head_dim = input_states.shape
-        device = input_states.device
-        
-        # Pre-allocate mask
-        keep_mask = torch.zeros((bsz, n_head, seq_len), dtype=torch.bool, device=device)
-        keep_mask[:, :, 0] = True
-        
-        # List accumulation for Eager Mode speed
-        delta_list = [input_states[:, :, 0, :]]
-        ref_states = input_states[:, :, 0, :].clone() 
-
-        # Pre-compute threshold for euclidean to avoid squaring in the loop
-        thresh_sq = threshold ** 2 if similarity_metric == "euclidean" else None
-
-        for n in range(1, seq_len):
-            current_row = input_states[:, :, n, :]
-            
-            # Compute diff ONCE. We use this for the delta list, and for L1/Max/Euclidean metrics.
-            diff = current_row - ref_states
-            
-            # --- METRIC CALCULATION ---
-            if similarity_metric == "cosine":
-                sim = torch.nn.functional.cosine_similarity(current_row, ref_states, dim=-1)
-                should_keep = sim < threshold
-                
-            elif similarity_metric == "euclidean":
-                # Reusing 'diff', and doing element-wise multiplication instead of **2
-                sq_dist = torch.sum(diff * diff, dim=-1)
-                should_keep = sq_dist > thresh_sq
-                
-            elif similarity_metric == "l1":
-                # Reusing 'diff', and using sum(abs) which is generally faster than torch.norm
-                dist = torch.sum(torch.abs(diff), dim=-1)
-                should_keep = dist > threshold
-                
-            elif similarity_metric == "max":
-                # Reusing 'diff'
-                dist = torch.max(torch.abs(diff), dim=-1)[0]
-                should_keep = dist > threshold
-
-            elif similarity_metric == "kl":
-                p = torch.nn.functional.softmax(current_row, dim=-1)
-                q = torch.nn.functional.softmax(ref_states, dim=-1)
-                kl_div = torch.sum(p * (torch.log(p + 1e-10) - torch.log(q + 1e-10)), dim=-1)
-                should_keep = kl_div > threshold
-                
-            else:
-                raise ValueError(f"Unknown metric: {similarity_metric}")
-
-            # --- MASK & DELTA ---
-            keep_mask[:, :, n] = should_keep
-            delta_list.append(diff)
-            
-            # --- REFERENCE UPDATE ---
-            ref_states = torch.where(should_keep.unsqueeze(-1), current_row, ref_states)
-            
-        # Combine efficiently at the end
-        delta_all = torch.stack(delta_list, dim=2)
-        
-        return delta_all, keep_mask
-    def get_nm_delta_mat(self, input_states, thresh):
-            """
-            Computes the temporal delta matrix and strictly enforces 2:4 structured sparsity.
-            Every contiguous block of 4 elements in the head_dim will have at most 2 non-zero values.
-            """
-            bsz, n_head, seq_len, head_dim = input_states.shape
-            device = input_states.device
-            
-            # Ensure head_dim is divisible by 4 for 2:4 sparsity
-            if head_dim % 4 != 0:
-                raise ValueError(f"head_dim ({head_dim}) must be a multiple of 4 for 2:4 sparsity.")
-
-            # --- 1. Compute Temporal Delta ---
-            # Pre-allocate for speed to avoid concatenating in a loop
-            delta_all = torch.empty_like(input_states)
-            delta_all[:, :, 0, :] = input_states[:, :, 0, :]
-            
-            input_old = input_states[:, :, 0:1, :].clone()
-
-            for n in range(1, seq_len):
-                input_new = input_states[:, :, n:n+1, :]
-                sub = input_new - input_old
-                
-                # Identify values below the temporal threshold
-                delta_mask = sub.abs() <= thresh
-                delta_row = sub.masked_fill(delta_mask, 0.0)
-                
-                # Assign to the pre-allocated tensor (squeeze seq_len dim which is 1)
-                delta_all[:, :, n, :] = delta_row.squeeze(2) 
-                
-                # Update reference state only where the threshold was exceeded
-                input_old = torch.where(delta_mask, input_old, input_new)
-
-            # --- 2. Enforce 2:4 Structured Sparsity ---
-            # Reshape the last dimension into chunks of 4
-            # Shape becomes: (bsz, n_head, seq_len, head_dim // 4, 4)
-            delta_reshaped = delta_all.view(bsz, n_head, seq_len, -1, 4)
-            
-            # Find the 2 largest absolute values in each chunk of 4
-            # topk_indices will have shape: (bsz, n_head, seq_len, head_dim // 4, 2)
-            _, topk_indices = torch.topk(delta_reshaped.abs(), k=2, dim=-1)
-            
-            # Create a boolean mask of the same shape as delta_reshaped
-            mask_reshaped = torch.zeros_like(delta_reshaped, dtype=torch.bool, device=device)
-            
-            # Scatter 'True' into the positions of the top 2 values
-            mask_reshaped.scatter_(
-                dim=-1, 
-                index=topk_indices, 
-                src=torch.ones_like(topk_indices, dtype=torch.bool)
-            )
-            
-            # Apply the 2:4 mask (zero out the smallest 2 values per chunk)
-            delta_nm = delta_reshaped.masked_fill(~mask_reshaped, 0.0)
-            
-            # Flatten back to the original shape: (bsz, n_head, seq_len, head_dim)
-            delta_nm = delta_nm.view(bsz, n_head, seq_len, head_dim)
-            
-            return delta_nm
-
     def get_nm_delta_mat_triton(self, input_states, thresh):
         """
         Computes the temporal delta matrix and strictly enforces 2:4 structured sparsity.
@@ -616,6 +428,56 @@ class BitNetAttention(nn.Module):
 
         return delta_out
 
+
+    def get_row_delta_mat_triton_unpartitioned(self, input_states, threshold, similarity_metric="euclidean"):
+        """
+        Fused temporal delta and memory packing kernel.
+        Only valid when processing the entire sequence sequentially (divide_to=1).
+        """
+        bsz, n_head, seq_len, head_dim = input_states.shape
+        device = input_states.device
+        
+        if not input_states.is_contiguous():
+            input_states = input_states.contiguous()
+
+        # 1. Pre-allocate outputs
+        # Packed delta is the same size, but all valid data will be shoved to the left (dim 2)
+        packed_delta_all = torch.zeros_like(input_states) 
+        
+        # Cumsum mask replaces the boolean keep_mask. It tracks the running active_idx
+        cumsum_mask = torch.zeros((bsz, n_head, seq_len), dtype=torch.int32, device=device)
+        
+        # We need to know exactly how many tokens were kept per batch/head
+        counts = torch.zeros((bsz, n_head), dtype=torch.int32, device=device)
+        
+        # 2. Setup Triton launch parameters
+        BLOCK_D = triton.next_power_of_2(head_dim)
+        
+        if similarity_metric == "euclidean":
+            threshold_sq = threshold ** 2
+            
+            # Grid: 1D grid over Batch * Heads (No sequence partitioning!)
+            grid = (bsz * n_head, 1)
+            
+            # Launch the fused kernel we drafted earlier
+            fused_row_delta_pack_kernel[grid](
+                input_states, packed_delta_all, cumsum_mask, counts,
+                threshold_sq,
+                # Input strides
+                input_states.stride(0), input_states.stride(1), input_states.stride(2), input_states.stride(3),
+                # Packed Delta strides
+                packed_delta_all.stride(0), packed_delta_all.stride(1), packed_delta_all.stride(2), packed_delta_all.stride(3),
+                # Cumsum strides
+                cumsum_mask.stride(0), cumsum_mask.stride(1), cumsum_mask.stride(2),
+                # Counts strides
+                counts.stride(0), counts.stride(1),
+                seq_len, head_dim,
+                BLOCK_D=BLOCK_D
+            )
+        else:
+            raise NotImplementedError(f"Fused kernel for '{similarity_metric}' is not yet implemented.")
+            
+        return packed_delta_all, cumsum_mask, counts
 
     #TODO working on
     def get_row_delta_mat_triton(self, input_states, threshold, similarity_metric="euclidean",divide_to = 4):
@@ -748,133 +610,85 @@ class BitNetAttention(nn.Module):
 
         return out
 
-    def regular_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=None):
-        if keep_mask is not None:
-            counts = keep_mask.sum(dim=-1)
-            max_active = counts.max().item()
-
-            if max_active == 0:
-                delta_out = torch.zeros(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
-            else:
-                if getattr(globVR, 'time_internal', False):
-                    start_evt_sm = torch.cuda.Event(enable_timing=True)
-                    end_evt_sm = torch.cuda.Event(enable_timing=True)
-                    start_evt_sm.record()
-
-                # --- 1. Get Active Indices ---
-                seq_idx = torch.arange(seq_len, dtype=torch.int32, device=keep_mask.device)
-                sort_keys = torch.where(keep_mask, seq_idx, seq_len)
-                active_indices = sort_keys.sort(dim=-1)[0][:, :, :max_active].to(torch.int32)
-
-                # ==========================================
-                # --- 2. TRITON GATHER & EXPAND ---
-                # ==========================================
-                if getattr(globVR, 'time_internal', False):
-                    start_evt_gather = torch.cuda.Event(enable_timing=True)
-                    end_evt_gather = torch.cuda.Event(enable_timing=True)
-                    start_evt_gather.record()
-
-                head_dim = delta_y.shape[2]
-                k_packed_q = torch.empty((bsz, self.num_heads, head_dim, max_active), dtype=delta_y.dtype, device=delta_y.device)
-                
-                BLOCK_D = triton.next_power_of_2(head_dim)
-                grid_gather = (bsz * self.num_heads, max_active)
-                
-                _triton_gather_expand[grid_gather](
-                    delta_y, active_indices, k_packed_q,
-                    delta_y.stride(0), delta_y.stride(1), delta_y.stride(2), delta_y.stride(3),
-                    active_indices.stride(0), active_indices.stride(1), active_indices.stride(2),
-                    k_packed_q.stride(0), k_packed_q.stride(1), k_packed_q.stride(2), k_packed_q.stride(3),
-                    self.num_heads, self.num_key_value_groups, seq_len, head_dim,
-                    BLOCK_D=BLOCK_D
-                )
-
-                if getattr(globVR, 'time_internal', False):
-                    end_evt_gather.record()
-                    glob_set.queue_event_pair('time_gather_expand', start_evt_gather, end_evt_gather)
-
-                # ==========================================
-                # --- 3. DENSE MATMUL [cuBLAS] ---
-                # ==========================================
-                if getattr(globVR, 'time_internal', False):
-                    start_evt_matmul = torch.cuda.Event(enable_timing=True)
-                    end_evt_matmul = torch.cuda.Event(enable_timing=True)
-                    start_evt_matmul.record()
-
-                scores_packed = torch.matmul(regular_x, k_packed_q)
-
-                if getattr(globVR, 'time_internal', False):
-                    end_evt_matmul.record()
-                    glob_set.queue_event_pair('time_dense_matmul', start_evt_matmul, end_evt_matmul)
-
-                # ==========================================
-                # --- 4. SMALL CUMSUM & ROUTING (NEW!) ---
-                # ==========================================
-                if getattr(globVR, 'time_internal', False):
-                    start_evt_cumsum = torch.cuda.Event(enable_timing=True)
-                    end_evt_cumsum = torch.cuda.Event(enable_timing=True)
-                    start_evt_cumsum.record()
-
-                # Pad the active scores with a zero column on the left and cumsum
-                padded_scores = torch.nn.functional.pad(scores_packed, (1, 0))
-                packed_cumsum = torch.cumsum(padded_scores, dim=-1)
-
-                # Cumsum the boolean mask to create our O(1) routing index
-                cumsum_mask = torch.cumsum(keep_mask.to(torch.int32), dim=-1)
-
-                if getattr(globVR, 'time_internal', False):
-                    end_evt_cumsum.record()
-                    glob_set.queue_event_pair('time_small_cumsum', start_evt_cumsum, end_evt_cumsum)
-
-                # ==========================================
-                # --- 5. O(1) TRITON EXPAND (REPLACES SCATTER) ---
-                # ==========================================
-                if getattr(globVR, 'time_internal', False):
-                    start_evt_expand = torch.cuda.Event(enable_timing=True)
-                    end_evt_expand = torch.cuda.Event(enable_timing=True)
-                    start_evt_expand.record()
-
-                # Use empty instead of zeros to save 0.25ms of allocation time
-                delta_out = torch.empty(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
-                
-                BLOCK_Q = 64
-                BLOCK_K = 64
-                grid_expand = (bsz * self.num_heads, triton.cdiv(seq_len, BLOCK_Q), triton.cdiv(seq_len, BLOCK_K))
-                
-                _triton_expand_cumsum[grid_expand](
-                    packed_cumsum, cumsum_mask, delta_out,
-                    packed_cumsum.stride(0), packed_cumsum.stride(1), packed_cumsum.stride(2), packed_cumsum.stride(3),
-                    cumsum_mask.stride(0), cumsum_mask.stride(1), cumsum_mask.stride(2),
-                    delta_out.stride(0), delta_out.stride(1), delta_out.stride(2), delta_out.stride(3),
-                    self.num_heads, self.num_key_value_groups, seq_len, seq_len,
-                    BLOCK_Q=BLOCK_Q, BLOCK_K=BLOCK_K
-                )
-
-                if getattr(globVR, 'time_internal', False):
-                    end_evt_expand.record()
-                    glob_set.queue_event_pair('time_triton_expand', start_evt_expand, end_evt_expand)
-
-                if getattr(globVR, 'time_internal', False):
-                    end_evt_sm.record()
-                    glob_set.queue_event_pair('time_sparse_matmul_total', start_evt_sm, end_evt_sm)
-                                    
-        else:
-            delta_out = torch.cumsum(torch.matmul(regular_x, delta_y), dim=-1)
+    def opt_packed_mm_pattern_dn(
+        self, k_packed, cumsum_mask, regular_x, regular_y, 
+        bsz, seq_len, dim_out, blk_size
+    ):
+        """
+        Streamlined Matrix Multiplication for pre-packed key matrices.
+        Bypasses Triton gather and CPU sorting.
+        """
+        if getattr(globVR, 'time_internal', False):
+            start_evt_sm = torch.cuda.Event(enable_timing=True)
+            end_evt_sm = torch.cuda.Event(enable_timing=True)
+            start_evt_sm.record()
 
         # ==========================================
-        # --- 6. PATCH HYBRID ATTENTION ---
+        # --- 1. DENSE MATMUL [cuBLAS] ---
+        # ==========================================
+        # k_packed comes in as [B, H, L, D]. We transpose it to [B, H, D, L] for matmul
+        if getattr(globVR, 'time_internal', False):
+            start_evt_matmul = torch.cuda.Event(enable_timing=True)
+            end_evt_matmul = torch.cuda.Event(enable_timing=True)
+            start_evt_matmul.record()
+
+        packed_cumsum = torch.matmul(regular_x, k_packed.transpose(-1, -2))
+
+        if getattr(globVR, 'time_internal', False):
+            end_evt_matmul.record()
+            glob_set.queue_event_pair('time_dense_matmul', start_evt_matmul, end_evt_matmul)
+
+        # ==========================================
+        # --- 2. SMALL CUMSUM ---
         # ==========================================
         if getattr(globVR, 'time_internal', False):
-            start_evt_patch = torch.cuda.Event(enable_timing=True)
-            end_evt_patch = torch.cuda.Event(enable_timing=True)
-            start_evt_patch.record()
+            start_evt_cumsum = torch.cuda.Event(enable_timing=True)
+            end_evt_cumsum = torch.cuda.Event(enable_timing=True)
+            start_evt_cumsum.record()
 
+        # We only need to cumsum the scores; the routing mask is already done!
+        packed_cumsum.cumsum_(dim=-1)
+
+        if getattr(globVR, 'time_internal', False):
+            end_evt_cumsum.record()
+            glob_set.queue_event_pair('time_small_cumsum', start_evt_cumsum, end_evt_cumsum)
+
+        # ==========================================
+        # --- 3. O(1) TRITON EXPAND ---
+        # ==========================================
+        if getattr(globVR, 'time_internal', False):
+            start_evt_expand = torch.cuda.Event(enable_timing=True)
+            end_evt_expand = torch.cuda.Event(enable_timing=True)
+            start_evt_expand.record()
+
+        delta_out = torch.empty(bsz, self.num_heads, seq_len, seq_len, dtype=regular_x.dtype, device=regular_x.device)
+        
+        BLOCK_Q = 64
+        BLOCK_K = 64
+        grid_expand = (bsz * self.num_heads, triton.cdiv(seq_len, BLOCK_Q), triton.cdiv(seq_len, BLOCK_K))
+        
+        _triton_expand_cumsum[grid_expand](
+            packed_cumsum, cumsum_mask, delta_out,
+            packed_cumsum.stride(0), packed_cumsum.stride(1), packed_cumsum.stride(2), packed_cumsum.stride(3),
+            cumsum_mask.stride(0), cumsum_mask.stride(1), cumsum_mask.stride(2),
+            delta_out.stride(0), delta_out.stride(1), delta_out.stride(2), delta_out.stride(3),
+            self.num_heads, self.num_key_value_groups, seq_len, seq_len,
+            BLOCK_Q=BLOCK_Q, BLOCK_K=BLOCK_K
+        )
+
+        if getattr(globVR, 'time_internal', False):
+            end_evt_expand.record()
+            glob_set.queue_event_pair('time_triton_expand', start_evt_expand, end_evt_expand)
+
+        if getattr(globVR, 'time_internal', False):
+            end_evt_sm.record()
+            glob_set.queue_event_pair('time_sparse_matmul_total', start_evt_sm, end_evt_sm)
+
+        # ==========================================
+        # --- 4. PATCH HYBRID ATTENTION ---
+        # ==========================================
         output = self._patch_hybrid_attention(delta_out, regular_x, regular_y, bsz, seq_len, blk_size)
         
-        if getattr(globVR, 'time_internal', False):
-            end_evt_patch.record()
-            glob_set.queue_event_pair('time_patch_hybrid_attention', start_evt_patch, end_evt_patch)
-
         return output
 
     def triton_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=4):
@@ -1166,9 +980,13 @@ class BitNetAttention(nn.Module):
             end_evt_forward = torch.cuda.Event(enable_timing=True)
             start_evt_forward.record()
 
+        ## input_shape grabs the (batch_size, sequence_length) from the input tensor.
+        ## hidden_shape defines the target shape for multi-head attention: (batch_size, sequence_length, num_heads, head_dim)
         input_shape = hidden_states.shape[:-1]
         hidden_shape = (*input_shape, -1, self.head_dim)
 
+        ## Project the hidden state to the query, key, and value tensors using linear layers.
+        ## Reshape the key and queries to get (batch_size, sequence_length, num_heads, head_dim) for MHA
         query_states = self.q_proj(hidden_states).view(hidden_shape).transpose(1, 2)
         key_states = self.k_proj(hidden_states).view(hidden_shape).transpose(1, 2)
         value_states = self.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
@@ -1176,6 +994,7 @@ class BitNetAttention(nn.Module):
         cos, sin = position_embeddings
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
+        ## If decoding update and fetch the KV cache 
         if past_key_value is not None:
             cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
             key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
@@ -1184,6 +1003,7 @@ class BitNetAttention(nn.Module):
 
         keep_mask = None
 
+        ## (1) DELTA MATRIX CALCULATION
         if query_states.shape[2] > 1 and globVR.delta_pf_key_on == 1:
             if globVR.delta_type == "row": 
                 if getattr(globVR, 'time_internal', False):
@@ -1191,7 +1011,12 @@ class BitNetAttention(nn.Module):
                     end_evt_rd = torch.cuda.Event(enable_timing=True)
                     start_evt_rd.record()
 
-                key_delta_all, keep_mask = self.get_row_delta_mat_triton(key_states, globVR.row_delta_threshold, globVR.row_similarity_metric, globVR.divide_to)
+                ## geenrate the key delta matrix
+
+                if globVR.divide_to == 1:
+                    k_packed, cumsum_mask, active_counts = self.get_row_delta_mat_triton_unpartitioned(key_states, globVR.row_delta_threshold, globVR.row_similarity_metric)
+                else:
+                    key_delta_all, keep_mask = self.get_row_delta_mat_triton(key_states, globVR.row_delta_threshold, globVR.row_similarity_metric, globVR.divide_to)
 
                 if getattr(globVR, 'time_internal', False):
                     end_evt_rd.record()
@@ -1226,6 +1051,8 @@ class BitNetAttention(nn.Module):
             new_scale = blk_size/q_len
             glob_set.compute_sparsity_scale(key_delta_all, new_scale, keep_mask= keep_mask)
                 
+
+            # Match the number of query heads for multi headed attention
             if globVR.delta_type != "row":
                 key_delta_all = repeat_kv(key_delta_all, self.num_key_value_groups)
         
@@ -1233,7 +1060,7 @@ class BitNetAttention(nn.Module):
         key_states = repeat_kv(key_states, self.num_key_value_groups) 
         value_states = repeat_kv(value_states, self.num_key_value_groups)
 
-
+        ## (2) Attention CALCULATION
         if query_states.shape[2] > 1: 
             if globVR.delta_pf_key_on == 1:
                 if getattr(globVR, 'time_internal', False):
@@ -1243,8 +1070,12 @@ class BitNetAttention(nn.Module):
 
                 attn_weights= None
                 if globVR.delta_type== "row":
-                    #TODO
-                    attn_weights = self.opt_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to)
+                    # Row delta attention computation
+                    if globVR.divide_to == 1:
+                        attn_weights = self.opt_packed_mm_pattern_dn(k_packed, cumsum_mask, query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
+                    else:
+                        attn_weights = self.opt_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to)
+
                 elif globVR.delta_type== "nm":
                     attn_weights = self.nm_regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
                 else:
@@ -1273,6 +1104,7 @@ class BitNetAttention(nn.Module):
             else:
                 attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) * self.scaling
         
+        ## (3) Softmax 
         if attention_mask is not None:
             causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
             attn_weights.add_(causal_mask)
@@ -1281,9 +1113,14 @@ class BitNetAttention(nn.Module):
         attn_weights = nn.functional.dropout(attn_weights, p=0.0, training=self.training)
 
         attn_output = torch.matmul(attn_weights, value_states)
+
+         # We are grouping all the data for a specific token together. Before this, the data was grouped by the "head." 
+        # Now, if you look at token #1 in the sequence, you'll see the outputs from Head 1, Head 2, Head 3, etc., lined up right next to each other.
         attn_output = attn_output.transpose(1, 2).contiguous()
 
+        ## we divided the hidden size for multiple attention heads. now we append those together to get the final hidden state
         attn_output = attn_output.reshape(*input_shape, -1).contiguous()
+
         attn_output = self.attn_sub_norm(attn_output) 
         attn_output = self.o_proj(attn_output)
 

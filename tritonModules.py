@@ -4,6 +4,65 @@ import triton
 import triton.language as tl
 
 @triton.jit
+def fused_row_delta_pack_kernel(
+    in_ptr, packed_delta_ptr, cumsum_mask_ptr, counts_ptr, # Pointers
+    threshold_sq,                                          # Pre-squared threshold
+    stride_in_b, stride_in_h, stride_in_s, stride_in_d,    # Input strides
+    stride_pd_b, stride_pd_h, stride_pd_a, stride_pd_d,    # Packed Delta strides
+    stride_cm_b, stride_cm_h, stride_cm_s,                 # Cumsum Mask strides
+    stride_c_b, stride_c_h,                                # Counts strides
+    seq_len, head_dim,                                     
+    BLOCK_D: tl.constexpr                 
+):
+    pid_b = tl.program_id(0)
+    pid_h = tl.program_id(1)
+    
+    # Base pointers for this specific Batch/Head
+    in_seq_ptr = in_ptr + pid_b * stride_in_b + pid_h * stride_in_h
+    packed_seq_ptr = packed_delta_ptr + pid_b * stride_pd_b + pid_h * stride_pd_h
+    cm_seq_ptr = cumsum_mask_ptr + pid_b * stride_cm_b + pid_h * stride_cm_h
+    
+    offs_d = tl.arange(0, BLOCK_D)
+    mask_d = offs_d < head_dim
+    
+    # --- PROCESS TOKEN 0 ---
+    ptrs_0 = in_seq_ptr + 0 * stride_in_s + offs_d * stride_in_d
+    ref_state = tl.load(ptrs_0, mask=mask_d, other=0.0)
+    
+    # Write Token 0 to the first slot of the packed tensor
+    packed_ptrs_0 = packed_seq_ptr + 0 * stride_pd_a + offs_d * stride_pd_d
+    tl.store(packed_ptrs_0, ref_state, mask=mask_d)
+    
+    # Token 0 is always kept, so the running count starts at 1
+    active_idx = 1
+    tl.store(cm_seq_ptr + 0 * stride_cm_s, active_idx) 
+    
+    # --- TEMPORAL LOOP ---
+    for i in range(1, seq_len):
+        curr_in_ptrs = in_seq_ptr + i * stride_in_s + offs_d * stride_in_d
+        curr_state = tl.load(curr_in_ptrs, mask=mask_d, other=0.0)
+        
+        diff = curr_state - ref_state
+        sq_dist = tl.sum(diff * diff, axis=0)
+        
+        should_keep = sq_dist > threshold_sq
+        
+        # If we keep it, pack it tightly using active_idx
+        if should_keep:
+            curr_packed_ptrs = packed_seq_ptr + active_idx * stride_pd_a + offs_d * stride_pd_d
+            tl.store(curr_packed_ptrs, diff, mask=mask_d)
+            ref_state = curr_state
+            active_idx += 1
+            
+        # Write the current active_idx to the cumsum_mask. 
+        # This completely replaces the PyTorch torch.cumsum() step!
+        tl.store(cm_seq_ptr + i * stride_cm_s, active_idx)
+        
+    # Finally, store the total number of active keys for this head
+    count_ptr = counts_ptr + pid_b * stride_c_b + pid_h * stride_c_h
+    tl.store(count_ptr, active_idx)
+
+@triton.jit
 def row_delta_euclidean_kernel(
     in_ptr, delta_ptr, mask_ptr,          # Pointers to memory
     threshold_sq,                         # Pre-squared threshold for speed
@@ -12,21 +71,30 @@ def row_delta_euclidean_kernel(
     seq_len, head_dim,                    # Dimensions
     BLOCK_D: tl.constexpr                 # Must be a power of 2 (e.g., 64, 128)
 ):
-    # 1. Identify which Batch and Head this specific program is processing
-    pid_b = tl.program_id(0)
-    pid_h = tl.program_id(1)
+    # Identify which Batch and Head this program is processing
+    pid_b = tl.program_id(0) #batch
+    pid_h = tl.program_id(1) #head
     
-    # 2. Calculate the starting memory address for this specific sequence
+    # Calculate the starting memory address for this sequence
     in_seq_ptr = in_ptr + pid_b * stride_in_b + pid_h * stride_in_h
+
+    ## Output pointers to write the delta
     delta_seq_ptr = delta_ptr + pid_b * stride_in_b + pid_h * stride_in_h
     mask_seq_ptr = mask_ptr + pid_b * stride_m_b + pid_h * stride_m_h
     
-    # 3. Create memory offsets for the head dimension (e.g., [0, 1, ..., 63])
+    # Head Dimension (the vector of numbers that represents one token)
+    # Create memory offsets for the head dimension (e.g., [0, 1, ..., 63])
+    # We create 
     offs_d = tl.arange(0, BLOCK_D)
     mask_d = offs_d < head_dim
+
+    ##offs_d = tl.arange(0, 64) tells the worker: "Spread your 64 hands across the 64 columns."
+    #mask_d tells the worker: "Actually, we only have 50 columns of real data. Hands 50 through 63, 
+    # grab zeros instead so you don't break anything."
     
     # --- PROCESS TOKEN 0 ---
     # Load the first token to act as our initial reference state
+    # TODO stride_in_d should be 1 for coalasced reads
     ptrs_0 = in_seq_ptr + 0 * stride_in_s + offs_d * stride_in_d
     ref_state = tl.load(ptrs_0, mask=mask_d, other=0.0)
     
@@ -35,7 +103,7 @@ def row_delta_euclidean_kernel(
     tl.store(delta_ptrs_0, ref_state, mask=mask_d)
     tl.store(mask_seq_ptr + 0 * stride_m_s, 1, mask=None) 
     
-    # --- PROCESS TOKENS 1 TO N ---
+    # PROCESS TOKENS 1 TO N
     # We iterate sequentially on the GPU, avoiding Python overhead
     for i in range(1, seq_len):
         # Load current token
@@ -205,6 +273,7 @@ def row_delta_euclidean_partitioned_kernel(
     seq_len, head_dim, num_heads, chunk_size,            
     BLOCK_D: tl.constexpr                 
 ):
+    # Identify which Batch and Head this program is processing
     pid_bh = tl.program_id(0)
     pid_p = tl.program_id(1)
     
