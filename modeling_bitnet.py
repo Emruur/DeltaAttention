@@ -626,13 +626,17 @@ class BitNetAttention(nn.Module):
         # ==========================================
         # --- 1. DENSE MATMUL [cuBLAS] ---
         # ==========================================
-        # k_packed comes in as [B, H, L, D]. We transpose it to [B, H, D, L] for matmul
         if getattr(globVR, 'time_internal', False):
             start_evt_matmul = torch.cuda.Event(enable_timing=True)
             end_evt_matmul = torch.cuda.Event(enable_timing=True)
             start_evt_matmul.record()
 
-        packed_cumsum = torch.matmul(regular_x, k_packed.transpose(-1, -2))
+        # --- THE FIX: Expand KV heads to match Query heads for GQA ---
+        # FIXME 
+        k_packed_repeated = repeat_kv(k_packed, self.num_key_value_groups)
+        
+        # Now torch.matmul sees 20 heads vs 20 heads and executes perfectly
+        packed_cumsum = torch.matmul(regular_x, k_packed_repeated.transpose(-1, -2))
 
         if getattr(globVR, 'time_internal', False):
             end_evt_matmul.record()
