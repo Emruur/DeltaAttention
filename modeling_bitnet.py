@@ -61,7 +61,7 @@ if is_torch_flex_attn_available():
 import globVR
 import glob_set
 
-from tritonModules import fused_row_delta_pack_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel, row_delta_euclidean_partitioned_kernel, _triton_gather_expand, _triton_expand_cumsum
+from tritonModules import fused_row_delta_pack_kernel, sparse_delta_mm_scatter_kernel, fused_nm_delta_kernel, row_delta_euclidean_partitioned_kernel, _triton_gather_expand, _triton_expand_cumsum, _triton_segmented_cumsum_kernel
 
 
 
@@ -498,6 +498,8 @@ class BitNetAttention(nn.Module):
         
         # Calculate chunk size (ceiling division to ensure all tokens are covered)
         chunk_size = (seq_len + divide_to - 1) // divide_to
+
+        chunk_counts = torch.empty((bsz, n_head, divide_to), dtype=torch.int32, device=device)
         
         if similarity_metric == "euclidean":
             threshold_sq = threshold ** 2
@@ -506,17 +508,18 @@ class BitNetAttention(nn.Module):
             grid = (bsz * n_head, divide_to)
             
             row_delta_euclidean_partitioned_kernel[grid](
-                input_states, delta_all, keep_mask,
+                input_states, delta_all, keep_mask, chunk_counts,
                 threshold_sq,
                 input_states.stride(0), input_states.stride(1), input_states.stride(2), input_states.stride(3),
                 keep_mask.stride(0), keep_mask.stride(1), keep_mask.stride(2),
+                chunk_counts.stride(0), chunk_counts.stride(1), chunk_counts.stride(2), # The new strides
                 seq_len, head_dim, n_head, chunk_size,
                 BLOCK_D=BLOCK_D
             )
         else:
             raise NotImplementedError(f"Partitioned Triton kernel for '{similarity_metric}' is not yet implemented.")
             
-        return delta_all, keep_mask
+        return delta_all, keep_mask, chunk_counts
     
     def direct_prune(self, input_states, thresh):
         # mask = input_states > thresh
@@ -781,7 +784,7 @@ class BitNetAttention(nn.Module):
         
         return output
 
-    def opt_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=None):
+    def opt_delta_mm_pattern_dn(self, delta_y, regular_x, regular_y, bsz, seq_len, dim_out, blk_size, keep_mask=None, divide_to=None, chunk_counts=None):
         if keep_mask is not None:
             counts = keep_mask.sum(dim=-1)
             max_active = counts.max().item()
@@ -844,16 +847,35 @@ class BitNetAttention(nn.Module):
                     glob_set.queue_event_pair('time_dense_matmul', start_evt_matmul, end_evt_matmul)
 
                 # ==========================================
-                # --- 4. SMALL CUMSUM & ROUTING (NEW!) ---
+                # --- 4. TRITON SEGMENTED CUMSUM & ROUTING ---
                 # ==========================================
                 if getattr(globVR, 'time_internal', False):
                     start_evt_cumsum = torch.cuda.Event(enable_timing=True)
                     end_evt_cumsum = torch.cuda.Event(enable_timing=True)
                     start_evt_cumsum.record()
 
-                packed_cumsum.cumsum_(dim=-1)
+                # 1. Get the boundaries using the upstream counts
+                # chunk_counts shape: [bsz, num_heads, divide_to]
+                boundaries = chunk_counts.cumsum(dim=-1).to(torch.int32)
 
-                # Cumsum the boolean mask to create our O(1) routing index
+                # 2. Setup compile-time constants for Triton
+                # max_active comes from your gather step. 
+                BLOCK_A = triton.next_power_of_2(max_active)
+                MAX_CHUNKS = triton.next_power_of_2(divide_to)
+
+                # 3. Launch the Kernel (Modifies packed_cumsum IN-PLACE)
+                grid_cumsum = (bsz, self.num_heads, seq_len)
+                _triton_segmented_cumsum_kernel[grid_cumsum](
+                    packed_cumsum, boundaries,
+                    packed_cumsum.stride(0), packed_cumsum.stride(1), packed_cumsum.stride(2), packed_cumsum.stride(3),
+                    boundaries.stride(0), boundaries.stride(1), boundaries.stride(2),
+                    max_active, divide_to,
+                    BLOCK_A=BLOCK_A,
+                    MAX_CHUNKS=MAX_CHUNKS
+                )
+
+                # 4. Routing mask for the expand phase
+                # This stays exactly the same so the expand kernel knows where to put things
                 cumsum_mask = torch.cumsum(keep_mask.to(torch.int32), dim=-1)
 
                 if getattr(globVR, 'time_internal', False):
@@ -1035,7 +1057,7 @@ class BitNetAttention(nn.Module):
                     k_packed, cumsum_mask, active_counts = self.get_row_delta_mat_triton_unpartitioned(key_states, globVR.row_delta_threshold, globVR.row_similarity_metric)
                     key_delta_all = k_packed # Fix the UnboundLocalError alias
                 else:
-                    key_delta_all, keep_mask = self.get_row_delta_mat_triton(key_states, globVR.row_delta_threshold, globVR.row_similarity_metric, globVR.divide_to)
+                    key_delta_all, keep_mask, chunk_counts = self.get_row_delta_mat_triton(key_states, globVR.row_delta_threshold, globVR.row_similarity_metric, globVR.divide_to)
 
                 if getattr(globVR, 'time_internal', False):
                     end_evt_rd.record()
@@ -1093,7 +1115,7 @@ class BitNetAttention(nn.Module):
                     if globVR.divide_to == 1:
                         attn_weights = self.opt_packed_mm_pattern_dn(k_packed, cumsum_mask, active_counts,query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
                     else:
-                        attn_weights = self.opt_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to)
+                        attn_weights = self.opt_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to, chunk_counts=chunk_counts)
 
                 elif globVR.delta_type== "nm":
                     attn_weights = self.nm_regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))

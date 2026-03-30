@@ -271,10 +271,11 @@ def fused_nm_delta_kernel(
 
 @triton.jit
 def row_delta_euclidean_partitioned_kernel(
-    in_ptr, delta_ptr, mask_ptr,          
+    in_ptr, delta_ptr, mask_ptr, chunk_counts_ptr,       # [NEW] Added chunk_counts_ptr
     threshold_sq,                         
     stride_in_b, stride_in_h, stride_in_s, stride_in_d,  
-    stride_m_b, stride_m_h, stride_m_s,                  
+    stride_m_b, stride_m_h, stride_m_s,    
+    stride_cc_b, stride_cc_h, stride_cc_c,               # [NEW] Added strides for the counts tensor              
     seq_len, head_dim, num_heads, chunk_size,            
     BLOCK_D: tl.constexpr                 
 ):
@@ -298,6 +299,10 @@ def row_delta_euclidean_partitioned_kernel(
     offs_d = tl.arange(0, BLOCK_D)
     mask_d = offs_d < head_dim
     
+    # [NEW] Initialize the counter. 
+    # It starts at 1 because the anchor token is unconditionally kept!
+    active_count = 1 
+    
     # --- ANCHOR TOKEN ---
     ptrs_start = in_seq_ptr + start_seq * stride_in_s + offs_d * stride_in_d
     ref_state = tl.load(ptrs_start, mask=mask_d, other=0.0)
@@ -306,7 +311,7 @@ def row_delta_euclidean_partitioned_kernel(
     tl.store(delta_ptrs_start, ref_state, mask=mask_d)
     tl.store(mask_seq_ptr + start_seq * stride_m_s, 1, mask=None) 
     
-    # --- REMAINING TOKENS (Exact match to your original math) ---
+    # --- REMAINING TOKENS ---
     for i in range(start_seq + 1, end_seq):
         curr_in_ptrs = in_seq_ptr + i * stride_in_s + offs_d * stride_in_d
         curr_state = tl.load(curr_in_ptrs, mask=mask_d, other=0.0)
@@ -323,8 +328,12 @@ def row_delta_euclidean_partitioned_kernel(
         # Original block-uniform reference update
         if should_keep:
             ref_state = curr_state
+            active_count += 1  # [NEW] Increment our local register
 
-
+    # [NEW] Write the final count to HBM right before the block exits
+    # pid_p is our exact chunk index
+    count_ptr = chunk_counts_ptr + pid_b * stride_cc_b + pid_h * stride_cc_h + pid_p * stride_cc_c
+    tl.store(count_ptr, active_count)
 
 
 @triton.jit
@@ -406,3 +415,54 @@ def _triton_expand_cumsum(
     out_ptrs = delta_out + b * stride_out_b + h * stride_out_h + offs_q[:, None] * stride_out_q + offs_k[None, :] * stride_out_k
     tl.store(out_ptrs, vals, mask=mask_load)
 
+@triton.jit
+def _triton_segmented_cumsum_kernel(
+    scores_ptr, bounds_ptr,
+    stride_s_b, stride_s_h, stride_s_l, stride_s_a,
+    stride_b_b, stride_b_h, stride_b_c,
+    max_active, num_chunks,
+    BLOCK_A: tl.constexpr,
+    MAX_CHUNKS: tl.constexpr
+):
+    # 3D Grid: [Batch, Heads, Seq_Len]
+    pid_b = tl.program_id(0)
+    pid_h = tl.program_id(1)
+    pid_l = tl.program_id(2)
+
+    # Base pointers for this specific row and boundary array
+    scores_row_ptr = scores_ptr + pid_b * stride_s_b + pid_h * stride_s_h + pid_l * stride_s_l
+    bounds_ptr_base = bounds_ptr + pid_b * stride_b_b + pid_h * stride_b_h
+
+    offs = tl.arange(0, BLOCK_A)
+    mask = offs < max_active
+
+    # 1. Load the raw matrix row into ultra-fast SRAM
+    row = tl.load(scores_row_ptr + offs * stride_s_a, mask=mask, other=0.0)
+
+    # 2. Run the blind cumsum directly in registers
+    cumsum_row = tl.cumsum(row, axis=0)
+
+    # 3. Calculate exact subtractions in registers
+    subtractions = tl.zeros((BLOCK_A,), dtype=tl.float32)
+
+    # Unroll the loop over the chunks
+    for i in tl.static_range(MAX_CHUNKS):
+        if i < num_chunks - 1:
+            # Load the boundary index
+            boundary = tl.load(bounds_ptr_base + i * stride_b_c)
+            
+            # Find the "explosion" value exactly one step before the boundary
+            explosion_mask = offs == (boundary - 1)
+            
+            # tl.sum collapses the masked register into a single scalar value
+            explosion_val = tl.sum(tl.where(explosion_mask, cumsum_row, 0.0), axis=0)
+            
+            # Overwrite the subtraction offset for all elements AFTER this boundary.
+            # Because the loop runs sequentially, later boundaries overwrite earlier ones 
+            # for the elements furthest to the right, which is mathematically perfect.
+            apply_mask = offs >= boundary
+            subtractions = tl.where(apply_mask, explosion_val, subtractions)
+
+    # 4. Apply correction and write back directly! (In-place modification)
+    corrected_row = cumsum_row - subtractions
+    tl.store(scores_row_ptr + offs * stride_s_a, corrected_row, mask=mask)
