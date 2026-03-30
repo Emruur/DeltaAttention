@@ -55,7 +55,7 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [15,20],
+            "delta": [15],
             "row_sim": ["euclidean"],
             "divide_to": [1]
         },
