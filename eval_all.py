@@ -247,6 +247,9 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     torch.cuda.empty_cache()
     gc.collect()
 
+    ## TODO TriviaqaQA EM (Exact matching)
+    ## LLama 8-8b ıstruct 262k for long bench
+
     start_time = time.time()
     try:
         eval_output = simple_evaluate(
@@ -316,6 +319,7 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
 
 def run_worker_process(args, experiment_dir):
     # 1. Base Settings
+    #
     eval_config = {
         "shot": args.shot, "limit": 100, "batch_size": 1, "device": "cuda",
         "model_args": "pretrained=microsoft/bitnet-b1.58-2B-4T,trust_remote_code=False,dtype=bfloat16,attn_implementation=eager",

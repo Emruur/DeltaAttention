@@ -1,0 +1,44 @@
+{
+    "task_name": "commonsense_qa",
+    "timestamp": "2026-03-31T20:57:04.120073",
+    "shot": 0,
+    "sparsity": 0.4243583899348442,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 100,
+        "seq_len_avg": 42.85,
+        "seq_len_min": 33,
+        "seq_len_max": 69,
+        "seq_len_std": 6.383376849285964
+    },
+    "accuracy": 0.57,
+    "timings": {
+        "total_avg_ms": 0.9041331414779027,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.014236341428942978,
+            "time_gather_expand": 0.03451592537264029,
+            "time_dense_matmul": 0.02548044815721611,
+            "time_small_cumsum": 0.06805726980914673,
+            "time_triton_expand": 0.028439029267678658,
+            "time_sparse_matmul_total": 0.23157861338059108,
+            "time_patch_hybrid_attention": 0.1752836585442225,
+            "time_delta_mm_pattern": 0.4626894078652064,
+            "time_forward_total": 0.9041331414779027
+        }
+    },
+    "metrics": {
+        "alias": "commonsense_qa",
+        "acc,none": 0.57,
+        "acc_stderr,none": 0.049756985195624284
+    },
+    "total_benchmark_time_s": 25.706743955612183,
+    "parameters": {
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 2
+    },
+    "experiment_type": "row_delta"
+}

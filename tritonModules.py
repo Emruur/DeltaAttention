@@ -13,7 +13,7 @@ def fused_row_delta_pack_kernel(
     stride_c_b, stride_c_h,                                # Counts strides
     seq_len, head_dim,                                     
     BLOCK_D: tl.constexpr                 
-):
+    ):
     pid_b = tl.program_id(0)
     pid_h = tl.program_id(1)
     
@@ -75,7 +75,7 @@ def row_delta_euclidean_kernel(
     stride_m_b, stride_m_h, stride_m_s,                  # Mask strides
     seq_len, head_dim,                    # Dimensions
     BLOCK_D: tl.constexpr                 # Must be a power of 2 (e.g., 64, 128)
-):
+    ):
     # Identify which Batch and Head this program is processing
     pid_b = tl.program_id(0) #batch
     pid_h = tl.program_id(1) #head

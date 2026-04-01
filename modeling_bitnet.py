@@ -459,7 +459,6 @@ class BitNetAttention(nn.Module):
             # Grid: 1D grid over Batch * Heads (No sequence partitioning!)
             grid = (bsz ,n_head)
             
-            # Launch the fused kernel we drafted earlier
             fused_row_delta_pack_kernel[grid](
                 input_states, packed_delta_all, cumsum_mask, counts,
                 threshold_sq,
@@ -614,9 +613,9 @@ class BitNetAttention(nn.Module):
         return out
 
     def opt_packed_mm_pattern_dn(
-    self, k_packed, cumsum_mask, active_counts, regular_x, regular_y, 
-    bsz, seq_len, dim_out, blk_size
-):
+        self, k_packed, cumsum_mask, active_counts, regular_x, regular_y, 
+        bsz, seq_len, dim_out, blk_size
+    ):
         """
         Streamlined Matrix Multiplication for pre-packed key matrices.
         Dynamically slices padding based on active_counts.
@@ -811,10 +810,7 @@ class BitNetAttention(nn.Module):
                     start_evt_gather.record()
 
                 head_dim = delta_y.shape[2]
-                #k_packed_q = torch.empty((bsz, self.num_heads, head_dim, max_active), dtype=delta_y.dtype, device=delta_y.device)
-                k_packed_q = torch.empty((bsz, self.num_heads, head_dim, max_active + 1), dtype=delta_y.dtype, device=delta_y.device)
-                k_packed_q[..., 0] = 0.0
-                k_packed_view = k_packed_q[..., 1:]
+                k_packed_view = torch.empty((bsz, self.num_heads, head_dim, max_active), dtype=delta_y.dtype, device=delta_y.device)
 
                 BLOCK_D = triton.next_power_of_2(head_dim)
                 grid_gather = (bsz * self.num_heads, max_active)
@@ -840,7 +836,7 @@ class BitNetAttention(nn.Module):
                     end_evt_matmul = torch.cuda.Event(enable_timing=True)
                     start_evt_matmul.record()
 
-                packed_cumsum = torch.matmul(regular_x, k_packed_q)
+                packed_cumsum = torch.matmul(regular_x, k_packed_view) # <--- FIXED
 
                 if getattr(globVR, 'time_internal', False):
                     end_evt_matmul.record()
@@ -857,7 +853,8 @@ class BitNetAttention(nn.Module):
                 # 1. Get the boundaries using the upstream counts
                 # chunk_counts shape: [bsz, num_heads, divide_to]
                 boundaries = chunk_counts.cumsum(dim=-1).to(torch.int32)
-
+                boundaries = torch.repeat_interleave(boundaries, self.num_key_value_groups, dim=1)
+                
                 # 2. Setup compile-time constants for Triton
                 # max_active comes from your gather step. 
                 BLOCK_A = triton.next_power_of_2(max_active)
@@ -876,7 +873,7 @@ class BitNetAttention(nn.Module):
 
                 # 4. Routing mask for the expand phase
                 # This stays exactly the same so the expand kernel knows where to put things
-                cumsum_mask = torch.cumsum(keep_mask.to(torch.int32), dim=-1)
+                cumsum_mask = torch.cumsum(keep_mask.to(torch.int32), dim=-1) -1
 
                 if getattr(globVR, 'time_internal', False):
                     end_evt_cumsum.record()
@@ -1118,6 +1115,7 @@ class BitNetAttention(nn.Module):
                         attn_weights = self.opt_packed_mm_pattern_dn(k_packed, cumsum_mask, active_counts,query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
                     else:
                         attn_weights = self.opt_delta_mm_pattern_dn(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size), keep_mask= keep_mask, divide_to=globVR.divide_to, chunk_counts=chunk_counts)
+
 
                 elif globVR.delta_type== "nm":
                     attn_weights = self.nm_regular_delta_mm(key_delta_all.transpose(2,3), query_states, key_states.transpose(2,3), bsz, q_len, q_len, int(blk_size))
