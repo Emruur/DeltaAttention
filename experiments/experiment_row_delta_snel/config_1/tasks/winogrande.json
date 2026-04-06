@@ -1,0 +1,44 @@
+{
+    "task_name": "winogrande",
+    "timestamp": "2026-04-01T12:16:15.726035",
+    "shot": 0,
+    "sparsity": 0.5370417169764611,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 200,
+        "seq_len_avg": 21.375,
+        "seq_len_min": 15,
+        "seq_len_max": 33,
+        "seq_len_std": 3.90184251348001
+    },
+    "accuracy": 0.76,
+    "timings": {
+        "total_avg_ms": 2.318317504922549,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.11292637333273887,
+            "time_gather_expand": 0.06977403204018871,
+            "time_dense_matmul": 0.06276505069310466,
+            "time_small_cumsum": 0.16259241073330244,
+            "time_triton_expand": 0.06007318398108085,
+            "time_sparse_matmul_total": 0.5256989119052887,
+            "time_patch_hybrid_attention": 0.3578370666106542,
+            "time_delta_mm_pattern": 1.0077229224046071,
+            "time_forward_total": 2.318317504922549
+        }
+    },
+    "metrics": {
+        "alias": "winogrande",
+        "acc,none": 0.76,
+        "acc_stderr,none": 0.04292346959909284
+    },
+    "total_benchmark_time_s": 26.120223999023438,
+    "parameters": {
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 2
+    },
+    "experiment_type": "row_delta"
+}

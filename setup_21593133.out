@@ -1,0 +1,128 @@
+Mon Apr  6 20:15:29 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 590.48.01              Driver Version: 590.48.01      CUDA Version: 13.1     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100                    On  |   00000000:C6:00.0 Off |                    0 |
+| N/A   33C    P0             67W /  700W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+CUDA version: Cuda compilation tools, release 12.1, V12.1.105
+[Master] Starting row_delta Grid Search for LLAMA.
+[Master] Parameters: ['scale', 'delta', 'row_sim', 'divide_to']
+[Master] Total Experiments: 1
+[Master] Output Folder: experiment_row_delta_2
+
+=== Step 1/1: {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 0} ===
+[Master] Running worker for {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean', 'divide_to': 0}
+[Worker] Setting safe globVR defaults for model initialization...
+[Worker] '--long_bench' triggered. Running 3 LongBench tasks.
+[Worker] Loading Model: meta-llama/Meta-Llama-3.1-8B-Instruct...
+[Worker] Model loaded safely. Applying row_delta settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'divide_to': 0, 'flash': True}
+[Config] Created new directory: snellius_experiments/llama/experiment_row_delta_2/config_1
+--- Running Task: longbench_multifieldqa_en ---
+  -> Pass: Measuring total benchmark time AND internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'longbench_multifieldqa_en' completed in 141.05 seconds.
+Task: longbench_multifieldqa_en | Acc: 0.5012 | Total Time: 141.05s
+{
+    "task_name": "longbench_multifieldqa_en",
+    "timestamp": "2026-04-06T20:18:28.332416",
+    "shot": 0,
+    "sparsity": 0.48026113182940056,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 100,
+        "seq_len_avg": 6935.69,
+        "seq_len_min": 1387,
+        "seq_len_max": 15039,
+        "seq_len_std": 3637.211826921825
+    },
+    "accuracy": 0.5012025139372835,
+    "timings": {
+        "total_avg_ms": 16.79743803113699,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 3.8672848085686566,
+            "time_delta_mm_pattern": 11.297598225791008,
+            "time_forward_total": 16.79743803113699
+        }
+    },
+    "metrics": {
+        "alias": "longbench_multifieldqa_en",
+        "qa_f1_score,none": 0.5012025139372835,
+        "qa_f1_score_stderr,none": 0.03323330264001392
+    },
+    "total_benchmark_time_s": 141.05359959602356,
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 0,
+        "flash": true
+    },
+    "experiment_type": "row_delta"
+}
+[IO] Saved full result to longbench_multifieldqa_en.json
+--- Running Task: longbench_hotpotqa ---
+  -> Pass: Measuring total benchmark time AND internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True
+    - Task 'longbench_hotpotqa' completed in 188.96 seconds.
+Task: longbench_hotpotqa | Acc: 0.4986 | Total Time: 188.96s
+{
+    "task_name": "longbench_hotpotqa",
+    "timestamp": "2026-04-06T20:21:37.700591",
+    "shot": 0,
+    "sparsity": 0.4749184589240797,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 100,
+        "seq_len_avg": 13116.25,
+        "seq_len_min": 2289,
+        "seq_len_max": 16437,
+        "seq_len_std": 3543.0962966732923
+    },
+    "accuracy": 0.498643190525949,
+    "timings": {
+        "total_avg_ms": 40.31937336176634,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 7.732615862637759,
+            "time_delta_mm_pattern": 29.690518157184123,
+            "time_forward_total": 40.31937336176634
+        }
+    },
+    "metrics": {
+        "alias": "longbench_hotpotqa",
+        "qa_f1_score,none": 0.498643190525949,
+        "qa_f1_score_stderr,none": 0.04463423556148012
+    },
+    "total_benchmark_time_s": 188.95957207679749,
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 0,
+        "flash": true
+    },
+    "experiment_type": "row_delta"
+}
+[IO] Saved full result to longbench_hotpotqa.json
+--- Running Task: longbench_gov_report ---
+  -> Pass: Measuring total benchmark time AND internal latency breakdown (internal syncs ON)
+    - Setting time_internal: True

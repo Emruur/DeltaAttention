@@ -1,0 +1,43 @@
+{
+    "task_name": "longbench_gov_report",
+    "timestamp": "2026-04-05T21:43:21.446154",
+    "shot": 0,
+    "sparsity": 0.4770999640027913,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 100,
+        "seq_len_avg": 6735.98,
+        "seq_len_min": 2060,
+        "seq_len_max": 7488,
+        "seq_len_std": 1409.99351048152
+    },
+    "accuracy": 0.25887184339670766,
+    "timings": {
+        "total_avg_ms": 45.36134878054261,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 3.504901765212417,
+            "time_dense_matmul": 3.2340165822114795,
+            "time_small_cumsum": 4.298070599883795,
+            "time_triton_expand": 5.332229943750426,
+            "time_sparse_matmul_total": 12.924433220289648,
+            "time_delta_mm_pattern": 16.591655649319293,
+            "time_forward_total": 45.36134878054261
+        }
+    },
+    "metrics": {
+        "alias": "longbench_gov_report",
+        "rouge_score,none": 0.25887184339670766,
+        "rouge_score_stderr,none": 0.01158554786398922
+    },
+    "total_benchmark_time_s": 1360.7158417701721,
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 0
+    },
+    "experiment_type": "row_delta"
+}

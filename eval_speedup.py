@@ -1,4 +1,7 @@
 import os
+os.environ["TORCH_COMPILE_DISABLE"] = "1"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import sys
 import json
 import argparse
@@ -30,7 +33,7 @@ AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
 EXPERIMENT_DEFINITIONS = {
     "baseline": {
         "grid": {
-            "seq_len": [1024,2048,3072],
+            "seq_len": [1024,2048,4096],
         },
         "arg_builder": lambda p: ["--seq_len", str(p["seq_len"])],
         "injector": lambda args: {
@@ -57,7 +60,7 @@ EXPERIMENT_DEFINITIONS = {
     },
     "row_delta": {
         "grid": {
-            "seq_len": [1024,2048],
+            "seq_len": [1024,2048,4096],
             "delta": [15],
             "row_sim": ["euclidean"],
             "divide_to": [2]
@@ -92,7 +95,6 @@ EXPERIMENT_DEFINITIONS = {
              "row_delta_threshold": args.delta,
         }
     }
-    
 }
 
 # ==========================================
@@ -126,62 +128,56 @@ def get_real_text_input(tokenizer, seq_len, device):
     from datasets import load_dataset
     try:
         dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="validation")
-        text = "".join([item["text"] for item in dataset[:100]])
+        
+        # FIXED: Correctly slice the dictionary returned by datasets
+        text = "".join(dataset[:100]["text"])
+        
         encodings = tokenizer(text, return_tensors="pt")
         if encodings.input_ids.shape[1] < seq_len:
              return encodings.input_ids.repeat(1, (seq_len // encodings.input_ids.shape[1]) + 1)[:, :seq_len].to(device)
         return encodings.input_ids[:, :seq_len].to(device)
-    except:
+    except Exception as e:
+        print(f"   [Warning] Could not load wikitext. Error: {e}")
         return torch.randint(0, 1000, (1, seq_len)).to(device)
-
+    
 def benchmark_latency(model, input_ids, warmup=10, repeats=20):
     """
     Benchmarks the model and extracts internal attention stats from globVR.
     """
-    # 1. Warmup: Critical to initialize CUDA kernels and settle GPU clocks
     print(f"   [Bench] Warming up ({warmup} iters)...")
     with torch.no_grad():
         for _ in range(warmup):
             model(input_ids)
     
-    # 2. Reset Statistics: Ensure we don't include warmup time in our metrics
-    # We clear the dictionary that your glob_set.update_latency writes to.
     globVR.latency_stats = {}
     globVR.latency_events = []
     if hasattr(globVR, 'spars'):
         globVR.spars = 0.0 
     
-    # 3. Measurement Loop
     print(f"   [Bench] Measuring ({repeats} iters)...")
     torch.cuda.synchronize()
-    t_start_total = time.perf_counter() # Use high-resolution counter
+    t_start_total = time.perf_counter() 
     
     with torch.no_grad():
         for i in range(repeats):
             model(input_ids)
-            # Sync after every pass to ensure hardware finished the work
             torch.cuda.synchronize()
             
     t_end_total = time.perf_counter()
     
-    # 4. Process Results
     total_wall_clock_ms = ((t_end_total - t_start_total) / repeats) * 1000
     
     glob_set.resolve_latency_events()
     
     latency_breakdown = {}
-    # Extract the stats that were populated during the 'repeats' loop
     if hasattr(globVR, 'latency_stats'):
         for metric, stats in globVR.latency_stats.items():
             if stats['calls'] > 0:
-                # Calculate average ms per call
-                # Note: your update_latency already multiplied by 1000
                 avg_ms = stats['time_ms'] / stats['calls']
                 latency_breakdown[metric] = avg_ms
                 
     avg_sparsity = getattr(globVR, 'spars', 0.0)
     
-    # Logging for console feedback
     print(f"   [Bench] Avg Total: {total_wall_clock_ms:.2f}ms")
     if 'time_forward_total' in latency_breakdown:
         print(f"   [Bench] Avg Attn:  {latency_breakdown['time_forward_total']:.2f}ms")
@@ -198,10 +194,19 @@ def run_worker_process(args, experiment_dir):
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     
     model = AutoModelForCausalLM.from_pretrained(
-        model_id, config=config, torch_dtype=torch.bfloat16
-    ).to("cuda").eval()
+        model_id, 
+        config=config, 
+        torch_dtype=torch.bfloat16,
+    )
+
+    model = model.to("cuda")
+    
+    model.eval()
 
     input_ids = get_real_text_input(tokenizer, args.seq_len, "cuda")
+
+    decoded_sample = tokenizer.decode(input_ids[0, :50])
+    print(f"\n[DEBUG] First 50 tokens translated: {decoded_sample}\n")
 
     # Inject Parameters
     exp_def = EXPERIMENT_DEFINITIONS[args.experiment_type]
@@ -210,7 +215,6 @@ def run_worker_process(args, experiment_dir):
         setattr(globVR, key, value)
 
     try:
-
         latency_breakdown, total_avg, avg_sparsity = benchmark_latency(model, input_ids)
         
         result_data = {
@@ -221,7 +225,6 @@ def run_worker_process(args, experiment_dir):
             "total_avg_ms": total_avg,
             "latency_breakdown_ms": latency_breakdown,
             "avg_sparsity": avg_sparsity
-
         }
         
         os.makedirs(experiment_dir, exist_ok=True)

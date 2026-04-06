@@ -1,0 +1,45 @@
+{
+    "task_name": "triviaqa",
+    "timestamp": "2026-04-05T23:57:07.838273",
+    "shot": 0,
+    "sparsity": 0.30984228228727684,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 100,
+        "seq_len_avg": 18.58,
+        "seq_len_min": 11,
+        "seq_len_max": 31,
+        "seq_len_std": 4.125966553427209
+    },
+    "accuracy": 0.0,
+    "timings": {
+        "total_avg_ms": 1.8963027581572534,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.24474186868639664,
+            "time_gather_expand": 0.07179894009022973,
+            "time_dense_matmul": 0.06412080991431139,
+            "time_small_cumsum": 0.17843587034381925,
+            "time_triton_expand": 0.06634401987423189,
+            "time_sparse_matmul_total": 0.575219849916175,
+            "time_patch_hybrid_attention": 0.32400464005302637,
+            "time_delta_mm_pattern": 1.015901050977409,
+            "time_forward_total": 1.8963027581572534
+        }
+    },
+    "metrics": {
+        "alias": "triviaqa",
+        "exact_match,remove_whitespace": 0.12,
+        "exact_match_stderr,remove_whitespace": 0.03265986323710906
+    },
+    "total_benchmark_time_s": 81.08254861831665,
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 4
+    },
+    "experiment_type": "row_delta"
+}

@@ -1,0 +1,40 @@
+{
+    "task_name": "longbench_multifieldqa_en",
+    "timestamp": "2026-04-06T20:09:53.548957",
+    "shot": 0,
+    "sparsity": 0.5059254006768996,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 100,
+        "seq_len_avg": 6935.69,
+        "seq_len_min": 1387,
+        "seq_len_max": 15039,
+        "seq_len_std": 3637.211826921825
+    },
+    "accuracy": 0.05230439889454946,
+    "timings": {
+        "total_avg_ms": 17.570120091475545,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 3.8568738703243435,
+            "time_delta_mm_pattern": 12.091092272568494,
+            "time_forward_total": 17.570120091475545
+        }
+    },
+    "metrics": {
+        "alias": "longbench_multifieldqa_en",
+        "qa_f1_score,none": 0.05230439889454946,
+        "qa_f1_score_stderr,none": 0.007003098109367273
+    },
+    "total_benchmark_time_s": 207.52052211761475,
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 0,
+        "flash": true
+    },
+    "experiment_type": "row_delta"
+}

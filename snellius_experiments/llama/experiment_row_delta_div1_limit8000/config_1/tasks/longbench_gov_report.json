@@ -1,0 +1,45 @@
+{
+    "task_name": "longbench_gov_report",
+    "timestamp": "2026-04-05T20:36:21.524832",
+    "shot": 0,
+    "sparsity": 0.4764640898333558,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 100,
+        "seq_len_avg": 6735.98,
+        "seq_len_min": 2060,
+        "seq_len_max": 7488,
+        "seq_len_std": 1409.99351048152
+    },
+    "accuracy": 0.28290684137803807,
+    "timings": {
+        "total_avg_ms": 43.5965331402421,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 2.7993294000439346,
+            "time_gather_expand": 0.3939845998166129,
+            "time_dense_matmul": 2.782348709912039,
+            "time_small_cumsum": 3.1058321497077124,
+            "time_triton_expand": 5.259955742396414,
+            "time_sparse_matmul_total": 11.791425827890635,
+            "time_patch_hybrid_attention": 0.850898749330081,
+            "time_delta_mm_pattern": 15.525799396894872,
+            "time_forward_total": 43.5965331402421
+        }
+    },
+    "metrics": {
+        "alias": "longbench_gov_report",
+        "rouge_score,none": 0.28290684137803807,
+        "rouge_score_stderr,none": 0.011059246077137336
+    },
+    "total_benchmark_time_s": 1384.148779630661,
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 1
+    },
+    "experiment_type": "row_delta"
+}

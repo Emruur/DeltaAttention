@@ -1,4 +1,6 @@
 import os
+os.environ["HF_DATASETS_TRUST_REMOTE_CODE"] = "1" # ADD THIS LINE
+os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
 import sys
 import json
 import argparse
@@ -18,8 +20,15 @@ import globVR
 import glob_set
 import lm_eval.api.registry
 from lm_eval.evaluator import simple_evaluate
+from lm_eval.tasks import TaskManager, get_task_dict # <-- ADD THIS
 from transformers import AutoConfig, AutoModelForCausalLM
+
 from modeling_bitnet import BitNetForCausalLM, BitNetConfig
+from modeling_llama import LlamaForCausalLM, LlamaConfig
+
+
+
+
 
 # --- ADD THIS GLOBALLY TO FIX THE LM_EVAL JSON CRASH ---
 _original_json_default = json.JSONEncoder.default
@@ -32,9 +41,13 @@ def safe_json_default(self, obj):
 json.JSONEncoder.default = safe_json_default
 # --------------------------
 
-# Register Model and Config
+# Register BitNet
 AutoConfig.register("bitnet", BitNetConfig, exist_ok=True)
 AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
+
+# Register LLaMA
+AutoConfig.register("llama", LlamaConfig, exist_ok=True)
+AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 
 
 # ==========================================
@@ -57,7 +70,7 @@ EXPERIMENT_DEFINITIONS = {
             "scale": [0.05], 
             "delta": [15],
             "row_sim": ["euclidean"],
-            "divide_to": [2]
+            "divide_to": [0]
         },
         "arg_builder": lambda p: [
             "--scale", str(p["scale"]), 
@@ -66,12 +79,14 @@ EXPERIMENT_DEFINITIONS = {
             "--divide_to", str(p["divide_to"])
         ],
         "injector": lambda args: {
+            "delta_pf_key_on": 1,
             "delta_type": "row",
             "scale": args.scale,
             "delta_mlp": "Regular", 
             "row_delta_threshold": args.delta,
             "row_similarity_metric": args.row_sim,
             "divide_to": args.divide_to,
+            "flash":True,
         }
     },
     "nm_delta": {
@@ -106,7 +121,8 @@ EXPERIMENT_DEFINITIONS = {
     "baseline": {
         "injector": lambda args: {
             "delta_pf_key_on": 0,              
-            "delta_mlp": "Regular",              
+            "delta_mlp": "Regular",  
+            "flash": True,             
         }
     },
     "combined_delta": {
@@ -121,7 +137,8 @@ EXPERIMENT_DEFINITIONS = {
             "--mlp_thresh", str(p["mlp_thresh"])
         ],
         "injector": lambda args: {
-            "delta_pf_key_on": 1,                  # Attention delta ON
+            "delta_pf_key_on": 1,  
+            "flash": True,                # Attention delta ON
             "delta_mlp": "Delta",                  # MLP delta ON
             "delta_pf_key_thresh": args.thresh,    # Injected from --thresh
             "mlp_delta_threshold": args.mlp_thresh,# Injected from --mlp_thresh
@@ -169,7 +186,7 @@ def get_or_create_config_dir(base_exp_dir, delta_config, force_dir_name=None):
         os.makedirs(os.path.join(dir_path, "tasks"), exist_ok=True)
         with open(os.path.join(dir_path, "config_params.json"), 'w') as f:
             json.dump(delta_config, f, indent=4, cls=NpEncoder)
-        print(f"[Config] Using forced directory: {dir_path}")
+        print(f"[Config] Using forced directory: {dir_path}", flush=True)
         return dir_path
 
     for item in sorted(os.listdir(base_exp_dir)):
@@ -188,7 +205,7 @@ def get_or_create_config_dir(base_exp_dir, delta_config, force_dir_name=None):
                             break
                     
                     if is_match:
-                        print(f"[Config] Found existing directory: {dir_path}")
+                        print(f"[Config] Found existing directory: {dir_path}", flush=True)
                         return dir_path
                 except Exception:
                     pass
@@ -200,7 +217,7 @@ def get_or_create_config_dir(base_exp_dir, delta_config, force_dir_name=None):
     with open(os.path.join(new_dir_path, "config_params.json"), 'w') as f:
         json.dump(delta_config, f, indent=4, cls=NpEncoder)
         
-    print(f"[Config] Created new directory: {new_dir_path}")
+    print(f"[Config] Created new directory: {new_dir_path}", flush=True)
     return new_dir_path
 
 
@@ -220,7 +237,7 @@ def save_single_task_result(config_dir, task_name, result_data):
         # Overwrite the file with the full payload every time
         with open(file_path, 'w') as f:
             json.dump(result_data, f, indent=4, cls=NpEncoder)
-        print(f"[IO] Saved full result to {os.path.basename(file_path)}")
+        print(f"[IO] Saved full result to {os.path.basename(file_path)}", flush=True)
 
     finally:
         # Release lock
@@ -233,7 +250,7 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     Runs a single evaluation pass for a task with a specific timing setting.
     Returns the results dictionary and the total wall-clock time.
     """
-    print(f"    - Setting time_internal: {time_internal_setting}")
+    print(f"    - Setting time_internal: {time_internal_setting}", flush=True)
     setattr(globVR, 'time_internal', time_internal_setting)
 
     # Reset Global Trackers for a clean run
@@ -247,23 +264,21 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     torch.cuda.empty_cache()
     gc.collect()
 
-    ## TODO TriviaqaQA EM (Exact matching)
-    ## LLama 8-8b ıstruct 262k for long bench
-
     start_time = time.time()
     try:
         eval_output = simple_evaluate(
             model=lm_model,   
             tasks=[task],
             num_fewshot=eval_config["shot"],
-            limit=eval_config["limit"]
+            limit=eval_config["limit"],
+            apply_chat_template=True
         )
     except Exception as e:
-        print(f"    - [Error] simple_evaluate failed for task {task}: {e}")
+        print(f"    - [Error] simple_evaluate failed for task {task}: {e}", flush=True)
         return None, 0
     end_time = time.time()
     total_time = end_time - start_time
-    print(f"    - Task '{task}' completed in {total_time:.2f} seconds.")
+    print(f"    - Task '{task}' completed in {total_time:.2f} seconds.", flush=True)
     
     glob_set.resolve_latency_events()
 
@@ -297,16 +312,35 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     current_sparsity = getattr(globVR, 'spars', 0.0)
     mlp_sparsity = getattr(globVR, 'mlp_spars', 0.0)
     raw_metrics = eval_output["results"].get(task, {})
+    
+    primary_acc = 0.0
 
-    primary_acc = raw_metrics.get("acc,none") or raw_metrics.get("acc_norm,none") or raw_metrics.get("acc") or raw_metrics.get("exact_match,remove_whitespace") or 0.0
-
+    # 2. Explicitly handle LongBench tasks
+    if "longbench" in task:
+        # Priority for LongBench is F1 for QA or RougeL for Summarization
+        primary_acc = (
+            raw_metrics.get("qa_f1_score,none") or 
+            raw_metrics.get("summary_rouge_l,none") or
+            raw_metrics.get("rouge_score,none") or
+            raw_metrics.get("f1,none") or
+            0.0
+        )
+    else:
+        # 3. Handle standard tasks (ARC, MMLU, etc.)
+        primary_acc = (
+            raw_metrics.get("acc_norm,none") or 
+            raw_metrics.get("acc,none") or 
+            raw_metrics.get("exact_match,none") or
+            0.0
+        )
+        
     result_data = {
         "task_name": task,
         "timestamp": datetime.now().isoformat(),
         "shot": eval_config["shot"],
         "sparsity": current_sparsity,
         "mlp_spars": mlp_sparsity,
-        "benchmark_stats": benchmark_stats, # Inserted the new stats object here
+        "benchmark_stats": benchmark_stats, 
         "accuracy": primary_acc,
         "timings": {
             "total_avg_ms": total_avg_ms,
@@ -318,36 +352,65 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
 
 
 def run_worker_process(args, experiment_dir):
-    # 1. Base Settings
-    #
-    eval_config = {
-        "shot": args.shot, "limit": 100, "batch_size": 1, "device": "cuda",
-        "model_args": "pretrained=microsoft/bitnet-b1.58-2B-4T,trust_remote_code=False,dtype=bfloat16,attn_implementation=eager",
-    }
-
-    # 2. Apply Experiment Specifics
-    if args.experiment_type not in EXPERIMENT_DEFINITIONS:
-        print(f"[Fatal] Unknown experiment type: {args.experiment_type}")
-        return
-
+    # 1. Base Settings - Hardcoded model IDs based on flag
+    torch.set_grad_enabled(False)
     exp_def = EXPERIMENT_DEFINITIONS[args.experiment_type]
     glob_settings = exp_def["injector"](args)
-
-    print(f"[Worker] Applying {args.experiment_type} settings: {glob_settings}")
     
-    for key, value in glob_settings.items():
-        setattr(globVR, key, value)
+    model_id = "microsoft/bitnet-b1.58-2B-4T" if args.bitnet else "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
-    all_possible_tasks = [
-        "arc_easy", "arc_challenge", "openbookqa", "boolq", 
-        "hellaswag", "piqa", "winogrande", "triviaqa", 
-        "mmlu", "commonsense_qa", "truthfulqa_mc2"
+    
+    # Dynamically adjust max_length depending on whether we are running LongBench
+
+    max_len = 8000 if (args.long_bench or args.all_bench) else 4096
+
+
+    model_args= f"pretrained={model_id},trust_remote_code=True,dtype=bfloat16,attn_implementation=eager"
+    if not glob_settings.get("flash", False):
+        model_args = f"pretrained={model_id},trust_remote_code=True,dtype=bfloat16,attn_implementation=eager,max_length={max_len}"
+
+    eval_config = {
+        "shot": args.shot, 
+        "limit": 100, 
+        "batch_size": 1, 
+        "model_args": model_args
+    }
+
+
+    # 2. Get Experiment Specifics (BUT DO NOT APPLY THEM YET)
+    if args.experiment_type not in EXPERIMENT_DEFINITIONS:
+        print(f"[Fatal] Unknown experiment type: {args.experiment_type}", flush=True)
+        return
+
+    
+
+    # Force safety variables during model load to prevent dummy-pass OOMs
+    print("[Worker] Setting safe globVR defaults for model initialization...", flush=True)
+    setattr(globVR, 'delta_pf_key_on', 0)
+    setattr(globVR, 'delta_mlp', 'Regular')
+
+    # 3. Task Selection Logic
+    SHORT_TASKS = [
+        "triviaqa", "mmlu", "winogrande"
     ]
 
-    if getattr(args, 'run_all_tasks', False):
-        tasks = all_possible_tasks
-        print(f"[Worker] '--run_all_tasks' triggered. Running {len(tasks)} tasks.")
+    LONGBENCH_TASKS = [
+        "longbench_multifieldqa_en", 
+        "longbench_hotpotqa", 
+        "longbench_gov_report"
+    ]
+
+    if args.all_bench:
+        tasks = SHORT_TASKS + LONGBENCH_TASKS
+        print(f"[Worker] '--all_bench' triggered. Running {len(tasks)} total tasks.", flush=True)
+    elif args.long_bench:
+        tasks = LONGBENCH_TASKS
+        print(f"[Worker] '--long_bench' triggered. Running {len(tasks)} LongBench tasks.", flush=True)
+    elif args.short_bench:
+        tasks = SHORT_TASKS
+        print(f"[Worker] '--short_bench' triggered. Running {len(tasks)} short tasks.", flush=True)
     else:
+        # Fallback to shot-based logic if no specific benchmark suite flag is provided
         if args.shot == 0:
             tasks = ["arc_easy", "arc_challenge", "openbookqa", "boolq", "hellaswag", "piqa", "winogrande"]
         elif args.shot == 5:
@@ -357,29 +420,34 @@ def run_worker_process(args, experiment_dir):
         else:
             tasks = ["arc_challenge"]
 
-    # 4. Load Model
-    print(f"[Worker] Loading Model...")
+    # 4. Load Model IN BASELINE STATE
+    print(f"[Worker] Loading Model: {model_id}...", flush=True)
     try:
         model_class = lm_eval.api.registry.get_model("hf")
         lm_model = model_class.create_from_arg_string(
             eval_config["model_args"], 
             {
                 "batch_size": eval_config["batch_size"],
-                "device": eval_config["device"]
+                "device": "cuda" # <--- ADD THIS BACK
             }
         )
     except Exception as e:
-        print(f"[Fatal Worker Error] Model load failed: {e}")
+        print(f"[Fatal Worker Error] Model load failed: {e}", flush=True)
         return
 
-    # 5. Run Tasks
+    # 5. NOW INJECT THE REAL GLOBALS
+    print(f"[Worker] Model loaded safely. Applying {args.experiment_type} settings: {glob_settings}", flush=True)
+    for key, value in glob_settings.items():
+        setattr(globVR, key, value)
+
+    # 6. Run Tasks
     # Force the directory name if we are running the baseline
     force_name = "config_baseline" if args.experiment_type == "baseline" else None
     config_dir = get_or_create_config_dir(experiment_dir, glob_settings, force_dir_name=force_name)
     
     for task in tasks:
-        print(f"--- Running Task: {task} ---")
-        print(f"  -> Pass: Measuring total benchmark time AND internal latency breakdown (internal syncs ON)")
+        print(f"--- Running Task: {task} ---", flush=True)
+        print(f"  -> Pass: Measuring total benchmark time AND internal latency breakdown (internal syncs ON)", flush=True)
 
         # Hardcode time_internal_setting to True
         results, total_time = run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting=True)
@@ -390,59 +458,71 @@ def run_worker_process(args, experiment_dir):
             final_result_data["parameters"] = glob_settings
             final_result_data["experiment_type"] = args.experiment_type
             
-            print(f"Task: {task} | Acc: {final_result_data.get('accuracy', 0.0):.4f} | Total Time: {total_time:.2f}s")
+            print(f"Task: {task} | Acc: {final_result_data.get('accuracy', 0.0):.4f} | Total Time: {total_time:.2f}s", flush=True)
             
             # Print the JSON to stdout so you always see the output in the console
-            print(json.dumps(final_result_data, indent=4, cls=NpEncoder))
+            print(json.dumps(final_result_data, indent=4, cls=NpEncoder), flush=True)
             
             save_single_task_result(config_dir, task, final_result_data)
         else:
-            print(f"[Error] No results generated for task {task}.")
+            print(f"[Error] No results generated for task {task}.", flush=True)
 
         gc.collect()
         torch.cuda.empty_cache()
 
-    print("[Worker] Finished. Exiting.")
-
+    print("[Worker] Finished. Exiting.", flush=True)
 # ==========================================
 # MAIN ENTRY POINT
 # ==========================================
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
+    # Model Selection Flags (Mutually Exclusive)
+    model_group = parser.add_mutually_exclusive_group(required=True)
+    model_group.add_argument('--bitnet', action='store_true', help="Run evaluation using BitNet model")
+    model_group.add_argument('--llama', action='store_true', help="Run evaluation using LLaMA model")
+
     # Core Args
     parser.add_argument('--mode', type=str, default='master', choices=['master', 'worker'])
-    parser.add_argument('--experiment_type', type=str, required=True, default='row_delta',choices=EXPERIMENT_DEFINITIONS.keys())
+    parser.add_argument('--experiment_type', type=str, required=True, default='row_delta', choices=EXPERIMENT_DEFINITIONS.keys())
     parser.add_argument('--shot', default=0, type=int)
-    parser.add_argument('--exp_num', default=None, type=int)
+    
+    # Custom Name Parameter
+    parser.add_argument('--exp_name', default=None, type=str, help="Custom folder name for the experiment output")
     parser.add_argument('--conf_name', default=None, type=str)
+    
+    # Benchmark Suite Selection (Mutually Exclusive)
+    bench_group = parser.add_mutually_exclusive_group()
+    bench_group.add_argument('--short_bench', action='store_true', help="Run standard short-context tasks")
+    bench_group.add_argument('--long_bench', action='store_true', help="Run LongBench tasks only")
+    bench_group.add_argument('--all_bench', action='store_true', help="Run ALL tasks (Short + LongBench)")
     
     # Shared Experiment Args
     parser.add_argument('--scale', default=0.05, type=float)
-    
-    # Scale_Delta specific (Attention)
     parser.add_argument('--thresh', default=0.6, type=float)
-    
-    # MLP_Delta specific
     parser.add_argument('--mlp_thresh', default=0.0, type=float)
-
-    # Row_Delta specific
     parser.add_argument('--delta', default=1.0, type=float)
     parser.add_argument('--row_sim', default="cos", type=str)
-
     parser.add_argument('--divide_to', default=1, type=int)
-    parser.add_argument('--run_all_tasks', action='store_true', help="Run all predefined tasks at once")
     
     args = parser.parse_args()
+
+    # Determine Base Storage Path
+    model_arch = "bitnet" if args.bitnet else "llama"
+    base_storage_path = os.path.join("snellius_experiments", model_arch)
+
+    # Ensure base storage path exists
+    os.makedirs(base_storage_path, exist_ok=True)
 
     # -----------------------------------------------------------
     # MASTER MODE
     # -----------------------------------------------------------
     if args.mode == 'master':
-        base_storage_path = "experiments"
         
-        if args.exp_num is None:
-            args.exp_num = get_next_id(base_storage_path, prefix=f"experiment_{args.experiment_type}_")
+        # Auto-generate a name if none was provided
+        if args.exp_name is None:
+            auto_id = get_next_id(base_storage_path, prefix=f"experiment_{args.experiment_type}_")
+            args.exp_name = f"experiment_{args.experiment_type}_{auto_id}"
         
         exp_def = EXPERIMENT_DEFINITIONS[args.experiment_type]
         grid_params = exp_def.get("grid", {})
@@ -452,40 +532,51 @@ if __name__ == "__main__":
         values = list(grid_params.values()) if grid_params else []
         param_grid = list(itertools.product(*values)) if grid_params else [{}]
         
-        print(f"[Master] Starting {args.experiment_type} Grid Search.")
-        print(f"[Master] Parameters: {keys}")
-        print(f"[Master] Total Experiments: {len(param_grid)}")
-        print(f"[Master] Experiment ID: {args.exp_num}")
+        print(f"[Master] Starting {args.experiment_type} Grid Search for {model_arch.upper()}.", flush=True)
+        print(f"[Master] Parameters: {keys}", flush=True)
+        print(f"[Master] Total Experiments: {len(param_grid)}", flush=True)
+        print(f"[Master] Output Folder: {args.exp_name}", flush=True)
 
         for i, combo in enumerate(param_grid):
             current_params = dict(zip(keys, combo)) if keys else {}
             
-            print(f"\n=== Step {i+1}/{len(param_grid)}: {current_params} ===")
+            print(f"\n=== Step {i+1}/{len(param_grid)}: {current_params} ===", flush=True)
             
             # Spawn ONE worker per config
             cmd = [
                 sys.executable, sys.argv[0], "--mode", "worker",
-                "--experiment_type", args.experiment_type, "--exp_num", str(args.exp_num),
+                "--experiment_type", args.experiment_type, 
+                "--exp_name", args.exp_name,
                 "--shot", str(args.shot)
             ]
-            if getattr(args, 'run_all_tasks', False):
-                cmd.append("--run_all_tasks")
+            
+            # Pass Model Selection Flags
+            if args.bitnet: cmd.append("--bitnet")
+            if args.llama: cmd.append("--llama")
+                
+            # Pass Benchmark Flags
+            if args.short_bench: cmd.append("--short_bench")
+            if args.long_bench: cmd.append("--long_bench")
+            if args.all_bench: cmd.append("--all_bench")
             
             if "arg_builder" in exp_def:
                 cmd.extend(exp_def["arg_builder"](current_params))
             
             try:
-                print(f"[Master] Running worker for {current_params}")
+                print(f"[Master] Running worker for {current_params}", flush=True)
+                # Does NOT capture output, streams directly to your terminal
                 subprocess.run(cmd, check=True)
             except subprocess.CalledProcessError as e:
-                print(f"[Master] Worker failed for {current_params}. Continuing...")
+                print(f"[Master] Worker failed for {current_params}. Continuing...", flush=True)
 
     # -----------------------------------------------------------
     # WORKER MODE
     # -----------------------------------------------------------
     elif args.mode == 'worker':
-        base_storage_path = "experiments"
-        exp_folder_name = f"experiment_{args.experiment_type}_{args.exp_num}"
-        experiment_dir = os.path.join(base_storage_path, exp_folder_name)
+        # Safely handle the case where exp_name wasn't passed to a direct worker call
+        if args.exp_name is None:
+             args.exp_name = "default_worker_run"
+
+        experiment_dir = os.path.join(base_storage_path, args.exp_name)
         
         run_worker_process(args, experiment_dir)
