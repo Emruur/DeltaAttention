@@ -90,6 +90,7 @@ from tritonModules import (
 ## FLASH ATTENTION IMPORTS
 from flashAttention import triton_flash_attention
 from deltaFlashAttention import fused_delta_flash_attention
+from nmDeltaFlashAttention import fused_online_24_compress_kernel, run_24_sparse_flash
 
 logger = logging.get_logger(__name__)
 @use_kernel_forward_from_hub("RMSNorm")
@@ -670,7 +671,7 @@ class LlamaAttention(nn.Module):
         # =========================================================================
         # --- PATH 1: DELTA ATTENTION (PREFILL ONLY) ---
         # =========================================================================
-        if is_prefill and getattr(globVR, 'delta_pf_key_on', 0) == 1:
+        if is_prefill and getattr(globVR, 'delta_pf_key_on', 0) == 1 and globVR.delta_type == "row":
             divide_to = getattr(globVR, 'divide_to', 0)
             active_counts = None
             
@@ -775,6 +776,8 @@ class LlamaAttention(nn.Module):
             attn_output = attn_output.transpose(1, 2).contiguous()
             attn_output = attn_output.reshape(*input_shape, -1).contiguous()
             attn_output = self.o_proj(attn_output)
+
+
         # =========================================================================
         # --- PATH 2: TRITON FLASH ATTENTION BASELINE ---
         # =========================================================================

@@ -68,7 +68,7 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [15],
+            "delta": [20],
             "row_sim": ["euclidean"],
             "divide_to": [0]
         },
@@ -92,16 +92,15 @@ EXPERIMENT_DEFINITIONS = {
     "nm_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [0,0.5,1,1.5]
         },
         "arg_builder": lambda p: [
-            "--scale", str(p["scale"]), 
-            "--delta", str(p["delta"]), 
+            "--scale", str(p["scale"]),  
         ],
         "injector": lambda args: {
+            "delta_pf_key_on": 1,
             "delta_type": "nm",
             "scale": args.scale,
-             "row_delta_threshold": args.delta,
+            "flash":True,
         }
     },
     "mlp_delta": {
@@ -364,7 +363,7 @@ def run_worker_process(args, experiment_dir):
 
     max_len = 8000 if (args.long_bench or args.all_bench) else 4096
 
-
+    print("AAAAAA",glob_settings)
     model_args= f"pretrained={model_id},trust_remote_code=True,dtype=bfloat16,attn_implementation=eager"
     if not glob_settings.get("flash", False):
         model_args = f"pretrained={model_id},trust_remote_code=True,dtype=bfloat16,attn_implementation=eager,max_length={max_len}"

@@ -4,7 +4,7 @@ import triton.language as tl
 
 @triton.jit
 def fused_delta_flash_kernel(
-    Q, K_dense, K_packed, V_dense, Cumsum_Mask, Keep_Mask, Out, Scratch,
+    Q, K_dense, K_packed, V_dense, Cumsum_Mask, Keep_Mask, Out,
     stride_qb, stride_qh, stride_qm, stride_qd,
     stride_kdb, stride_kdh, stride_kdn, stride_kdd,
     stride_kpb, stride_kph, stride_kpn, stride_kpd,
@@ -12,7 +12,6 @@ def fused_delta_flash_kernel(
     stride_cb, stride_ch, stride_cn,
     stride_kb, stride_kh, stride_kn,
     stride_ob, stride_oh, stride_om, stride_od,
-    stride_sb, stride_sh, stride_sm, stride_sn,
     sm_scale, blk_size, seq_len_q, seq_len_k, head_dim, num_heads,
     BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, BLOCK_D: tl.constexpr
 ):
@@ -39,7 +38,6 @@ def fused_delta_flash_kernel(
     v_dense_base = V_dense + batch_idx * stride_vb + head_idx * stride_vh
     cm_base = Cumsum_Mask + batch_idx * stride_cb + head_idx * stride_ch
     km_base = Keep_Mask + batch_idx * stride_kb + head_idx * stride_kh
-    scratch_base = Scratch + batch_idx * stride_sb + head_idx * stride_sh + offs_m[:, None] * stride_sm
     
     # -----------------------------------------------------------
     # 2. Flash Attention Accumulators & State
@@ -87,7 +85,6 @@ def fused_delta_flash_kernel(
             pack_start_raw = tl.load(cm_base + start_n * stride_cn)
             is_start_kept = tl.load(km_base + start_n * stride_kn)
             
-            # [FIX 1]: Identify the true start to prevent double-counting keys from the previous block
             true_pack_start = pack_start_raw + (1 - is_start_kept) 
             
             pack_end_idx = tl.minimum(start_n + BLOCK_N - 1, seq_len_k - 1)
@@ -102,26 +99,25 @@ def fused_delta_flash_kernel(
             
             qk_delta = tl.dot(q, k_active)
             
-            # [FIX 1 APPLIED]: Zero out the score of any key we already processed in the last block
             valid_delta_mask = offs_k_active >= true_pack_start
             qk_delta = tl.where(valid_delta_mask[None, :], qk_delta, 0.0)
             
             qk_cumsum = tl.cumsum(qk_delta, axis=1) + running_score[:, None]
             
-            # [FIX 2]: Only update running_score if this block actually contained active keys
             extract_carry_mask = (tl.arange(0, BLOCK_N) == (num_active - 1))
             new_running_score = tl.sum(tl.where(extract_carry_mask[None, :], qk_cumsum, 0.0), axis=1)
             running_score = tl.where(num_active > 0, new_running_score, running_score)
             
-            # The SRAM Bounce
-            scratch_ptrs = scratch_base + tl.arange(0, BLOCK_N)[None, :] * stride_sn
-            tl.store(scratch_ptrs, qk_cumsum, mask=k_active_mask[None, :])
-            
+            # --- THE TENSOR CORE ROUTING MATRIX (Zero HBM Expand) ---
             local_routing_mask = tl.load(cm_base + offs_n * stride_cn, mask=k_mask, other=0)
             routing_idx = local_routing_mask - pack_start_raw
             
-            read_ptrs = scratch_base + routing_idx[None, :] * stride_sn
-            qk = tl.load(read_ptrs, mask=k_mask[None, :], other=0.0)
+            # Construct a binary matrix mapping compressed columns to dense columns
+            offs_i = tl.arange(0, BLOCK_N)
+            routing_matrix = (offs_i[:, None] == routing_idx[None, :])
+            
+            # Dot product expands the scores entirely in SRAM/Registers using Tensor Cores
+            qk = tl.dot(qk_cumsum.to(q.dtype), routing_matrix.to(q.dtype))
 
         # ==========================================
         # UNIFIED FLASH ATTENTION MATH
@@ -167,23 +163,19 @@ def fused_delta_flash_attention(
     k_packed = k_packed.contiguous()
     v_dense = v_dense.contiguous()
     cumsum_mask = cumsum_mask.contiguous()
-    keep_mask = keep_mask.contiguous().to(torch.int32) # Ensure boolean is cast for triton
+    keep_mask = keep_mask.contiguous().to(torch.int32) 
     
     out = torch.empty_like(q)
     
-    # Tuning parameters
-    BLOCK_M = 64
+    # Optimized for H100
+    BLOCK_M = 128
     BLOCK_N = 64
     BLOCK_D = triton.next_power_of_2(head_dim)
-    
-    # HBM Scratchpad for the register expansion bounce
-    # Size: [Batch, Heads, Q_Len, BLOCK_N]
-    scratch = torch.empty((batch_size, num_heads, q_len, BLOCK_N), dtype=torch.float32, device=q.device)
     
     grid = (triton.cdiv(q_len, BLOCK_M), batch_size * num_heads, 1)
     
     fused_delta_flash_kernel[grid](
-        q, k_dense, k_packed, v_dense, cumsum_mask, keep_mask, out, scratch,
+        q, k_dense, k_packed, v_dense, cumsum_mask, keep_mask, out,
         q.stride(0), q.stride(1), q.stride(2), q.stride(3),
         k_dense.stride(0), k_dense.stride(1), k_dense.stride(2), k_dense.stride(3),
         k_packed.stride(0), k_packed.stride(1), k_packed.stride(2), k_packed.stride(3),
@@ -191,7 +183,6 @@ def fused_delta_flash_attention(
         cumsum_mask.stride(0), cumsum_mask.stride(1), cumsum_mask.stride(2),
         keep_mask.stride(0), keep_mask.stride(1), keep_mask.stride(2),
         out.stride(0), out.stride(1), out.stride(2), out.stride(3),
-        scratch.stride(0), scratch.stride(1), scratch.stride(2), scratch.stride(3),
         sm_scale, blk_size, q_len, k_len, head_dim, num_heads,
         BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_D=BLOCK_D
     )
