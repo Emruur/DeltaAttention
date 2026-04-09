@@ -3,7 +3,7 @@
 #SBATCH -p gpu_h100
 #SBATCH --cpus-per-task=18
 #SBATCH --gpus=1
-#SBATCH --time=0-03:30:00
+#SBATCH --time=0-08:30:00
 #SBATCH --output=setup_%j.out
 #SBATCH --error=setup_%j.err
 
@@ -27,4 +27,4 @@ export HUGGINGFACE_HUB_CACHE=$SHARED_SCRATCH
 export TRANSFORMERS_CACHE=$SHARED_SCRATCH
 
 export HF_TOKEN="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"
-srun --export=ALL,HF_TOKEN python eval_all.py --llama --experiment_type nm_delta --long_bench
+srun --export=ALL,HF_TOKEN python eval_all.py --llama --experiment_type row_delta --long_bench

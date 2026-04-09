@@ -134,4 +134,3 @@ def triton_flash_attention(q, k, v, causal=True, sm_scale=None):
     return out
 
 
-

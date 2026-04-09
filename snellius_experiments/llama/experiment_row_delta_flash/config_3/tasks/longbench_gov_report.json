@@ -1,0 +1,40 @@
+{
+    "task_name": "longbench_gov_report",
+    "timestamp": "2026-04-08T19:20:25.032256",
+    "shot": 0,
+    "sparsity": 0.5015886568143596,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 100,
+        "seq_len_avg": 11264.76,
+        "seq_len_min": 2095,
+        "seq_len_max": 43461,
+        "seq_len_std": 7003.943223813282
+    },
+    "accuracy": 0.3443061291909752,
+    "timings": {
+        "total_avg_ms": 22.36748168244958,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 5.994004566483199,
+            "time_delta_mm_pattern": 13.770357843954116,
+            "time_forward_total": 22.36748168244958
+        }
+    },
+    "metrics": {
+        "alias": "longbench_gov_report",
+        "rouge_score,none": 0.3443061291909752,
+        "rouge_score_stderr,none": 0.005845896771182365
+    },
+    "total_benchmark_time_s": 1435.3213403224945,
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 1,
+        "flash": true
+    },
+    "experiment_type": "row_delta"
+}

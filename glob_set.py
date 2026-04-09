@@ -147,7 +147,7 @@ def compute_sparsity_scale(input, scale, keep_mask=None, active_counts=None):
         # FASTEST PATH (Unpartitioned Kernel): 
         # We already counted the exact number of kept tokens!
         # input shape is [bsz, n_head, seq_len, head_dim]. active_counts is [bsz, n_head].
-        total_tokens = input.shape[0] * input.shape[1] * input.shape[2] 
+        total_tokens = keep_mask.shape[0] * keep_mask.shape[1] * keep_mask.shape[2]
         kept_tokens = active_counts.sum().item()
         
         current_spars = ((total_tokens - kept_tokens) / total_tokens) * (1 - scale)

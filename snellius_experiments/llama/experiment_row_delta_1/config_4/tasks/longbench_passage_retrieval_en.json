@@ -1,0 +1,40 @@
+{
+    "task_name": "longbench_passage_retrieval_en",
+    "timestamp": "2026-04-08T22:18:27.524132",
+    "shot": 0,
+    "sparsity": 0.16846144432847382,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 100,
+        "seq_len_avg": 12644.36,
+        "seq_len_min": 10061,
+        "seq_len_max": 15253,
+        "seq_len_std": 1204.6597239054688
+    },
+    "accuracy": 0.99,
+    "timings": {
+        "total_avg_ms": 11.714380257427692,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.7696045701391995,
+            "time_delta_mm_pattern": 7.978019566312432,
+            "time_forward_total": 11.714380257427692
+        }
+    },
+    "metrics": {
+        "alias": "longbench_passage_retrieval_en",
+        "retrieval_score,none": 0.99,
+        "retrieval_score_stderr,none": 0.009999999999999997
+    },
+    "total_benchmark_time_s": 86.72529697418213,
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 13.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 16,
+        "flash": true
+    },
+    "experiment_type": "row_delta"
+}

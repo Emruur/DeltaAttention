@@ -68,9 +68,9 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [20],
+            "delta": [13,14,15,16,17],
             "row_sim": ["euclidean"],
-            "divide_to": [0]
+            "divide_to": [2,4,8,16]
         },
         "arg_builder": lambda p: [
             "--scale", str(p["scale"]), 
@@ -321,7 +321,10 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
             raw_metrics.get("qa_f1_score,none") or 
             raw_metrics.get("summary_rouge_l,none") or
             raw_metrics.get("rouge_score,none") or
+            raw_metrics.get("retrieval_score,none") or
             raw_metrics.get("f1,none") or
+            raw_metrics.get("summary_rouge_l,none") or
+            raw_metrics.get("rougeL,none") or
             0.0
         )
     else:
@@ -394,9 +397,10 @@ def run_worker_process(args, experiment_dir):
     ]
 
     LONGBENCH_TASKS = [
-        "longbench_multifieldqa_en", 
-        "longbench_hotpotqa", 
-        "longbench_gov_report"
+        "longbench_multifieldqa_en", # Current (Single-Doc QA)
+        "longbench_hotpotqa",        # Current (Multi-Doc QA)
+        "longbench_narrativeqa",     # ADDED (Deep Plot/Character QA)
+        "longbench_passage_retrieval_en" # ADDED (Raw Efficiency & Needle Retrieval)
     ]
 
     if args.all_bench:
