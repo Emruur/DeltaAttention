@@ -2,11 +2,12 @@ import os
 import json
 import argparse
 import pandas as pd
+import textwrap
 import matplotlib.pyplot as plt
 from pandas.plotting import table
 
 # Hardcoded baseline path
-BASELINE_PATH = "experiments/experiment_baseline_1"
+BASELINE_PATH = "snellius_experiments/llama/baseline"
 
 def load_experiment_data(exp_dir):
     """Crawls an experiment directory and compiles all task JSONs into a DataFrame."""
@@ -104,11 +105,13 @@ def build_table_df(exp_df, baseline_df, x_param):
     # GLOBAL ROUNDING: Force exactly 3 decimal points for CSV and Terminal
     return table_df.round(3)
 
+
+
 def save_table_as_png(df, title, out_path):
-    """Renders a Pandas DataFrame as a high-quality Matplotlib table image."""
+    """Renders a Pandas DataFrame as a high-quality table image without an internal title."""
     print(f"  -> Rendering PNG image table...")
 
-    # Define human-readable metric names for the image
+    # Define human-readable metric names
     metric_map = {
         'accuracy': 'Acc (%)',
         'sparsity': 'Spars (%)',
@@ -119,18 +122,19 @@ def save_table_as_png(df, title, out_path):
     render_df = df.reset_index()
     render_df['Metric'] = render_df['Metric'].map(metric_map)
 
+    # --- Formatting Logic ---
     acc_rows = render_df['Metric'] == 'Acc (%)'
     spars_rows = render_df['Metric'] == 'Spars (%)'
     data_cols = [c for c in render_df.columns if c not in [render_df.columns[0], 'Metric']]
 
     for col in data_cols:
-        # Convert numeric Acc/Spars to percentages for the image
         render_df.loc[acc_rows, col] *= 100
         render_df.loc[spars_rows, col] *= 100
-        # Enforce 3 decimal rounding on the percentages
-        render_df.loc[acc_rows | spars_rows, col] = render_df.loc[acc_rows | spars_rows, col].apply(lambda x: round(x, 3))
+        render_df.loc[acc_rows | spars_rows, col] = render_df.loc[acc_rows | spars_rows, col].apply(
+            lambda x: round(x, 3) if pd.notnull(x) else x
+        )
 
-    # Merge duplicate parameter labels for a MultiIndex look in Matplotlib
+    # Merge duplicate parameter labels
     p_col = render_df.columns[0]
     last_val = None
     merged_p_col = []
@@ -142,30 +146,50 @@ def save_table_as_png(df, title, out_path):
             last_val = val
     render_df[p_col] = merged_p_col
 
-    # Create canvas
-    fig, ax = plt.subplots(figsize=(len(render_df.columns)*1.5, len(render_df)*0.3))
-    ax.axis('off')
-    ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
+    # --- Header Wrapping ---
+    wrapped_columns = [textwrap.fill(str(col), width=15) for col in render_df.columns]
 
-    # Render table
-    tbl = table(ax, render_df, loc='center', cellLoc='center', colWidths=[0.08]*2 + [0.1]*(len(render_df.columns)-2))
-    tbl.auto_set_font_size(False)
-    tbl.set_fontsize(11)
+    # --- Canvas Setup ---
+    # Width multiplier for columns, height per row
+    fig_width = len(render_df.columns) * 2.2
+    fig_height = len(render_df) * 0.5
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    ax.axis('off')
+    # Title removed per request - filename is sufficient
+
+    # --- Render Table ---
+    # Give first two columns (param/metric) fixed widths, distribute the rest
+    col_widths = [0.1, 0.1] + [0.8 / (len(render_df.columns) - 2)] * (len(render_df.columns) - 2)
     
+    tbl = table(ax, render_df, loc='center', cellLoc='center', colWidths=col_widths)
+    
+    # Apply wrapped text to headers
+    for i, col_text in enumerate(wrapped_columns):
+        tbl.get_celld()[(0, i)].get_text().set_text(col_text)
+
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(10)
+    
+    # --- Styling ---
     cells = tbl.get_celld()
     for (row, col), cell in cells.items():
         cell.set_edgecolor('black')
         
         if row == 0:
+            cell.set_height(0.15) # Tall header for wrapped text
             cell.set_text_props(weight='bold', color='white')
             cell.set_facecolor('#2f4f4f') 
-        elif col == 0:
+        else:
+            cell.set_height(0.08) # Standard data row height
+            
+        if col == 0:
             cell.set_text_props(weight='bold')
             if cell.get_text().get_text() == 'Baseline':
                 cell.set_facecolor('#ffcccc') 
             else:
                 cell.set_facecolor('#f0f0f0') 
         elif row > 0:
+            # Row striping
             param_block_idx = render_df[p_col].iloc[:row].apply(lambda x: 1 if x != '' else 0).sum()
             if param_block_idx % 2 == 0:
                 cell.set_facecolor('#e6f3ff') 
@@ -173,10 +197,12 @@ def save_table_as_png(df, title, out_path):
             if col == len(render_df.columns)-1:
                  cell.set_text_props(weight='bold')
 
-    plt.tight_layout()
+    # tight_layout with small padding since title is gone
+    plt.tight_layout(pad=1.0)
     plt.savefig(out_path, dpi=200, bbox_inches='tight')
     plt.close()
     print(f"  [Success] PNG written to: {os.path.basename(out_path)}")
+
 
 def main():
     parser = argparse.ArgumentParser()
