@@ -1,0 +1,8 @@
+{
+    "delta_decode": false,
+    "exact_window_size": 100,
+    "row_delta_threshold": 15.0,
+    "delta_pf_key_on": 1,
+    "flash": true,
+    "delta_type": "row"
+}

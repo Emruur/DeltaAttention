@@ -1,0 +1,10 @@
+{
+    "delta_pf_key_on": 1,
+    "delta_type": "row",
+    "scale": 0.05,
+    "delta_mlp": "Regular",
+    "row_delta_threshold": 19.0,
+    "row_similarity_metric": "euclidean",
+    "divide_to": 128,
+    "flash": true
+}

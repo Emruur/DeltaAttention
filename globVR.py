@@ -80,3 +80,5 @@ time_internal = True # Controls if we do fine-grained timing with CUDA syncs
 ##FLASH
 
 flash= False
+
+delta_decode = False

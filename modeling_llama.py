@@ -93,7 +93,7 @@ from tritonModules import (
 
 ## FLASH ATTENTION IMPORTS
 from flashAttention import triton_flash_attention
-from deltaFlashAttention import absolute_flash_kernel, hybrid_compressed_flash_kernel
+from deltaFlashAttention import hybrid_compressed_flash_kernel
 
 logger = logging.get_logger(__name__)
 @use_kernel_forward_from_hub("RMSNorm")
@@ -287,134 +287,6 @@ class LlamaAttention(nn.Module):
             config.num_attention_heads * self.head_dim, config.hidden_size, bias=config.attention_bias
         )
 
-    ### DELTA ATTENTION METHODS
-    def get_smart_absolute_pack_triton_partitioned(self, input_states, threshold, divide_to):
-        bsz, n_head, seq_len, head_dim = input_states.shape
-        device = input_states.device
-        
-        if not input_states.is_contiguous():
-            input_states = input_states.contiguous()
-
-        chunk_size = (seq_len + divide_to - 1) // divide_to
-        BLOCK_D = triton.next_power_of_2(head_dim)
-        
-        # Allocations
-        keep_mask = torch.zeros((bsz, n_head, seq_len), dtype=torch.int32, device=device)
-        chunk_counts = torch.zeros((bsz, n_head, divide_to), dtype=torch.int32, device=device)
-        
-        # --- STEP 1: PARALLEL EVALUATE ---
-        grid_eval = (bsz * n_head, divide_to)
-        # Important: pass num_heads to the kernel if it uses it for indexing
-        chunked_eval_kernel[grid_eval](
-            input_states, keep_mask, chunk_counts,
-            threshold ** 2,
-            input_states.stride(0), input_states.stride(1), input_states.stride(2), input_states.stride(3),
-            keep_mask.stride(0), keep_mask.stride(1), keep_mask.stride(2),
-            chunk_counts.stride(0), chunk_counts.stride(1), chunk_counts.stride(2),
-            seq_len, head_dim, chunk_size, num_heads=n_head,
-            BLOCK_D=BLOCK_D
-        )
-        
-        # --- STEP 2: CUMSUM (THE MAGIC INDEX MAP) ---
-        # Example: keep_mask = [1, 0, 0, 1, 0]
-        # cumsum     = [1, 1, 1, 2, 2]
-        # index_map  = [0, 0, 0, 1, 1] <- This tells dropped tokens EXACTLY which anchor to route to!
-        index_map = (torch.cumsum(keep_mask, dim=-1) - 1).to(torch.int32)
-        
-        # Total active tokens per head
-        active_counts = chunk_counts.sum(dim=-1)
-        
-        # --- STEP 3: PARALLEL SCATTER PACK ---
-        k_packed = torch.zeros_like(input_states)
-        BLOCK_S = 64
-        grid_scatter = (bsz * n_head, triton.cdiv(seq_len, BLOCK_S))
-        
-        parallel_scatter_pack_kernel[grid_scatter](
-            input_states, k_packed, keep_mask, index_map,
-            input_states.stride(0), input_states.stride(1), input_states.stride(2), input_states.stride(3),
-            k_packed.stride(0), k_packed.stride(1), k_packed.stride(2), k_packed.stride(3),
-            keep_mask.stride(0), keep_mask.stride(1), keep_mask.stride(2),
-            index_map.stride(0), index_map.stride(1), index_map.stride(2),
-            seq_len, head_dim, n_head,
-            BLOCK_S=BLOCK_S, BLOCK_D=BLOCK_D
-        )
-        
-        # Keep mask is returned as boolean for your global sparsity trackers
-        return k_packed, index_map, keep_mask.to(torch.bool), active_counts
-
-    def get_smart_absolute_pack_triton(self, input_states, threshold, similarity_metric="euclidean"):
-        """
-        Fused temporal delta evaluator and absolute memory packing kernel.
-        Replaces the old delta+cumsum approach.
-        """
-        bsz, n_head, seq_len, head_dim = input_states.shape
-        device = input_states.device
-        
-        if not input_states.is_contiguous():
-            input_states = input_states.contiguous()
-
-        # 1. Pre-allocate outputs
-        k_packed = torch.zeros_like(input_states) 
-        index_map = torch.zeros((bsz, n_head, seq_len), dtype=torch.int32, device=device)
-        counts = torch.zeros((bsz, n_head), dtype=torch.int32, device=device)
-        
-        # 2. Setup Triton launch parameters
-        BLOCK_D = triton.next_power_of_2(head_dim)
-        
-        if similarity_metric == "euclidean":
-            threshold_sq = threshold ** 2
-            grid = (bsz, n_head)
-            
-            smart_absolute_pack_kernel[grid](
-                input_states, k_packed, index_map, counts,
-                threshold_sq,
-                input_states.stride(0), input_states.stride(1), input_states.stride(2), input_states.stride(3),
-                k_packed.stride(0), k_packed.stride(1), k_packed.stride(2), k_packed.stride(3),
-                index_map.stride(0), index_map.stride(1), index_map.stride(2),
-                counts.stride(0), counts.stride(1),
-                seq_len, head_dim,
-                BLOCK_D=BLOCK_D
-            )
-        else:
-            raise NotImplementedError(f"Smart pack kernel for '{similarity_metric}' is not yet implemented.")
-            
-        return k_packed, index_map, counts
-
-    def _smart_absolute_flash_attention(self, q, k_dense, k_packed, v_dense, index_map, keep_mask, sm_scale, blk_size):
-        """Python wrapper for the Stateful Absolute Flash Kernel"""
-        batch_size, num_heads, q_len, head_dim = q.shape
-        k_len = k_dense.shape[2]
-        
-        q = q.contiguous()
-        k_dense = k_dense.contiguous()
-        k_packed = k_packed.contiguous()
-        v_dense = v_dense.contiguous()
-        index_map = index_map.contiguous().to(torch.int32)
-        keep_mask = keep_mask.contiguous().to(torch.int32) # Ensure it's int32 for the kernel
-        
-        out = torch.empty_like(q)
-        
-        BLOCK_M = 128
-        BLOCK_N = 64
-        BLOCK_D = triton.next_power_of_2(head_dim)
-        
-        grid = (triton.cdiv(q_len, BLOCK_M), batch_size * num_heads, 1)
-        
-        # Check your kernel name here (absolute_flash_kernel vs fused_delta_flash_kernel)
-        absolute_flash_kernel[grid](
-            q, k_dense, k_packed, v_dense, index_map, keep_mask, out, # 7 Tensors total
-            q.stride(0), q.stride(1), q.stride(2), q.stride(3),
-            k_dense.stride(0), k_dense.stride(1), k_dense.stride(2), k_dense.stride(3),
-            k_packed.stride(0), k_packed.stride(1), k_packed.stride(2), k_packed.stride(3),
-            v_dense.stride(0), v_dense.stride(1), v_dense.stride(2), v_dense.stride(3),
-            index_map.stride(0), index_map.stride(1), index_map.stride(2),
-            keep_mask.stride(0), keep_mask.stride(1), keep_mask.stride(2), # Added keep_mask strides
-            out.stride(0), out.stride(1), out.stride(2), out.stride(3),
-            sm_scale, blk_size, q_len, k_len, head_dim, num_heads,
-            BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_D=BLOCK_D
-        )
-        return out
-    
     def _forward_hybrid_flash(
         self, q, k_dense, v_dense, k_packed, v_packed, 
         packed_timestamps, packed_counts
@@ -492,82 +364,6 @@ class LlamaAttention(nn.Module):
             key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
 
         bsz, q_len, _ = hidden_states.size()
-
-        # if is_prefill and getattr(globVR, 'delta_pf_key_on', 0) == 1 and globVR.delta_type == "row":
-        #     divide_to = getattr(globVR, 'divide_to', 0)
-            
-        #     if do_time:
-        #         start_evt_rd = torch.cuda.Event(enable_timing=True)
-        #         end_evt_rd = torch.cuda.Event(enable_timing=True)
-        #         start_evt_rd.record()
-
-        #     # --- 1. DYNAMIC PACKING BRANCH ---
-        #     if divide_to == 0:
-        #         # Serial Fused Packing
-        #         k_packed, index_map, active_counts = self.get_smart_absolute_pack_triton(
-        #             key_states, 
-        #             getattr(globVR, 'row_delta_threshold', 0.0), 
-        #             getattr(globVR, 'row_similarity_metric', 'euclidean')
-        #         )
-                
-        #         # Derive keep_mask for metadata trackers & Flash exact baseline extraction
-        #         shifted_index_map = torch.cat([torch.zeros_like(index_map[:, :, :1]), index_map[:, :, :-1]], dim=-1)
-        #         keep_mask = (index_map > shifted_index_map)
-        #         keep_mask[:, :, 0] = True 
-                
-        #     else:
-        #         # Parallel 3-Step Chunked Packing (Map-Reduce)
-        #         k_packed, index_map, keep_mask, active_counts = self.get_smart_absolute_pack_triton_partitioned(
-        #             key_states, 
-        #             getattr(globVR, 'row_delta_threshold', 0.0), 
-        #             divide_to
-        #         )
-
-        #     if do_time:
-        #         end_evt_rd.record()
-        #         glob_set.queue_event_pair('time_get_row_delta', start_evt_rd, end_evt_rd)
-
-        #     # --- 2. METADATA & SPARSITY TRACKING ---
-        #     key_delta_all = k_packed # Used for sparsity logging
-        #     glob_set.store_delta(getattr(globVR, 'delta_key', ''), self.layer_idx, key_delta_all, getattr(globVR, 'collect_delta_pf_key', 0))
-        #     blk_size = round(q_len * getattr(globVR, 'scale', 0.0))
-        #     new_scale = blk_size / q_len
-        #     glob_set.compute_sparsity_scale(key_delta_all, new_scale, keep_mask=keep_mask, active_counts=active_counts)
-
-        #     # --- 3. GQA EXPANSION ---
-        #     key_states_expanded = repeat_kv(key_states, self.num_key_value_groups)
-        #     value_states_expanded = repeat_kv(value_states, self.num_key_value_groups)
-        #     index_map_expanded = repeat_kv(index_map.unsqueeze(-1), self.num_key_value_groups).squeeze(-1)
-        #     keep_mask_expanded = repeat_kv(keep_mask.unsqueeze(-1), self.num_key_value_groups).squeeze(-1).to(torch.int32)
-        #     k_packed_expanded = repeat_kv(k_packed, self.num_key_value_groups)
-
-        #     # --- 4. UNIFIED STATEFUL FLASH ATTENTION ---
-        #     if do_time:
-        #         start_evt_mm = torch.cuda.Event(enable_timing=True)
-        #         end_evt_mm = torch.cuda.Event(enable_timing=True)
-        #         start_evt_mm.record()
-
-        #     # Both packing methods route right here!
-        #     attn_output = self._smart_absolute_flash_attention(
-        #         query_states, 
-        #         key_states_expanded,          
-        #         k_packed_expanded,            
-        #         value_states_expanded,        
-        #         index_map_expanded,
-        #         keep_mask_expanded,  
-        #         self.scaling, 
-        #         int(blk_size)        
-        #     )
-        #     attn_weights = None 
-
-        #     if do_time:
-        #         end_evt_mm.record()
-        #         glob_set.queue_event_pair('time_delta_mm_pattern', start_evt_mm, end_evt_mm)
-
-        #     # --- 5. OUTPUT PROJECTION ---
-        #     attn_output = attn_output.transpose(1, 2).contiguous()
-        #     attn_output = attn_output.reshape(*input_shape, -1).contiguous()
-        #     attn_output = self.o_proj(attn_output)
 
         # =========================================================================
         # --- PATH 1: SMART HYBRID ATTENTION (PREFILL ONLY) ---
@@ -682,6 +478,38 @@ class LlamaAttention(nn.Module):
             attn_output = attn_output.reshape(*input_shape, -1).contiguous()
             attn_output = self.o_proj(attn_output)
             
+            # ---> PUT THE PREFILL CACHE INJECTION HERE <---
+            if past_key_value is not None:
+                # Check if we are using the custom cache (delta_decoding is active)
+                if hasattr(past_key_value, 'k_packed'):
+                    actual_packed_len = k_packed.shape[2]
+                    
+                    # FORCE CAPACITY EXPANSION FOR LONG PREFILLS
+                    if actual_packed_len > past_key_value.capacity:
+                        new_capacity = actual_packed_len + 1024 # Add 1024 buffer for the decoding phase
+                        
+                        past_key_value.k_packed = torch.zeros(
+                            (past_key_value.bsz, past_key_value.n_kv_heads, new_capacity, past_key_value.head_dim), 
+                            device=past_key_value.device, 
+                            dtype=past_key_value.dtype
+                        )
+                        past_key_value.v_packed = torch.zeros_like(past_key_value.k_packed)
+                        past_key_value.packed_counts = torch.zeros(
+                            (past_key_value.bsz, past_key_value.n_kv_heads, new_capacity), 
+                            device=past_key_value.device, 
+                            dtype=torch.int32
+                        )
+                        past_key_value.capacity = new_capacity
+                        
+                    # Store the prefill states for decoding to use later
+                    past_key_value.k_packed[:, :, :actual_packed_len, :] = k_packed
+                    past_key_value.v_packed[:, :, :actual_packed_len, :] = v_packed
+                    past_key_value.packed_counts[:, :, :actual_packed_len] = packed_counts
+                    
+                    counts_per_head = active_counts.view(-1).to(torch.int32)
+                    past_key_value.packed_lengths[:] = counts_per_head
+
+
         # =========================================================================
         # --- PATH 2: TRITON FLASH ATTENTION BASELINE ---
         # =========================================================================
@@ -697,7 +525,6 @@ class LlamaAttention(nn.Module):
             
             # If attention_mask is passed during prefill, it's typically causal
             is_causal = True  # Decoder prefill is ALWAYS causal!
-            ##TODo delta path??
 
             # Execute our imported custom Triton kernel
             attn_output = triton_flash_attention(
@@ -721,23 +548,79 @@ class LlamaAttention(nn.Module):
         # =========================================================================
         # --- PATH 3: STANDARD LLAMA PATH (DECODING / EAGER FALLBACK) ---
         # =========================================================================
+
         else:
-            attention_interface: Callable = eager_attention_forward
+            # ---> HYBRID COMPRESSED DECODING PATH <---
+            if not is_prefill and getattr(globVR, 'delta_decode', False) and hasattr(past_key_value, 'k_packed'):
+                # 1. Fetch current active states from our custom cache
+                # (The cache.update() method was already called earlier in the forward pass!)
+                max_packed = past_key_value.packed_lengths.max().item()
+                
+                k_exact = past_key_value.k_exact
+                v_exact = past_key_value.v_exact
+                
+                # Slice packed tensors down to the maximum active length to save compute
+                k_packed = past_key_value.k_packed[:, :, :max_packed, :]
+                v_packed = past_key_value.v_packed[:, :, :max_packed, :]
+                counts = past_key_value.packed_counts[:, :, :max_packed]
+                
+                # 2. GQA Expansion 
+                k_exact_exp = repeat_kv(k_exact, self.num_key_value_groups)
+                v_exact_exp = repeat_kv(v_exact, self.num_key_value_groups)
+                
+                k_packed_exp = repeat_kv(k_packed, self.num_key_value_groups)
+                v_packed_exp = repeat_kv(v_packed, self.num_key_value_groups)
+                counts_exp = repeat_kv(counts.unsqueeze(-1), self.num_key_value_groups).squeeze(-1)
+                
+                # 3. Compute Attention Scores (Q * K^T)
+                scores_exact = torch.matmul(query_states, k_exact_exp.transpose(-2, -1)) * self.scaling
+                scores_packed = torch.matmul(query_states, k_packed_exp.transpose(-2, -1)) * self.scaling
+                
+                # Mask out empty slots in packed history if heads diverged in length
+                lengths_4d = past_key_value.packed_lengths.view(bsz, self.config.num_key_value_heads, 1, 1)
+                lengths_exp = repeat_kv(lengths_4d, self.num_key_value_groups).squeeze(-1).squeeze(-1) 
+                idx = torch.arange(max_packed, device=query_states.device)[None, None, :]
+                mask = idx >= lengths_exp.unsqueeze(-1)
+                scores_packed.masked_fill_(mask.unsqueeze(-2), float('-inf'))
+                
+                # 4. Safe Softmax with Weighted Counts
+                max_exact = torch.amax(scores_exact, dim=-1, keepdim=True)
+                max_packed = torch.amax(scores_packed, dim=-1, keepdim=True)
+                global_max = torch.maximum(max_exact, max_packed)
+                
+                exp_exact = torch.exp(scores_exact - global_max)
+                exp_packed = torch.exp(scores_packed - global_max) * counts_exp.unsqueeze(-2) # Apply counts!
+                
+                sum_exp = exp_exact.sum(dim=-1, keepdim=True) + exp_packed.sum(dim=-1, keepdim=True)
+                
+                attn_exact = exp_exact / sum_exp
+                attn_packed = exp_packed / sum_exp
+                
+                # 5. Output Projection
+                out_exact = torch.matmul(attn_exact, v_exact_exp)
+                out_packed = torch.matmul(attn_packed, v_packed_exp)
+                attn_output = out_exact + out_packed
+                
+                attn_weights = None 
+                
+            # ---> STANDARD EAGER/SDPA FALLBACK <---
+            else:
+                attention_interface: Callable = eager_attention_forward
 
-            if self.config._attn_implementation != "eager":
-                if self.config._attn_implementation == "sdpa" and kwargs.get("output_attentions", False):
-                    logger.warning_once(
-                        "`torch.nn.functional.scaled_dot_product_attention` does not support `output_attentions=True`. Falling back to "
-                        'eager attention.'
-                    )
-                else:
-                    attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
+                if self.config._attn_implementation != "eager":
+                    if self.config._attn_implementation == "sdpa" and kwargs.get("output_attentions", False):
+                        logger.warning_once(
+                            "`torch.nn.functional.scaled_dot_product_attention` does not support `output_attentions=True`. Falling back to "
+                            'eager attention.'
+                        )
+                    else:
+                        attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
 
-            attn_output, attn_weights = attention_interface(
-                self, query_states, key_states, value_states, attention_mask,
-                dropout=0.0 if not self.training else self.attention_dropout,
-                scaling=self.scaling, **kwargs,
-            )
+                attn_output, attn_weights = attention_interface(
+                    self, query_states, key_states, value_states, attention_mask,
+                    dropout=0.0 if not self.training else self.attention_dropout,
+                    scaling=self.scaling, **kwargs,
+                )
 
             attn_output = attn_output.reshape(*input_shape, -1).contiguous()
             attn_output = self.o_proj(attn_output)

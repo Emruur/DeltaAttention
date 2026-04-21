@@ -1,5 +1,5 @@
 import os
-os.environ["HF_DATASETS_TRUST_REMOTE_CODE"] = "1" # ADD THIS LINE
+os.environ["HF_DATASETS_TRUST_REMOTE_CODE"] = "1"
 os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
 import sys
 import json
@@ -20,17 +20,16 @@ import globVR
 import glob_set
 import lm_eval.api.registry
 from lm_eval.evaluator import simple_evaluate
-from lm_eval.tasks import TaskManager, get_task_dict # <-- ADD THIS
+from lm_eval.tasks import TaskManager, get_task_dict
 from transformers import AutoConfig, AutoModelForCausalLM
 
 from modeling_bitnet import BitNetForCausalLM, BitNetConfig
 from modeling_llama import LlamaForCausalLM, LlamaConfig
+# --- IMPORT YOUR CACHE CLASS HERE ---
+from deltaDecoding import HybridCompressedCache 
 
 
-
-
-
-# --- ADD THIS GLOBALLY TO FIX THE LM_EVAL JSON CRASH ---
+# --- FIX LM_EVAL JSON CRASH ---
 _original_json_default = json.JSONEncoder.default
 
 def safe_json_default(self, obj):
@@ -68,9 +67,9 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [13,14,15,16,17],
+            "delta": [15],
             "row_sim": ["euclidean"],
-            "divide_to": [2,4,8,16]
+            "divide_to": [16]
         },
         "arg_builder": lambda p: [
             "--scale", str(p["scale"]), 
@@ -106,14 +105,13 @@ EXPERIMENT_DEFINITIONS = {
     "mlp_delta": {
         "grid": {
             "mlp_thresh": [0.1,0.2,0.3,0.4,0.6,0.7,0.8,0.9,1,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2]
-            
         },
         "arg_builder": lambda p: [
             "--mlp_thresh", str(p["mlp_thresh"])
         ],
         "injector": lambda args: {
-            "delta_pf_key_on": 0,              # Force attention delta OFF
-            "delta_mlp": "Delta",              # Turn MLP delta ON
+            "delta_pf_key_on": 0,              
+            "delta_mlp": "Delta",              
             "mlp_delta_threshold": args.mlp_thresh
         }
     },
@@ -127,8 +125,8 @@ EXPERIMENT_DEFINITIONS = {
     "combined_delta": {
         "grid": {
             "scale": [0.05],
-            "thresh": [0.5, 1.0, 1.5],         # Attention thresholds
-            "mlp_thresh": [0.5, 1.0, 1.5]      # MLP thresholds
+            "thresh": [0.5, 1.0, 1.5],         
+            "mlp_thresh": [0.5, 1.0, 1.5]      
         },
         "arg_builder": lambda p: [
             "--scale", str(p["scale"]),
@@ -137,11 +135,38 @@ EXPERIMENT_DEFINITIONS = {
         ],
         "injector": lambda args: {
             "delta_pf_key_on": 1,  
-            "flash": True,                # Attention delta ON
-            "delta_mlp": "Delta",                  # MLP delta ON
-            "delta_pf_key_thresh": args.thresh,    # Injected from --thresh
-            "mlp_delta_threshold": args.mlp_thresh,# Injected from --mlp_thresh
+            "flash": True,                
+            "delta_mlp": "Delta",                  
+            "delta_pf_key_thresh": args.thresh,    
+            "mlp_delta_threshold": args.mlp_thresh,
             "scale": args.scale
+        }
+    },
+    # === NEW: DELTA DECODING EXPERIMENT ===
+    "delta_decoding": {
+        "grid": {
+            "window_size": [100],
+            "row_thresh": [15] 
+        },
+        "arg_builder": lambda p: [
+            "--window_size", str(p["window_size"]),
+            "--row_thresh", str(p["row_thresh"])
+        ],
+        "injector": lambda args: {
+            "delta_decode": False,              # Turns on decoding path in forward()
+            "exact_window_size": args.window_size,
+            "row_delta_threshold": args.row_thresh,
+            "delta_pf_key_on": 1,              # Assuming prefill delta is off for isolated testing
+            "flash": True,
+            "delta_type": "row"            
+        }
+    },
+
+    "baseline_decoding":{
+        "injector": lambda args: {
+            "delta_decode": False,              # Turns on decoding path in forward()
+            "delta_pf_key_on": False,              # Assuming prefill delta is off for isolated testing
+            "flash": True,         
         }
     }
 }
@@ -179,7 +204,6 @@ def get_or_create_config_dir(base_exp_dir, delta_config, force_dir_name=None):
     if not os.path.exists(base_exp_dir):
         os.makedirs(base_exp_dir)
 
-    # If a specific directory name is requested (e.g., config_baseline), use it directly
     if force_dir_name:
         dir_path = os.path.join(base_exp_dir, force_dir_name)
         os.makedirs(os.path.join(dir_path, "tasks"), exist_ok=True)
@@ -225,34 +249,26 @@ def save_single_task_result(config_dir, task_name, result_data):
     file_path = os.path.join(tasks_dir, f"{task_name}.json")
     lock_path = file_path + ".lock"
 
-    # Simple spin lock
     while os.path.exists(lock_path):
         time.sleep(0.2)
 
     try:
-        # Acquire lock
         with open(lock_path, 'w') as f: pass
 
-        # Overwrite the file with the full payload every time
         with open(file_path, 'w') as f:
             json.dump(result_data, f, indent=4, cls=NpEncoder)
         print(f"[IO] Saved full result to {os.path.basename(file_path)}", flush=True)
 
     finally:
-        # Release lock
         if os.path.exists(lock_path):
             os.remove(lock_path)
 
 
 def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting):
-    """
-    Runs a single evaluation pass for a task with a specific timing setting.
-    Returns the results dictionary and the total wall-clock time.
-    """
     print(f"    - Setting time_internal: {time_internal_setting}", flush=True)
     setattr(globVR, 'time_internal', time_internal_setting)
 
-    # Reset Global Trackers for a clean run
+    # Reset Global Trackers
     if hasattr(globVR, 'spars'): globVR.spars = 0.0
     if hasattr(globVR, 'latency_stats'): globVR.latency_stats = {}
     if hasattr(globVR, 'latency_events'): globVR.latency_events = []
@@ -281,7 +297,6 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     
     glob_set.resolve_latency_events()
 
-    # Process latency stats from globVR
     latency_breakdown = {}
     if hasattr(globVR, 'latency_stats'):
         for metric, stats in globVR.latency_stats.items():
@@ -291,7 +306,6 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     
     total_avg_ms = latency_breakdown.get('time_forward_total', 0.0)
 
-    # Calculate sequence length statistics
     seq_lengths = getattr(globVR, 'sequence_lengths', [])
     
     benchmark_stats = {
@@ -314,9 +328,7 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     
     primary_acc = 0.0
 
-    # 2. Explicitly handle LongBench tasks
     if "longbench" in task:
-        # Priority for LongBench is F1 for QA or RougeL for Summarization
         primary_acc = (
             raw_metrics.get("qa_f1_score,none") or 
             raw_metrics.get("summary_rouge_l,none") or
@@ -328,7 +340,6 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
             0.0
         )
     else:
-        # 3. Handle standard tasks (ARC, MMLU, etc.)
         primary_acc = (
             raw_metrics.get("acc_norm,none") or 
             raw_metrics.get("acc,none") or 
@@ -354,20 +365,17 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
 
 
 def run_worker_process(args, experiment_dir):
-    # 1. Base Settings - Hardcoded model IDs based on flag
+    # 1. Base Settings
     torch.set_grad_enabled(False)
     exp_def = EXPERIMENT_DEFINITIONS[args.experiment_type]
     glob_settings = exp_def["injector"](args)
     
     model_id = "microsoft/bitnet-b1.58-2B-4T" if args.bitnet else "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
-    
-    # Dynamically adjust max_length depending on whether we are running LongBench
+    max_len = 8000 if (args.long_bench or args.all_bench or args.experiment_type == "delta_decoding") else 4096
 
-    max_len = 8000 if (args.long_bench or args.all_bench) else 4096
-
-    print("AAAAAA",glob_settings)
-    model_args= f"pretrained={model_id},trust_remote_code=True,dtype=bfloat16,attn_implementation=eager"
+    print("Experiment Globals:", glob_settings)
+    model_args = f"pretrained={model_id},trust_remote_code=True,dtype=bfloat16,attn_implementation=eager"
     if not glob_settings.get("flash", False):
         model_args = f"pretrained={model_id},trust_remote_code=True,dtype=bfloat16,attn_implementation=eager,max_length={max_len}"
 
@@ -378,32 +386,30 @@ def run_worker_process(args, experiment_dir):
         "model_args": model_args
     }
 
-
-    # 2. Get Experiment Specifics (BUT DO NOT APPLY THEM YET)
     if args.experiment_type not in EXPERIMENT_DEFINITIONS:
         print(f"[Fatal] Unknown experiment type: {args.experiment_type}", flush=True)
         return
 
-    
-
-    # Force safety variables during model load to prevent dummy-pass OOMs
+    # Force safety variables during model load
     print("[Worker] Setting safe globVR defaults for model initialization...", flush=True)
     setattr(globVR, 'delta_pf_key_on', 0)
     setattr(globVR, 'delta_mlp', 'Regular')
+    setattr(globVR, 'delta_decode', False)
 
     # 3. Task Selection Logic
-    SHORT_TASKS = [
-        "triviaqa", "mmlu", "winogrande"
-    ]
-
+    SHORT_TASKS = ["triviaqa", "mmlu", "winogrande"]
     LONGBENCH_TASKS = [
-        "longbench_multifieldqa_en", # Current (Single-Doc QA)
-        "longbench_hotpotqa",        # Current (Multi-Doc QA)
-        "longbench_narrativeqa",     # ADDED (Deep Plot/Character QA)
-        "longbench_passage_retrieval_en" # ADDED (Raw Efficiency & Needle Retrieval)
+        "longbench_multifieldqa_en",
+        "longbench_hotpotqa",        
+        "longbench_narrativeqa",     
+        "longbench_passage_retrieval_en",
     ]
 
-    if args.all_bench:
+    # Force gov_report for delta decoding unless explicitly overridden
+    if args.experiment_type == "delta_decoding" or args.experiment_type == "baseline_decoding":
+        tasks = ["longbench_gov_report"]
+        print(f"[Worker] 'decoding' triggered. Forcing task: {tasks}", flush=True)
+    elif args.all_bench:
         tasks = SHORT_TASKS + LONGBENCH_TASKS
         print(f"[Worker] '--all_bench' triggered. Running {len(tasks)} total tasks.", flush=True)
     elif args.long_bench:
@@ -413,17 +419,12 @@ def run_worker_process(args, experiment_dir):
         tasks = SHORT_TASKS
         print(f"[Worker] '--short_bench' triggered. Running {len(tasks)} short tasks.", flush=True)
     else:
-        # Fallback to shot-based logic if no specific benchmark suite flag is provided
-        if args.shot == 0:
-            tasks = ["arc_easy", "arc_challenge", "openbookqa", "boolq", "hellaswag", "piqa", "winogrande"]
-        elif args.shot == 5:
-            tasks = ["triviaqa"]
-        elif args.shot == 10:
-            tasks = ["commonsense_qa"]
-        else:
-            tasks = ["arc_challenge"]
+        if args.shot == 0: tasks = ["arc_easy", "arc_challenge", "openbookqa", "boolq", "hellaswag", "piqa", "winogrande"]
+        elif args.shot == 5: tasks = ["triviaqa"]
+        elif args.shot == 10: tasks = ["commonsense_qa"]
+        else: tasks = ["arc_challenge"]
 
-    # 4. Load Model IN BASELINE STATE
+    # 4. Load Model
     print(f"[Worker] Loading Model: {model_id}...", flush=True)
     try:
         model_class = lm_eval.api.registry.get_model("hf")
@@ -431,7 +432,7 @@ def run_worker_process(args, experiment_dir):
             eval_config["model_args"], 
             {
                 "batch_size": eval_config["batch_size"],
-                "device": "cuda" # <--- ADD THIS BACK
+                "device": "cuda"
             }
         )
     except Exception as e:
@@ -439,20 +440,43 @@ def run_worker_process(args, experiment_dir):
         return
 
     # 5. NOW INJECT THE REAL GLOBALS
-    print(f"[Worker] Model loaded safely. Applying {args.experiment_type} settings: {glob_settings}", flush=True)
+    print(f"[Worker] Applying {args.experiment_type} settings: {glob_settings}", flush=True)
     for key, value in glob_settings.items():
         setattr(globVR, key, value)
 
+    # =========================================================================
+    # 5.5 CACHE INJECTION MONKEY-PATCH (CRITICAL FOR LM_EVAL DECODING)
+    # =========================================================================
+    if getattr(globVR, 'delta_decode', False):
+        print("[Worker] Monkey-patching model.generate() to inject HybridCompressedCache...", flush=True)
+        original_generate = lm_model.model.generate
+        
+        def generate_with_custom_cache(inputs=None, *gen_args, **gen_kwargs):
+            # Attempt to resolve batch size from inputs
+            target_inputs = inputs if inputs is not None else gen_kwargs.get('input_ids')
+            bsz = target_inputs.shape[0] if target_inputs is not None else 1
+            
+            # Instantiate our custom cache per generation call
+            gen_kwargs['past_key_values'] = HybridCompressedCache(
+                config=lm_model.model.config,
+                batch_size=bsz,
+                dtype=lm_model.model.dtype, # <--- ADD THIS LINE
+                exact_window_size=getattr(globVR, 'exact_window_size', 50)
+            )
+            gen_kwargs['use_cache'] = True
+            
+            return original_generate(inputs, *gen_args, **gen_kwargs)
+            
+        # Overwrite the generate method in the underlying huggingface model instance
+        lm_model.model.generate = generate_with_custom_cache
+    # =========================================================================
+
     # 6. Run Tasks
-    # Force the directory name if we are running the baseline
     force_name = "config_baseline" if args.experiment_type == "baseline" else None
     config_dir = get_or_create_config_dir(experiment_dir, glob_settings, force_dir_name=force_name)
     
     for task in tasks:
         print(f"--- Running Task: {task} ---", flush=True)
-        print(f"  -> Pass: Measuring total benchmark time AND internal latency breakdown (internal syncs ON)", flush=True)
-
-        # Hardcode time_internal_setting to True
         results, total_time = run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_setting=True)
 
         if results:
@@ -462,10 +486,7 @@ def run_worker_process(args, experiment_dir):
             final_result_data["experiment_type"] = args.experiment_type
             
             print(f"Task: {task} | Acc: {final_result_data.get('accuracy', 0.0):.4f} | Total Time: {total_time:.2f}s", flush=True)
-            
-            # Print the JSON to stdout so you always see the output in the console
             print(json.dumps(final_result_data, indent=4, cls=NpEncoder), flush=True)
-            
             save_single_task_result(config_dir, task, final_result_data)
         else:
             print(f"[Error] No results generated for task {task}.", flush=True)
@@ -474,13 +495,15 @@ def run_worker_process(args, experiment_dir):
         torch.cuda.empty_cache()
 
     print("[Worker] Finished. Exiting.", flush=True)
+
+
 # ==========================================
 # MAIN ENTRY POINT
 # ==========================================
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    # Model Selection Flags (Mutually Exclusive)
+    # Model Selection Flags
     model_group = parser.add_mutually_exclusive_group(required=True)
     model_group.add_argument('--bitnet', action='store_true', help="Run evaluation using BitNet model")
     model_group.add_argument('--llama', action='store_true', help="Run evaluation using LLaMA model")
@@ -494,11 +517,11 @@ if __name__ == "__main__":
     parser.add_argument('--exp_name', default=None, type=str, help="Custom folder name for the experiment output")
     parser.add_argument('--conf_name', default=None, type=str)
     
-    # Benchmark Suite Selection (Mutually Exclusive)
+    # Benchmark Suite Selection
     bench_group = parser.add_mutually_exclusive_group()
-    bench_group.add_argument('--short_bench', action='store_true', help="Run standard short-context tasks")
-    bench_group.add_argument('--long_bench', action='store_true', help="Run LongBench tasks only")
-    bench_group.add_argument('--all_bench', action='store_true', help="Run ALL tasks (Short + LongBench)")
+    bench_group.add_argument('--short_bench', action='store_true')
+    bench_group.add_argument('--long_bench', action='store_true')
+    bench_group.add_argument('--all_bench', action='store_true')
     
     # Shared Experiment Args
     parser.add_argument('--scale', default=0.05, type=float)
@@ -508,21 +531,18 @@ if __name__ == "__main__":
     parser.add_argument('--row_sim', default="cos", type=str)
     parser.add_argument('--divide_to', default=1, type=int)
     
+    # NEW ARGUMENTS FOR DECODING
+    parser.add_argument('--window_size', default=50, type=int)
+    parser.add_argument('--row_thresh', default=0.5, type=float)
+    
     args = parser.parse_args()
 
-    # Determine Base Storage Path
     model_arch = "bitnet" if args.bitnet else "llama"
     base_storage_path = os.path.join("snellius_experiments", model_arch)
 
-    # Ensure base storage path exists
     os.makedirs(base_storage_path, exist_ok=True)
 
-    # -----------------------------------------------------------
-    # MASTER MODE
-    # -----------------------------------------------------------
     if args.mode == 'master':
-        
-        # Auto-generate a name if none was provided
         if args.exp_name is None:
             auto_id = get_next_id(base_storage_path, prefix=f"experiment_{args.experiment_type}_")
             args.exp_name = f"experiment_{args.experiment_type}_{auto_id}"
@@ -545,7 +565,6 @@ if __name__ == "__main__":
             
             print(f"\n=== Step {i+1}/{len(param_grid)}: {current_params} ===", flush=True)
             
-            # Spawn ONE worker per config
             cmd = [
                 sys.executable, sys.argv[0], "--mode", "worker",
                 "--experiment_type", args.experiment_type, 
@@ -553,11 +572,9 @@ if __name__ == "__main__":
                 "--shot", str(args.shot)
             ]
             
-            # Pass Model Selection Flags
             if args.bitnet: cmd.append("--bitnet")
             if args.llama: cmd.append("--llama")
                 
-            # Pass Benchmark Flags
             if args.short_bench: cmd.append("--short_bench")
             if args.long_bench: cmd.append("--long_bench")
             if args.all_bench: cmd.append("--all_bench")
@@ -567,19 +584,13 @@ if __name__ == "__main__":
             
             try:
                 print(f"[Master] Running worker for {current_params}", flush=True)
-                # Does NOT capture output, streams directly to your terminal
                 subprocess.run(cmd, check=True)
             except subprocess.CalledProcessError as e:
                 print(f"[Master] Worker failed for {current_params}. Continuing...", flush=True)
 
-    # -----------------------------------------------------------
-    # WORKER MODE
-    # -----------------------------------------------------------
     elif args.mode == 'worker':
-        # Safely handle the case where exp_name wasn't passed to a direct worker call
         if args.exp_name is None:
              args.exp_name = "default_worker_run"
 
         experiment_dir = os.path.join(base_storage_path, args.exp_name)
-        
         run_worker_process(args, experiment_dir)

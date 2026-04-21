@@ -1,0 +1,40 @@
+{
+    "task_name": "longbench_hotpotqa",
+    "timestamp": "2026-04-10T01:36:06.722897",
+    "shot": 0,
+    "sparsity": 0.617994070313043,
+    "mlp_spars": 0.0,
+    "benchmark_stats": {
+        "num_passages": 100,
+        "seq_len_avg": 13116.25,
+        "seq_len_min": 2289,
+        "seq_len_max": 16437,
+        "seq_len_std": 3543.0962966732923
+    },
+    "accuracy": 0.4791207749766572,
+    "timings": {
+        "total_avg_ms": 8.638432778827847,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.4234446499636397,
+            "time_delta_mm_pattern": 5.202903858181089,
+            "time_forward_total": 8.638432778827847
+        }
+    },
+    "metrics": {
+        "alias": "longbench_hotpotqa",
+        "qa_f1_score,none": 0.4791207749766572,
+        "qa_f1_score_stderr,none": 0.04443349306372564
+    },
+    "total_benchmark_time_s": 81.49751830101013,
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 17.0,
+        "row_similarity_metric": "euclidean",
+        "divide_to": 64,
+        "flash": true
+    },
+    "experiment_type": "row_delta"
+}
