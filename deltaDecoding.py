@@ -2,74 +2,111 @@ import torch
 from transformers import Cache
 import triton
 import triton.language as tl
+import globVR 
 
 
+from tritonModules import (
+    chunked_eval_kernel,
+    parallel_scatter_pack_kv_kernel
+)
+import torch
+import triton
+from transformers.cache_utils import Cache
+import globVR
 
 
 @triton.jit
-def compressed_cache_update_kernel(
-    evicted_k_ptr, evicted_v_ptr,
-    k_packed_ptr, v_packed_ptr, 
-    packed_counts_ptr, packed_lengths_ptr, # tracks the current length per head
-    threshold_sq,
-    stride_ek_b, stride_ek_h, stride_ek_d, # evicted strides (seq_len is 1)
-    stride_pk_b, stride_pk_h, stride_pk_n, stride_pk_d, # packed strides
-    head_dim, max_packed_len,
-    BLOCK_D: tl.constexpr
+def fused_hybrid_decode_update_kernel(
+    new_k_ptr, new_v_ptr,
+    k_exact_ptr, v_exact_ptr,
+    k_packed_ptr, v_packed_ptr,
+    packed_counts_ptr, packed_timestamps_ptr, packed_lengths_ptr,
+    exact_seq_len, total_seq_len, threshold_sq, exact_window_size,
+    stride_new_b, stride_new_h, stride_new_s, stride_new_d,
+    stride_exact_b, stride_exact_h, stride_exact_s, stride_exact_d,
+    stride_pack_b, stride_pack_h, stride_pack_s, stride_pack_d,
+    stride_pc_b, stride_pc_h, stride_pc_s,
+    num_heads, head_dim: tl.constexpr, BLOCK_D: tl.constexpr
 ):
-    # One program per batch * head
-    pid_bh = tl.program_id(0)
-    
-    # 1. Load the current packed length for this specific head
-    current_len = tl.load(packed_lengths_ptr + pid_bh)
-    last_idx = current_len - 1
-    
-    # Setup pointers for the head dimension
+    # 1 Program ID = 1 Batch + 1 Head
+    pid = tl.program_id(0)
+    pid_b = pid // num_heads
+    pid_h = pid % num_heads
+
     offs_d = tl.arange(0, BLOCK_D)
     mask_d = offs_d < head_dim
-    
-    # 2. Load the evicted token's K and V
-    ek_ptrs = evicted_k_ptr + pid_bh * stride_ek_h + offs_d * stride_ek_d
-    evicted_k = tl.load(ek_ptrs, mask=mask_d, other=0.0)
-    
-    ev_ptrs = evicted_v_ptr + pid_bh * stride_ek_h + offs_d * stride_ek_d
-    evicted_v = tl.load(ev_ptrs, mask=mask_d, other=0.0)
-    
-    # 3. Load the LAST anchor from the packed history
-    pk_last_ptrs = k_packed_ptr + pid_bh * stride_pk_h + last_idx * stride_pk_n + offs_d * stride_pk_d
-    last_anchor_k = tl.load(pk_last_ptrs, mask=mask_d, other=0.0)
-    
-    # 4. Compute Euclidean Distance
-    diff = evicted_k - last_anchor_k
-    sq_dist = tl.sum(diff * diff, axis=0)
-    
-    # 5. Branch: Merge or Append
-    if sq_dist <= threshold_sq:
-        # MERGE: Just increment the count of the last anchor
-        count_ptr = packed_counts_ptr + pid_bh * max_packed_len + last_idx
-        old_count = tl.load(count_ptr)
-        tl.store(count_ptr, old_count + 1)
-    else:
-        # APPEND: Create a new anchor (if we haven't hit memory limits)
-        if current_len < max_packed_len:
-            new_idx = current_len
-            
-            # Store new K
-            pk_new_ptrs = k_packed_ptr + pid_bh * stride_pk_h + new_idx * stride_pk_n + offs_d * stride_pk_d
-            tl.store(pk_new_ptrs, evicted_k, mask=mask_d)
-            
-            # Store new V
-            pv_new_ptrs = v_packed_ptr + pid_bh * stride_pk_h + new_idx * stride_pk_n + offs_d * stride_pk_d
-            tl.store(pv_new_ptrs, evicted_v, mask=mask_d)
-            
-            # Set count to 1
-            count_ptr = packed_counts_ptr + pid_bh * max_packed_len + new_idx
-            tl.store(count_ptr, 1)
-            
-            # Update the length tracker
-            tl.store(packed_lengths_ptr + pid_bh, current_len + 1)
 
+    # Pointers to the brand new generated token
+    new_k_ptrs = new_k_ptr + pid_b * stride_new_b + pid_h * stride_new_h + offs_d * stride_new_d
+    new_v_ptrs = new_v_ptr + pid_b * stride_new_b + pid_h * stride_new_h + offs_d * stride_new_d
 
+    write_idx = exact_seq_len % exact_window_size
+
+    # Base pointers for the Exact Ring Buffer (sliced per layer)
+    exact_k_base = k_exact_ptr + pid_b * stride_exact_b + pid_h * stride_exact_h
+    exact_v_base = v_exact_ptr + pid_b * stride_exact_b + pid_h * stride_exact_h
+
+    # Base pointers for the Packed Cache (sliced per layer)
+    pack_k_base = k_packed_ptr + pid_b * stride_pack_b + pid_h * stride_pack_h
+    pack_v_base = v_packed_ptr + pid_b * stride_pack_b + pid_h * stride_pack_h
+    count_base = packed_counts_ptr + pid_b * stride_pc_b + pid_h * stride_pc_h
+    ts_base = packed_timestamps_ptr + pid_b * stride_pc_b + pid_h * stride_pc_h
+
+    # Pointer to the current length tracker for this head
+    len_ptr = packed_lengths_ptr + pid
+    packed_len = tl.load(len_ptr)
+
+    # ----------------------------------------------------
+    # EVICTION & MERGE LOGIC (Only if Ring Buffer is full)
+    # ----------------------------------------------------
+    if exact_seq_len >= exact_window_size:
+        # Load the token that is about to be overwritten into SRAM
+        evict_k_ptrs = exact_k_base + write_idx * stride_exact_s + offs_d * stride_exact_d
+        evict_v_ptrs = exact_v_base + write_idx * stride_exact_s + offs_d * stride_exact_d
+        evict_k = tl.load(evict_k_ptrs, mask=mask_d)
+        evict_v = tl.load(evict_v_ptrs, mask=mask_d)
+
+        if packed_len > 0:
+            last_idx = packed_len - 1
+            last_k_ptrs = pack_k_base + last_idx * stride_pack_s + offs_d * stride_pack_d
+            last_k = tl.load(last_k_ptrs, mask=mask_d)
+
+            # L2 Distance calculation strictly in SRAM (upcast to float32 for safety)
+            diff = evict_k.to(tl.float32) - last_k.to(tl.float32)
+            sq_dist = tl.sum(diff * diff, axis=0)
+
+            if sq_dist <= threshold_sq:
+                # MERGE: Increment the count of the last packed token
+                count_ptr = count_base + last_idx * stride_pc_s
+                old_count = tl.load(count_ptr)
+                tl.store(count_ptr, old_count + 1)
+            else:
+                # APPEND: Write the evicted token to the end of the packed array
+                tl.store(pack_k_base + packed_len * stride_pack_s + offs_d * stride_pack_d, evict_k, mask=mask_d)
+                tl.store(pack_v_base + packed_len * stride_pack_s + offs_d * stride_pack_d, evict_v, mask=mask_d)
+                tl.store(count_base + packed_len * stride_pc_s, 1)
+                tl.store(ts_base + packed_len * stride_pc_s, total_seq_len - exact_window_size)
+                tl.store(len_ptr, packed_len + 1)
+        else:
+            # FIRST APPEND: The packed array is completely empty
+            tl.store(pack_k_base + 0 * stride_pack_s + offs_d * stride_pack_d, evict_k, mask=mask_d)
+            tl.store(pack_v_base + 0 * stride_pack_s + offs_d * stride_pack_d, evict_v, mask=mask_d)
+            tl.store(count_base + 0 * stride_pc_s, 1)
+            tl.store(ts_base + 0 * stride_pc_s, total_seq_len - exact_window_size)
+            tl.store(len_ptr, 1)
+
+    # ----------------------------------------------------
+    # INSERTION: Put the new token into the Ring Buffer
+    # ----------------------------------------------------
+    new_k = tl.load(new_k_ptrs, mask=mask_d)
+    new_v = tl.load(new_v_ptrs, mask=mask_d)
+    tl.store(exact_k_base + write_idx * stride_exact_s + offs_d * stride_exact_d, new_k, mask=mask_d)
+    tl.store(exact_v_base + write_idx * stride_exact_s + offs_d * stride_exact_d, new_v, mask=mask_d)
+
+import torch
+import triton
+from transformers.cache_utils import Cache
+import globVR
 
 class HybridCompressedCache(Cache):
     def __init__(self, config, batch_size, dtype=torch.float16, exact_window_size=50, initial_capacity=1024):
@@ -80,113 +117,234 @@ class HybridCompressedCache(Cache):
         self.bsz = batch_size
         self.dtype = dtype
         self.device = torch.device("cuda")
+        self.num_layers = config.num_hidden_layers
         
-        # DYNAMIC CAPACITY TRACKING
+        # --- Memory Allocations ---
         self.capacity = initial_capacity
-        
-        # PRE-ALLOCATED (BUT EXPANDABLE) COMPRESSED HISTORY
-        self.k_packed = torch.zeros((self.bsz, self.n_kv_heads, self.capacity, self.head_dim), device=self.device, dtype=self.dtype)
+        self.k_packed = torch.zeros((self.num_layers, self.bsz, self.n_kv_heads, self.capacity, self.head_dim), device=self.device, dtype=self.dtype)
         self.v_packed = torch.zeros_like(self.k_packed)
-        self.packed_counts = torch.zeros((self.bsz, self.n_kv_heads, self.capacity), device=self.device, dtype=torch.int32)
+        self.packed_counts = torch.zeros((self.num_layers, self.bsz, self.n_kv_heads, self.capacity), device=self.device, dtype=torch.int32)
+        self.packed_timestamps = torch.zeros((self.num_layers, self.bsz, self.n_kv_heads, self.capacity), device=self.device, dtype=torch.int32)
+        self.packed_lengths = torch.zeros((self.num_layers, self.bsz * self.n_kv_heads), device=self.device, dtype=torch.int32)
         
-        # Tracker for how many packed tokens exist PER HEAD
-        self.packed_lengths = torch.zeros((self.bsz * self.n_kv_heads,), device=self.device, dtype=torch.int32)
-        
-        # EXACT WINDOW BUFFER
-        self.k_exact = torch.zeros((self.bsz, self.n_kv_heads, 0, self.head_dim), device=self.device, dtype=self.dtype)
+        self.k_exact = torch.zeros((self.num_layers, self.bsz, self.n_kv_heads, self.exact_window_size, self.head_dim), device=self.device, dtype=self.dtype)
         self.v_exact = torch.zeros_like(self.k_exact)
-
-    def _expand_capacity_if_needed(self):
-        """Doubles the capacity of the packed cache if any head hits the limit."""
-        max_current_len = self.packed_lengths.max().item()
         
-        if max_current_len >= self.capacity:
-            new_capacity = self.capacity * 2  
+        # --- Pure Python Trackers (Zero GPU Sync) ---
+        self.exact_seq_lens = [0 for _ in range(self.num_layers)]
+        self.max_packed_len = [0 for _ in range(self.num_layers)]
+        self.total_seq_lens = [0 for _ in range(self.num_layers)]
+
+    def _expand_capacity(self, target_capacity):
+        new_capacity = max(self.capacity * 2, target_capacity)
+        
+        new_k = torch.zeros((self.num_layers, self.bsz, self.n_kv_heads, new_capacity, self.head_dim), device=self.device, dtype=self.dtype)
+        new_v = torch.zeros_like(new_k)
+        new_counts = torch.zeros((self.num_layers, self.bsz, self.n_kv_heads, new_capacity), device=self.device, dtype=torch.int32)
+        new_timestamps = torch.zeros((self.num_layers, self.bsz, self.n_kv_heads, new_capacity), device=self.device, dtype=torch.int32)
+        
+        old_cap = self.k_packed.shape[3]
+        if old_cap > 0:
+            new_k[:, :, :, :old_cap, :] = self.k_packed
+            new_v[:, :, :, :old_cap, :] = self.v_packed
+            new_counts[:, :, :, :old_cap] = self.packed_counts
+            new_timestamps[:, :, :, :old_cap] = self.packed_timestamps
             
-            # Allocate new larger tensors
-            new_k = torch.zeros((self.bsz, self.n_kv_heads, new_capacity, self.head_dim), device=self.device, dtype=self.dtype)
-            new_v = torch.zeros_like(new_k)
-            new_counts = torch.zeros((self.bsz, self.n_kv_heads, new_capacity), device=self.device, dtype=torch.int32)
+        self.k_packed = new_k
+        self.v_packed = new_v
+        self.packed_counts = new_counts
+        self.packed_timestamps = new_timestamps
+        self.capacity = new_capacity
+
+    def initialize_from_prefill(self, layer_idx, k_packed, v_packed, counts, timestamps, k_exact, v_exact, original_q_len):
+        p_len = k_packed.shape[2]
+        
+        # Safely track capacity on the CPU
+        self.max_packed_len[layer_idx] = p_len
+        if p_len > self.capacity:
+            self._expand_capacity(p_len + 1024)
             
-            # Copy over existing data
-            new_k[:, :, :self.capacity, :] = self.k_packed
-            new_v[:, :, :self.capacity, :] = self.v_packed
-            new_counts[:, :, :self.capacity] = self.packed_counts
-            
-            # Overwrite references
-            self.k_packed = new_k
-            self.v_packed = new_v
-            self.packed_counts = new_counts
-            self.capacity = new_capacity
+        self.k_packed[layer_idx, :, :, :p_len, :] = k_packed
+        self.v_packed[layer_idx, :, :, :p_len, :] = v_packed
+        self.packed_counts[layer_idx, :, :, :p_len] = counts
+        self.packed_timestamps[layer_idx, :, :, :p_len] = timestamps
+        self.packed_lengths[layer_idx, :] = p_len 
+        
+        e_len = k_exact.shape[2]
+        self.k_exact[layer_idx, :, :, :e_len, :] = k_exact
+        self.v_exact[layer_idx, :, :, :e_len, :] = v_exact
+        
+        # Initialize the Python trackers
+        self.exact_seq_lens[layer_idx] = e_len
+        self.total_seq_lens[layer_idx] = original_q_len
 
     def update(self, key_states, value_states, layer_idx, cache_kwargs=None):
-        seq_len = key_states.shape[2]
-        
-        # 1. PREFILL PHASE
-        if seq_len > 1:
-            tail_len = min(seq_len, self.exact_window_size)
-            self.k_exact = key_states[:, :, -tail_len:, :]
-            self.v_exact = value_states[:, :, -tail_len:, :]
-            return self.k_exact, self.v_exact
-            
-        # 2. DECODING PHASE
-        current_exact_len = self.k_exact.shape[2]
-        
-        if current_exact_len == self.exact_window_size:
-            self._expand_capacity_if_needed()
-            
-            evicted_k = self.k_exact[:, :, 0:1, :]
-            evicted_v = self.v_exact[:, :, 0:1, :]
-            
-            self.k_exact = self.k_exact[:, :, 1:, :]
-            self.v_exact = self.v_exact[:, :, 1:, :]
-            
-            BLOCK_D = triton.next_power_of_2(self.head_dim)
-            grid = (self.bsz * self.n_kv_heads,)
-            
-            import globVR 
-            threshold_sq = getattr(globVR, 'row_delta_threshold', 0.0) ** 2
-            
-            # Assumes compressed_cache_update_kernel is defined above this in modeling_llama.py
-            compressed_cache_update_kernel[grid](
-                evicted_k, evicted_v,
-                self.k_packed, self.v_packed, 
-                self.packed_counts, self.packed_lengths,
-                threshold_sq,
-                evicted_k.stride(0), evicted_k.stride(1), evicted_k.stride(3),
-                self.k_packed.stride(0), self.k_packed.stride(1), self.k_packed.stride(2), self.k_packed.stride(3),
-                self.head_dim, self.capacity,
-                BLOCK_D=BLOCK_D
-            )
-            
-        self.k_exact = torch.cat([self.k_exact, key_states], dim=2)
-        self.v_exact = torch.cat([self.v_exact, value_states], dim=2)
-        
-        return self.k_exact, self.v_exact
-    def get_seq_length(self, layer_idx: int = 0) -> int:
-        """
-        Returns the total logical sequence length.
-        The physical length is the sum of all represented tokens (packed counts) 
-        plus the current length of the exact window buffer.
-        """
-        if self.k_exact is None or self.k_exact.shape[2] == 0:
-            return 0
-            
-        # Since all heads process the same prompt, the sum of counts for any 
-        # single head gives the total compressed history length.
-        compressed_len = int(self.packed_counts[0, 0].sum().item())
-        exact_len = self.k_exact.shape[2]
-        
-        return compressed_len + exact_len
+        if key_states.shape[2] > 1:
+            return key_states, value_states
 
-    def get_max_length(self) -> int:
-        """
-        Returns the maximum sequence length. 
-        Since our cache dynamically rolls and compresses to save memory, 
-        it conceptually has no strict physical upper limit.
-        """
-        return None
-        
-    def get_max_cache_shape(self):
-        # Newer versions of transformers sometimes look for this specific method
-        return None
+        # 1. Ensure GPU memory is large enough BEFORE launching the kernel.
+        if self.max_packed_len[layer_idx] + 1 >= self.capacity:
+            self._expand_capacity(self.capacity + 1024)
+
+        # 2. Launch the Fused Triton Kernel
+        BLOCK_D = triton.next_power_of_2(self.head_dim)
+        grid = (self.bsz * self.n_kv_heads, )
+        threshold_sq = getattr(globVR, 'row_delta_threshold', 0.0) ** 2
+
+        fused_hybrid_decode_update_kernel[grid](
+            key_states, value_states,
+            self.k_exact[layer_idx], self.v_exact[layer_idx],
+            self.k_packed[layer_idx], self.v_packed[layer_idx],
+            self.packed_counts[layer_idx], self.packed_timestamps[layer_idx], self.packed_lengths[layer_idx],
+            self.exact_seq_lens[layer_idx], self.total_seq_lens[layer_idx],
+            threshold_sq, self.exact_window_size,
+            key_states.stride(0), key_states.stride(1), key_states.stride(2), key_states.stride(3),
+            self.k_exact.stride(1), self.k_exact.stride(2), self.k_exact.stride(3), self.k_exact.stride(4),
+            self.k_packed.stride(1), self.k_packed.stride(2), self.k_packed.stride(3), self.k_packed.stride(4),
+            self.packed_counts.stride(1), self.packed_counts.stride(2), self.packed_counts.stride(3),
+            self.n_kv_heads, self.head_dim,
+            BLOCK_D=BLOCK_D
+        )
+
+        # 3. Update capacity tracker (sync-free in the common case)
+        # Packed cache only grows when the ring buffer is full AND a token gets appended
+        # (vs merged). Worst case per step: +1. Only bump while eviction is active.
+        if self.exact_seq_lens[layer_idx] >= self.exact_window_size:
+            self.max_packed_len[layer_idx] += 1
+
+            # Periodically reconcile with GPU truth to recover from merge-savings
+            if self.total_seq_lens[layer_idx] % 256 == 0:
+                self.max_packed_len[layer_idx] = self.packed_lengths[layer_idx].max().item()
+
+        # 4. Increment the exact trackers (These are uncompressed)
+        self.exact_seq_lens[layer_idx] += 1
+        self.total_seq_lens[layer_idx] += 1
+
+        return key_states, value_states
+
+    def get_seq_length(self, layer_idx: int = 0) -> int:
+        return self.total_seq_lens[layer_idx]
+
+    def get_max_length(self) -> int: return None
+    def get_max_cache_shape(self): return None
+
+
+
+@triton.jit
+def fused_hybrid_decode_kernel(
+    Q,                                    # [bsz, num_heads, head_dim]
+    K_packed, V_packed,                   # [bsz, n_kv_heads, capacity, head_dim]
+    Packed_Counts,                        # [bsz, n_kv_heads, capacity]
+    Packed_Lengths,                       # [bsz, n_kv_heads]  -- per-head true length
+    K_exact, V_exact,                     # [bsz, n_kv_heads, window, head_dim]
+    Out,                                  # [bsz, num_heads, head_dim]
+    # Q strides
+    stride_qb, stride_qh, stride_qd,
+    # Packed K/V strides
+    stride_kpb, stride_kph, stride_kpn, stride_kpd,
+    stride_vpb, stride_vph, stride_vpn, stride_vpd,
+    # Counts strides
+    stride_cb, stride_ch, stride_cn,
+    # Lengths strides
+    stride_lb, stride_lh,
+    # Exact K/V strides
+    stride_keb, stride_keh, stride_ken, stride_ked,
+    stride_veb, stride_veh, stride_ven, stride_ved,
+    # Output strides
+    stride_ob, stride_oh, stride_od,
+    sm_scale,
+    exact_len,                            # scalar: valid entries in ring buffer
+    num_kv_groups,                        # num_heads // n_kv_heads (GQA)
+    head_dim: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    BLOCK_D: tl.constexpr,
+):
+    # One program per (batch, query head)
+    pid_b = tl.program_id(0)
+    pid_h = tl.program_id(1)
+    kv_head = pid_h // num_kv_groups
+
+    offs_d = tl.arange(0, BLOCK_D)
+    mask_d = offs_d < head_dim
+
+    # ---- Load the single query vector ----
+    q_ptrs = Q + pid_b * stride_qb + pid_h * stride_qh + offs_d * stride_qd
+    q = tl.load(q_ptrs, mask=mask_d, other=0.0).to(tl.float32)
+
+    # ---- Load this head's packed length (stays on GPU) ----
+    my_packed_len = tl.load(Packed_Lengths + pid_b * stride_lb + kv_head * stride_lh)
+
+    # Running softmax state
+    m_i = -float("inf")
+    l_i = 0.0
+    acc = tl.zeros([BLOCK_D], dtype=tl.float32)
+
+    # Base pointers for this (batch, kv_head)
+    kp_base = K_packed + pid_b * stride_kpb + kv_head * stride_kph
+    vp_base = V_packed + pid_b * stride_vpb + kv_head * stride_vph
+    c_base  = Packed_Counts + pid_b * stride_cb + kv_head * stride_ch
+    ke_base = K_exact + pid_b * stride_keb + kv_head * stride_keh
+    ve_base = V_exact + pid_b * stride_veb + kv_head * stride_veh
+
+    # =========================================================
+    # PHASE 1: Packed cache (with log-count weighting)
+    # =========================================================
+    for start_n in range(0, my_packed_len, BLOCK_N):
+        offs_n = start_n + tl.arange(0, BLOCK_N)
+        mask_n = offs_n < my_packed_len
+
+        # Load K_packed block: [BLOCK_N, head_dim]
+        k_ptrs = kp_base + offs_n[:, None] * stride_kpn + offs_d[None, :] * stride_kpd
+        k = tl.load(k_ptrs, mask=mask_n[:, None] & mask_d[None, :], other=0.0)
+
+        # q @ k^T  ->  [BLOCK_N]
+        qk = tl.sum(q[None, :] * k.to(tl.float32), axis=1) * sm_scale
+
+        # Load counts, apply log-weighting
+        counts = tl.load(c_base + offs_n * stride_cn, mask=mask_n, other=1.0)
+        qk = qk + tl.log(counts.to(tl.float32))
+        qk = tl.where(mask_n, qk, -float("inf"))
+
+        # Online softmax update
+        m_new = tl.maximum(m_i, tl.max(qk, axis=0))
+        alpha = tl.exp(m_i - m_new)
+        p = tl.exp(qk - m_new)
+
+        # Load V_packed block
+        v_ptrs = vp_base + offs_n[:, None] * stride_vpn + offs_d[None, :] * stride_vpd
+        v = tl.load(v_ptrs, mask=mask_n[:, None] & mask_d[None, :], other=0.0)
+
+        acc = acc * alpha + tl.sum(p[:, None] * v.to(tl.float32), axis=0)
+        l_i = l_i * alpha + tl.sum(p, axis=0)
+        m_i = m_new
+
+    # =========================================================
+    # PHASE 2: Exact ring buffer (no counts, no causal mask)
+    # =========================================================
+    for start_n in range(0, exact_len, BLOCK_N):
+        offs_n = start_n + tl.arange(0, BLOCK_N)
+        mask_n = offs_n < exact_len
+
+        k_ptrs = ke_base + offs_n[:, None] * stride_ken + offs_d[None, :] * stride_ked
+        k = tl.load(k_ptrs, mask=mask_n[:, None] & mask_d[None, :], other=0.0)
+
+        qk = tl.sum(q[None, :] * k.to(tl.float32), axis=1) * sm_scale
+        qk = tl.where(mask_n, qk, -float("inf"))
+
+        m_new = tl.maximum(m_i, tl.max(qk, axis=0))
+        alpha = tl.exp(m_i - m_new)
+        p = tl.exp(qk - m_new)
+
+        v_ptrs = ve_base + offs_n[:, None] * stride_ven + offs_d[None, :] * stride_ved
+        v = tl.load(v_ptrs, mask=mask_n[:, None] & mask_d[None, :], other=0.0)
+
+        acc = acc * alpha + tl.sum(p[:, None] * v.to(tl.float32), axis=0)
+        l_i = l_i * alpha + tl.sum(p, axis=0)
+        m_i = m_new
+
+    # Finalize
+    acc = acc / l_i
+
+    # Store output
+    out_ptrs = Out + pid_b * stride_ob + pid_h * stride_oh + offs_d * stride_od
+    tl.store(out_ptrs, acc.to(Out.dtype.element_ty), mask=mask_d)

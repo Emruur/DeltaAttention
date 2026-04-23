@@ -104,6 +104,7 @@ def hybrid_compressed_flash_kernel(
             
             # Manually increment the loop counter
             start_n += BLOCK_N
+            
     # ===========================================================
     # PHASE 2: EXACT DENSE LOCAL WINDOW
     # ===========================================================

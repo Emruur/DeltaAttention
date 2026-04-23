@@ -23,7 +23,7 @@ from lm_eval.evaluator import simple_evaluate
 from lm_eval.tasks import TaskManager, get_task_dict
 from transformers import AutoConfig, AutoModelForCausalLM
 
-from modeling_bitnet import BitNetForCausalLM, BitNetConfig
+#from modeling_bitnet import BitNetForCausalLM, BitNetConfig
 from modeling_llama import LlamaForCausalLM, LlamaConfig
 # --- IMPORT YOUR CACHE CLASS HERE ---
 from deltaDecoding import HybridCompressedCache 
@@ -41,8 +41,8 @@ json.JSONEncoder.default = safe_json_default
 # --------------------------
 
 # Register BitNet
-AutoConfig.register("bitnet", BitNetConfig, exist_ok=True)
-AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
+# AutoConfig.register("bitnet", BitNetConfig, exist_ok=True)
+# AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
 
 # Register LLaMA
 AutoConfig.register("llama", LlamaConfig, exist_ok=True)
@@ -88,20 +88,6 @@ EXPERIMENT_DEFINITIONS = {
             "flash":True,
         }
     },
-    "nm_delta": {
-        "grid": {
-            "scale": [0.05], 
-        },
-        "arg_builder": lambda p: [
-            "--scale", str(p["scale"]),  
-        ],
-        "injector": lambda args: {
-            "delta_pf_key_on": 1,
-            "delta_type": "nm",
-            "scale": args.scale,
-            "flash":True,
-        }
-    },
     "mlp_delta": {
         "grid": {
             "mlp_thresh": [0.1,0.2,0.3,0.4,0.6,0.7,0.8,0.9,1,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2]
@@ -122,26 +108,6 @@ EXPERIMENT_DEFINITIONS = {
             "flash": True,             
         }
     },
-    "combined_delta": {
-        "grid": {
-            "scale": [0.05],
-            "thresh": [0.5, 1.0, 1.5],         
-            "mlp_thresh": [0.5, 1.0, 1.5]      
-        },
-        "arg_builder": lambda p: [
-            "--scale", str(p["scale"]),
-            "--thresh", str(p["thresh"]),
-            "--mlp_thresh", str(p["mlp_thresh"])
-        ],
-        "injector": lambda args: {
-            "delta_pf_key_on": 1,  
-            "flash": True,                
-            "delta_mlp": "Delta",                  
-            "delta_pf_key_thresh": args.thresh,    
-            "mlp_delta_threshold": args.mlp_thresh,
-            "scale": args.scale
-        }
-    },
     # === NEW: DELTA DECODING EXPERIMENT ===
     "delta_decoding": {
         "grid": {
@@ -153,12 +119,12 @@ EXPERIMENT_DEFINITIONS = {
             "--row_thresh", str(p["row_thresh"])
         ],
         "injector": lambda args: {
-            "delta_decode": False,              # Turns on decoding path in forward()
-            "exact_window_size": args.window_size,
+            "delta_decode": True ,            
             "row_delta_threshold": args.row_thresh,
-            "delta_pf_key_on": 1,              # Assuming prefill delta is off for isolated testing
+            "delta_pf_key_on": 1,              
             "flash": True,
-            "delta_type": "row"            
+            "delta_type": "row",
+            "divide_to": 16,         
         }
     },
 
@@ -381,7 +347,7 @@ def run_worker_process(args, experiment_dir):
 
     eval_config = {
         "shot": args.shot, 
-        "limit": 100, 
+        "limit": 20, 
         "batch_size": 1, 
         "model_args": model_args
     }

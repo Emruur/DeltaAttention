@@ -79,21 +79,16 @@ import glob_set
 ## IMPORT THE KERNELS
 import triton
 import triton.language as tl
+
 from tritonModules import (
-    parallel_scatter_pack_kernel,
     chunked_eval_kernel,
-    smart_absolute_pack_kernel,
-    parallel_scatter_pack_kv_kernel,
-    fused_row_delta_pack_kernel, 
-    row_delta_euclidean_partitioned_kernel,
-    _triton_gather_expand,
-    _triton_expand_cumsum,
-    _triton_segmented_cumsum_kernel
+    parallel_scatter_pack_kv_kernel
 )
 
 ## FLASH ATTENTION IMPORTS
 from flashAttention import triton_flash_attention
 from deltaFlashAttention import hybrid_compressed_flash_kernel
+from deltaDecoding import fused_hybrid_decode_kernel
 
 logger = logging.get_logger(__name__)
 @use_kernel_forward_from_hub("RMSNorm")
@@ -332,6 +327,61 @@ class LlamaAttention(nn.Module):
         )
         return out
 
+    def _forward_fused_hybrid_decode(self, q, past_key_value):
+        """
+        q: [bsz, num_heads, 1, head_dim]  (decode, q_len=1)
+        Returns: [bsz, num_heads, 1, head_dim]
+        """
+        bsz, num_heads, _, head_dim = q.shape
+        layer_idx = self.layer_idx
+
+        # Squeeze q_len=1 for the kernel
+        q = q.squeeze(2).contiguous()  # [bsz, num_heads, head_dim]
+
+        # Fetch this layer's cache slices (views, no copies)
+        k_packed = past_key_value.k_packed[layer_idx]          # [bsz, n_kv, cap, d]
+        v_packed = past_key_value.v_packed[layer_idx]
+        counts   = past_key_value.packed_counts[layer_idx]     # [bsz, n_kv, cap]
+        lengths  = past_key_value.packed_lengths[layer_idx]    # [bsz * n_kv] flat
+        k_exact  = past_key_value.k_exact[layer_idx]           # [bsz, n_kv, window, d]
+        v_exact  = past_key_value.v_exact[layer_idx]
+
+        # Reshape flat lengths to [bsz, n_kv] for 2D strides
+        n_kv = self.config.num_key_value_heads
+        lengths = lengths.view(bsz, n_kv)
+
+        exact_len = min(
+            past_key_value.exact_seq_lens[layer_idx],
+            past_key_value.exact_window_size,
+        )
+
+        out = torch.empty_like(q)
+
+        BLOCK_N = 64
+        BLOCK_D = triton.next_power_of_2(head_dim)
+        grid = (bsz, num_heads)
+
+        fused_hybrid_decode_kernel[grid](
+            q, k_packed, v_packed, counts, lengths,
+            k_exact, v_exact, out,
+            q.stride(0), q.stride(1), q.stride(2),
+            k_packed.stride(0), k_packed.stride(1), k_packed.stride(2), k_packed.stride(3),
+            v_packed.stride(0), v_packed.stride(1), v_packed.stride(2), v_packed.stride(3),
+            counts.stride(0), counts.stride(1), counts.stride(2),
+            lengths.stride(0), lengths.stride(1),
+            k_exact.stride(0), k_exact.stride(1), k_exact.stride(2), k_exact.stride(3),
+            v_exact.stride(0), v_exact.stride(1), v_exact.stride(2), v_exact.stride(3),
+            out.stride(0), out.stride(1), out.stride(2),
+            self.scaling,
+            exact_len,
+            self.num_key_value_groups,
+            head_dim=head_dim,
+            BLOCK_N=BLOCK_N,
+            BLOCK_D=BLOCK_D,
+        )
+
+        return out.unsqueeze(2)  # back to [bsz, num_heads, 1, head_dim]
+
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -345,13 +395,23 @@ class LlamaAttention(nn.Module):
         hidden_shape = (*input_shape, -1, self.head_dim)
 
         is_prefill = hidden_states.shape[1] > 1
-        do_time = getattr(globVR, 'time_internal', False) and is_prefill
+        do_time = getattr(globVR, 'time_internal', False)
 
+        # Mode Identification
+        is_delta_decode = not is_prefill and getattr(globVR, 'delta_decode', False)
+        is_baseline_decode = not is_prefill and not getattr(globVR, 'delta_decode', False)
+
+        # =========================================================================
+        # --- GLOBAL TIMING INIT ---
+        # =========================================================================
         if do_time:
-            start_evt_attn = torch.cuda.Event(enable_timing=True)
-            end_evt_attn = torch.cuda.Event(enable_timing=True)
-            start_evt_attn.record()
+            start_evt_forward_total = torch.cuda.Event(enable_timing=True)
+            end_evt_forward_total = torch.cuda.Event(enable_timing=True)
+            start_evt_forward_total.record()
 
+        # =========================================================================
+        # --- STANDARD PROJECTIONS & ROPE ---
+        # =========================================================================
         query_states = self.q_proj(hidden_states).view(hidden_shape).transpose(1, 2)
         key_states = self.k_proj(hidden_states).view(hidden_shape).transpose(1, 2)
         value_states = self.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
@@ -359,11 +419,47 @@ class LlamaAttention(nn.Module):
         cos, sin = position_embeddings
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
+        # =========================================================================
+        # --- CACHE UPDATE (Handles both Triton Kernel & Baseline) ---
+        # =========================================================================
+        if do_time and not is_prefill:
+            start_evt_update = torch.cuda.Event(enable_timing=True)
+            end_evt_update = torch.cuda.Event(enable_timing=True)
+            start_evt_update.record()
+
         if past_key_value is not None:
             cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
             key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
 
+        if do_time and not is_prefill:
+            end_evt_update.record()
+            if is_delta_decode:
+                glob_set.queue_event_pair('time_delta_decode_cache_update', start_evt_update, end_evt_update)
+            else:
+                glob_set.queue_event_pair('time_baseline_decode_cache_update', start_evt_update, end_evt_update)
+
         bsz, q_len, _ = hidden_states.size()
+
+        # =========================================================================
+        # --- KV CACHE SIZE TRACKER (Runs only on Layer 0 to prevent spam) ---
+        # =========================================================================
+        if not is_prefill and self.layer_idx == 0 and hasattr(past_key_value, 'exact_seq_lens'):
+            total_len = past_key_value.total_seq_lens[0]
+            log_interval = getattr(globVR, 'kv_log_interval', 10)
+            
+            # Print at specific intervals (e.g., every 10 or 100 steps)
+            if total_len > 0 and total_len % log_interval == 0:
+                exact_len = min(past_key_value.exact_seq_lens[0], past_key_value.exact_window_size)
+                packed_len = past_key_value.max_packed_len[0]
+                
+                # Math: (Tokens) * (Layers) * (Heads) * (Head_Dim) * (2 bytes for FP16/BF16) * (2 for K and V)
+                bytes_per_token = self.config.num_hidden_layers * self.config.num_key_value_heads * self.head_dim * 2 * 2
+                
+                active_mb = ((exact_len + packed_len) * bytes_per_token) / (1024**2)
+                uncompressed_mb = (total_len * bytes_per_token) / (1024**2)
+                savings = (1 - (active_mb / uncompressed_mb)) * 100 if uncompressed_mb > 0 else 0
+                
+                print(f"[KV Tracker] Step {total_len} | Active Tokens: {exact_len + packed_len} (E:{exact_len}, P:{packed_len}) | Size: {active_mb:.2f} MB (vs Uncompressed {uncompressed_mb:.2f} MB) | Reduction: {savings:.1f}%")
 
         # =========================================================================
         # --- PATH 1: SMART HYBRID ATTENTION (PREFILL ONLY) ---
@@ -400,11 +496,11 @@ class LlamaAttention(nn.Module):
             
             index_map = (torch.cumsum(keep_mask, dim=-1) - 1).to(torch.int32)
             active_counts = chunk_counts.sum(dim=-1)
-            max_packed_len = active_counts.max().item()
+            max_packed_len_gpu = active_counts.max().item() # Safe here: only runs once per sequence
             
-            k_packed = torch.zeros((bsz, self.config.num_key_value_heads, max_packed_len, self.head_dim), device=key_states.device, dtype=key_states.dtype)
+            k_packed = torch.zeros((bsz, self.config.num_key_value_heads, max_packed_len_gpu, self.head_dim), device=key_states.device, dtype=key_states.dtype)
             v_packed = torch.zeros_like(k_packed)
-            packed_timestamps = torch.zeros((bsz, self.config.num_key_value_heads, max_packed_len), device=key_states.device, dtype=torch.int32)
+            packed_timestamps = torch.zeros((bsz, self.config.num_key_value_heads, max_packed_len_gpu), device=key_states.device, dtype=torch.int32)
             
             # --- 2. PACK K, V, AND TIMESTAMPS ---
             BLOCK_S = 64
@@ -427,7 +523,7 @@ class LlamaAttention(nn.Module):
             )
 
             # --- 3. CALCULATE PACKED COUNTS ---
-            packed_counts = torch.zeros((bsz, self.config.num_key_value_heads, max_packed_len), device=key_states.device, dtype=torch.int32)
+            packed_counts = torch.zeros((bsz, self.config.num_key_value_heads, max_packed_len_gpu), device=key_states.device, dtype=torch.int32)
             ones = torch.ones_like(index_map, dtype=torch.int32)
             packed_counts.scatter_add_(2, index_map.long(), ones)
 
@@ -478,37 +574,19 @@ class LlamaAttention(nn.Module):
             attn_output = attn_output.reshape(*input_shape, -1).contiguous()
             attn_output = self.o_proj(attn_output)
             
-            # ---> PUT THE PREFILL CACHE INJECTION HERE <---
-            if past_key_value is not None:
-                # Check if we are using the custom cache (delta_decoding is active)
-                if hasattr(past_key_value, 'k_packed'):
-                    actual_packed_len = k_packed.shape[2]
-                    
-                    # FORCE CAPACITY EXPANSION FOR LONG PREFILLS
-                    if actual_packed_len > past_key_value.capacity:
-                        new_capacity = actual_packed_len + 1024 # Add 1024 buffer for the decoding phase
-                        
-                        past_key_value.k_packed = torch.zeros(
-                            (past_key_value.bsz, past_key_value.n_kv_heads, new_capacity, past_key_value.head_dim), 
-                            device=past_key_value.device, 
-                            dtype=past_key_value.dtype
-                        )
-                        past_key_value.v_packed = torch.zeros_like(past_key_value.k_packed)
-                        past_key_value.packed_counts = torch.zeros(
-                            (past_key_value.bsz, past_key_value.n_kv_heads, new_capacity), 
-                            device=past_key_value.device, 
-                            dtype=torch.int32
-                        )
-                        past_key_value.capacity = new_capacity
-                        
-                    # Store the prefill states for decoding to use later
-                    past_key_value.k_packed[:, :, :actual_packed_len, :] = k_packed
-                    past_key_value.v_packed[:, :, :actual_packed_len, :] = v_packed
-                    past_key_value.packed_counts[:, :, :actual_packed_len] = packed_counts
-                    
-                    counts_per_head = active_counts.view(-1).to(torch.int32)
-                    past_key_value.packed_lengths[:] = counts_per_head
-
+            # ---> 7. PREFILL CACHE HAND-OFF <---
+            if past_key_value is not None and hasattr(past_key_value, 'initialize_from_prefill'):
+                tail_len = min(q_len, past_key_value.exact_window_size)
+                past_key_value.initialize_from_prefill(
+                    layer_idx=self.layer_idx,
+                    k_packed=k_packed,
+                    v_packed=v_packed,
+                    counts=packed_counts,
+                    timestamps=packed_timestamps,
+                    k_exact=key_states[:, :, -tail_len:, :],
+                    v_exact=value_states[:, :, -tail_len:, :],
+                    original_q_len=q_len  # <--- Pass the true length here!
+                )
 
         # =========================================================================
         # --- PATH 2: TRITON FLASH ATTENTION BASELINE ---
@@ -519,14 +597,10 @@ class LlamaAttention(nn.Module):
                 end_evt_flash = torch.cuda.Event(enable_timing=True)
                 start_evt_flash.record()
 
-            # Expand K and V for Grouped Query Attention (GQA)
             key_states_expanded = repeat_kv(key_states, self.num_key_value_groups)
             value_states_expanded = repeat_kv(value_states, self.num_key_value_groups)
-            
-            # If attention_mask is passed during prefill, it's typically causal
-            is_causal = True  # Decoder prefill is ALWAYS causal!
+            is_causal = True
 
-            # Execute our imported custom Triton kernel
             attn_output = triton_flash_attention(
                 query_states, 
                 key_states_expanded, 
@@ -535,7 +609,6 @@ class LlamaAttention(nn.Module):
                 sm_scale=self.scaling
             )
             
-            # Flash Attention does not instantiate the N x N attention matrix
             attn_weights = None
             attn_output = attn_output.transpose(1, 2).contiguous()
             attn_output = attn_output.reshape(*input_shape, -1).contiguous()
@@ -545,74 +618,49 @@ class LlamaAttention(nn.Module):
                 end_evt_flash.record()
                 glob_set.queue_event_pair('time_triton_flash_attention', start_evt_flash, end_evt_flash)
 
-        # =========================================================================
-        # --- PATH 3: STANDARD LLAMA PATH (DECODING / EAGER FALLBACK) ---
-        # =========================================================================
 
+        # =========================================================================
+        # --- PATH 3: STANDARD DECODING / HYBRID DUAL-MATMUL ---
+        # =========================================================================
         else:
-            # ---> HYBRID COMPRESSED DECODING PATH <---
-            if not is_prefill and getattr(globVR, 'delta_decode', False) and hasattr(past_key_value, 'k_packed'):
-                # 1. Fetch current active states from our custom cache
-                # (The cache.update() method was already called earlier in the forward pass!)
-                max_packed = past_key_value.packed_lengths.max().item()
-                
-                k_exact = past_key_value.k_exact
-                v_exact = past_key_value.v_exact
-                
-                # Slice packed tensors down to the maximum active length to save compute
-                k_packed = past_key_value.k_packed[:, :, :max_packed, :]
-                v_packed = past_key_value.v_packed[:, :, :max_packed, :]
-                counts = past_key_value.packed_counts[:, :, :max_packed]
-                
-                # 2. GQA Expansion 
-                k_exact_exp = repeat_kv(k_exact, self.num_key_value_groups)
-                v_exact_exp = repeat_kv(v_exact, self.num_key_value_groups)
-                
-                k_packed_exp = repeat_kv(k_packed, self.num_key_value_groups)
-                v_packed_exp = repeat_kv(v_packed, self.num_key_value_groups)
-                counts_exp = repeat_kv(counts.unsqueeze(-1), self.num_key_value_groups).squeeze(-1)
-                
-                # 3. Compute Attention Scores (Q * K^T)
-                scores_exact = torch.matmul(query_states, k_exact_exp.transpose(-2, -1)) * self.scaling
-                scores_packed = torch.matmul(query_states, k_packed_exp.transpose(-2, -1)) * self.scaling
-                
-                # Mask out empty slots in packed history if heads diverged in length
-                lengths_4d = past_key_value.packed_lengths.view(bsz, self.config.num_key_value_heads, 1, 1)
-                lengths_exp = repeat_kv(lengths_4d, self.num_key_value_groups).squeeze(-1).squeeze(-1) 
-                idx = torch.arange(max_packed, device=query_states.device)[None, None, :]
-                mask = idx >= lengths_exp.unsqueeze(-1)
-                scores_packed.masked_fill_(mask.unsqueeze(-2), float('-inf'))
-                
-                # 4. Safe Softmax with Weighted Counts
-                max_exact = torch.amax(scores_exact, dim=-1, keepdim=True)
-                max_packed = torch.amax(scores_packed, dim=-1, keepdim=True)
-                global_max = torch.maximum(max_exact, max_packed)
-                
-                exp_exact = torch.exp(scores_exact - global_max)
-                exp_packed = torch.exp(scores_packed - global_max) * counts_exp.unsqueeze(-2) # Apply counts!
-                
-                sum_exp = exp_exact.sum(dim=-1, keepdim=True) + exp_packed.sum(dim=-1, keepdim=True)
-                
-                attn_exact = exp_exact / sum_exp
-                attn_packed = exp_packed / sum_exp
-                
-                # 5. Output Projection
-                out_exact = torch.matmul(attn_exact, v_exact_exp)
-                out_packed = torch.matmul(attn_packed, v_packed_exp)
-                attn_output = out_exact + out_packed
-                
-                attn_weights = None 
-                
+            # ---> HYBRID COMPRESSED DECODING PATH (Dual-Matmul) <---
+            if is_delta_decode and hasattr(past_key_value, 'k_packed'):
+
+                if do_time:
+                    start_evt_dec_total = torch.cuda.Event(enable_timing=True)
+                    end_evt_dec_total   = torch.cuda.Event(enable_timing=True)
+                    start_evt_dec_total.record()
+
+                    start_evt_attn = torch.cuda.Event(enable_timing=True)
+                    end_evt_attn   = torch.cuda.Event(enable_timing=True)
+                    start_evt_attn.record()
+
+                attn_output = self._forward_fused_hybrid_decode(query_states, past_key_value)
+                attn_weights = None
+
+                if do_time:
+                    end_evt_attn.record()
+                    glob_set.queue_event_pair('time_delta_decode_attn_calc',
+                                            start_evt_attn, end_evt_attn)
+                    end_evt_dec_total.record()
+                    glob_set.queue_event_pair('time_delta_decode_inner_total',
+                                            start_evt_dec_total, end_evt_dec_total)
             # ---> STANDARD EAGER/SDPA FALLBACK <---
             else:
+                if do_time and not is_prefill:
+                    start_evt_base_total = torch.cuda.Event(enable_timing=True)
+                    end_evt_base_total = torch.cuda.Event(enable_timing=True)
+                    start_evt_base_total.record()
+                    
+                    start_evt_base_attn = torch.cuda.Event(enable_timing=True)
+                    end_evt_base_attn = torch.cuda.Event(enable_timing=True)
+                    start_evt_base_attn.record()
+
                 attention_interface: Callable = eager_attention_forward
 
                 if self.config._attn_implementation != "eager":
                     if self.config._attn_implementation == "sdpa" and kwargs.get("output_attentions", False):
-                        logger.warning_once(
-                            "`torch.nn.functional.scaled_dot_product_attention` does not support `output_attentions=True`. Falling back to "
-                            'eager attention.'
-                        )
+                        pass # Handle SDPA fallback warning
                     else:
                         attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
 
@@ -622,15 +670,29 @@ class LlamaAttention(nn.Module):
                     scaling=self.scaling, **kwargs,
                 )
 
+                if do_time and not is_prefill:
+                    end_evt_base_attn.record()
+                    glob_set.queue_event_pair('time_baseline_decode_attn_calc', start_evt_base_attn, end_evt_base_attn)
+
+                    end_evt_base_total.record()
+                    glob_set.queue_event_pair('time_baseline_decode_inner_total', start_evt_base_total, end_evt_base_total)
+
             attn_output = attn_output.reshape(*input_shape, -1).contiguous()
             attn_output = self.o_proj(attn_output)
 
+        # =========================================================================
+        # --- GLOBAL TIMING RESOLVE ---
+        # =========================================================================
         if do_time:
-            end_evt_attn.record()
-            glob_set.queue_event_pair('time_forward_total', start_evt_attn, end_evt_attn)
+            end_evt_forward_total.record()
+            
+            if is_prefill:
+                glob_set.queue_event_pair('time_prefill_forward_total', start_evt_forward_total, end_evt_forward_total)
+            else:
+                glob_set.queue_event_pair('time_decode_forward_total', start_evt_forward_total, end_evt_forward_total)
 
         return attn_output, attn_weights
-
+    
 class LlamaDecoderLayer(GradientCheckpointingLayer):
     def __init__(self, config: LlamaConfig, layer_idx: int):
         super().__init__()
