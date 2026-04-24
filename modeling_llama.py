@@ -494,16 +494,20 @@ class LlamaAttention(nn.Module):
             chunk_counts = torch.zeros((bsz, self.config.num_key_value_heads, actual_divide_to), dtype=torch.int32, device=key_states.device)
             
             grid_eval = (bsz * self.config.num_key_value_heads, actual_divide_to)
-            threshold_sq = getattr(globVR, 'row_delta_threshold', 0.0) ** 2
-            
+            similarity_metric = getattr(globVR, 'row_similarity_metric', 'euclidean')
+            use_cosine = (similarity_metric == 'cosine')
+            raw_threshold = getattr(globVR, 'row_delta_threshold', 0.0)
+            threshold_val = raw_threshold if use_cosine else raw_threshold ** 2
+
             chunked_eval_kernel[grid_eval](
                 key_states, keep_mask, chunk_counts,
-                threshold_sq,
+                threshold_val,
                 key_states.stride(0), key_states.stride(1), key_states.stride(2), key_states.stride(3),
                 keep_mask.stride(0), keep_mask.stride(1), keep_mask.stride(2),
                 chunk_counts.stride(0), chunk_counts.stride(1), chunk_counts.stride(2),
                 q_len, self.head_dim, chunk_size, num_heads=self.config.num_key_value_heads,
-                BLOCK_D=BLOCK_D_EVAL
+                BLOCK_D=BLOCK_D_EVAL,
+                USE_COSINE=use_cosine,
             )
             
             index_map = (torch.cumsum(keep_mask, dim=-1) - 1).to(torch.int32)

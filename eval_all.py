@@ -69,8 +69,8 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [15],
-            "row_sim": ["euclidean"],
+            "delta": [0.6,0.8,0.9,0.95,0.99],
+            "row_sim": ["cosine"],
             "divide_to": [16]
         },
         "arg_builder": lambda p: [
@@ -115,19 +115,22 @@ EXPERIMENT_DEFINITIONS = {
     "delta_decoding": {
         "grid": {
             "window_size": [100],
-            "row_thresh": [15] 
+            "row_thresh": [15],
+            "row_sim": ["euclidean"],
         },
         "arg_builder": lambda p: [
             "--window_size", str(p["window_size"]),
-            "--row_thresh", str(p["row_thresh"])
+            "--row_thresh", str(p["row_thresh"]),
+            "--row_sim", str(p["row_sim"]),
         ],
         "injector": lambda args: {
-            "delta_decode": True ,            
+            "delta_decode": True,
             "row_delta_threshold": args.row_thresh,
-            "delta_pf_key_on": 1,              
+            "row_similarity_metric": args.row_sim,
+            "delta_pf_key_on": 1,
             "flash": True,
             "delta_type": "row",
-            "divide_to": 16,         
+            "divide_to": 16,
         }
     },
 

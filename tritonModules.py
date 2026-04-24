@@ -11,49 +11,59 @@ def chunked_eval_kernel(
     stride_in_b, stride_in_h, stride_in_s, stride_in_d,
     stride_km_b, stride_km_h, stride_km_s,
     stride_cc_b, stride_cc_h, stride_cc_c,
-    seq_len, head_dim, chunk_size, 
+    seq_len, head_dim, chunk_size,
     num_heads,
-    BLOCK_D: tl.constexpr
+    BLOCK_D: tl.constexpr,
+    USE_COSINE: tl.constexpr,
 ):
     pid_bh = tl.program_id(0) # Batch * Head
     pid_c = tl.program_id(1)  # Chunk Index
-    
+
     batch_idx = pid_bh // num_heads
     head_idx = pid_bh % num_heads
-    
+
     in_seq_ptr = in_ptr + batch_idx * stride_in_b + head_idx * stride_in_h
     km_seq_ptr = keep_mask_ptr + batch_idx * stride_km_b + head_idx * stride_km_h
-    
+
     offs_d = tl.arange(0, BLOCK_D)
     mask_d = offs_d < head_dim
-    
+
     start_idx = pid_c * chunk_size
     end_idx = tl.minimum(start_idx + chunk_size, seq_len)
-    
+
     if start_idx >= seq_len:
         return
-        
+
     # --- Token 0 of this chunk is ALWAYS an anchor locally ---
     ptrs_0 = in_seq_ptr + start_idx * stride_in_s + offs_d * stride_in_d
     ref_state = tl.load(ptrs_0, mask=mask_d, other=0.0)
-    
+
     tl.store(km_seq_ptr + start_idx * stride_km_s, 1) # Keep = True
     local_count = 1
-    
+
     for i in range(start_idx + 1, end_idx):
         curr_ptrs = in_seq_ptr + i * stride_in_s + offs_d * stride_in_d
         curr_state = tl.load(curr_ptrs, mask=mask_d, other=0.0)
-        
-        diff = curr_state - ref_state
-        sq_dist = tl.sum(diff * diff, axis=0)
-        
-        if sq_dist > threshold_sq:
+
+        if USE_COSINE:
+            # Cosine similarity: keep if cos_sim < threshold (tokens are dissimilar enough)
+            dot = tl.sum(curr_state.to(tl.float32) * ref_state.to(tl.float32), axis=0)
+            norm_curr = tl.sqrt(tl.sum(curr_state.to(tl.float32) * curr_state.to(tl.float32), axis=0) + 1e-8)
+            norm_ref  = tl.sqrt(tl.sum(ref_state.to(tl.float32)  * ref_state.to(tl.float32),  axis=0) + 1e-8)
+            cos_sim = dot / (norm_curr * norm_ref)
+            should_keep = cos_sim < threshold_sq  # threshold_sq holds cosine threshold here
+        else:
+            diff = curr_state - ref_state
+            sq_dist = tl.sum(diff * diff, axis=0)
+            should_keep = sq_dist > threshold_sq
+
+        if should_keep:
             tl.store(km_seq_ptr + i * stride_km_s, 1)
             ref_state = curr_state
             local_count += 1
         else:
             tl.store(km_seq_ptr + i * stride_km_s, 0)
-            
+
     # Store the count for this specific chunk
     cc_ptr = chunk_counts_ptr + batch_idx * stride_cc_b + head_idx * stride_cc_h + pid_c * stride_cc_c
     tl.store(cc_ptr, local_count)

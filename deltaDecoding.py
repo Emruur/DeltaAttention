@@ -26,7 +26,8 @@ def fused_hybrid_decode_update_kernel(
     stride_exact_b, stride_exact_h, stride_exact_s, stride_exact_d,
     stride_pack_b, stride_pack_h, stride_pack_s, stride_pack_d,
     stride_pc_b, stride_pc_h, stride_pc_s,
-    num_heads, head_dim: tl.constexpr, BLOCK_D: tl.constexpr
+    num_heads, head_dim: tl.constexpr, BLOCK_D: tl.constexpr,
+    USE_COSINE: tl.constexpr,
 ):
     # 1 Program ID = 1 Batch + 1 Head
     pid = tl.program_id(0)
@@ -71,11 +72,19 @@ def fused_hybrid_decode_update_kernel(
             last_k_ptrs = pack_k_base + last_idx * stride_pack_s + offs_d * stride_pack_d
             last_k = tl.load(last_k_ptrs, mask=mask_d)
 
-            # L2 Distance calculation strictly in SRAM (upcast to float32 for safety)
-            diff = evict_k.to(tl.float32) - last_k.to(tl.float32)
-            sq_dist = tl.sum(diff * diff, axis=0)
+            # Distance/similarity calculation in SRAM (upcast to float32 for safety)
+            if USE_COSINE:
+                dot = tl.sum(evict_k.to(tl.float32) * last_k.to(tl.float32), axis=0)
+                norm_e = tl.sqrt(tl.sum(evict_k.to(tl.float32) * evict_k.to(tl.float32), axis=0) + 1e-8)
+                norm_l = tl.sqrt(tl.sum(last_k.to(tl.float32)  * last_k.to(tl.float32),  axis=0) + 1e-8)
+                cos_sim = dot / (norm_e * norm_l)
+                should_merge = cos_sim >= threshold_sq  # threshold_sq holds cosine threshold here
+            else:
+                diff = evict_k.to(tl.float32) - last_k.to(tl.float32)
+                sq_dist = tl.sum(diff * diff, axis=0)
+                should_merge = sq_dist <= threshold_sq
 
-            if sq_dist <= threshold_sq:
+            if should_merge:
                 # MERGE: Increment the count of the last packed token
                 count_ptr = count_base + last_idx * stride_pc_s
                 old_count = tl.load(count_ptr)
@@ -189,7 +198,10 @@ class HybridCompressedCache(Cache):
         # 2. Launch the Fused Triton Kernel
         BLOCK_D = triton.next_power_of_2(self.head_dim)
         grid = (self.bsz * self.n_kv_heads, )
-        threshold_sq = getattr(globVR, 'row_delta_threshold', 0.0) ** 2
+        similarity_metric = getattr(globVR, 'row_similarity_metric', 'euclidean')
+        use_cosine = (similarity_metric == 'cosine')
+        raw_threshold = getattr(globVR, 'row_delta_threshold', 0.0)
+        threshold_val = raw_threshold if use_cosine else raw_threshold ** 2
 
         fused_hybrid_decode_update_kernel[grid](
             key_states, value_states,
@@ -197,13 +209,14 @@ class HybridCompressedCache(Cache):
             self.k_packed[layer_idx], self.v_packed[layer_idx],
             self.packed_counts[layer_idx], self.packed_timestamps[layer_idx], self.packed_lengths[layer_idx],
             self.exact_seq_lens[layer_idx], self.total_seq_lens[layer_idx],
-            threshold_sq, self.exact_window_size,
+            threshold_val, self.exact_window_size,
             key_states.stride(0), key_states.stride(1), key_states.stride(2), key_states.stride(3),
             self.k_exact.stride(1), self.k_exact.stride(2), self.k_exact.stride(3), self.k_exact.stride(4),
             self.k_packed.stride(1), self.k_packed.stride(2), self.k_packed.stride(3), self.k_packed.stride(4),
             self.packed_counts.stride(1), self.packed_counts.stride(2), self.packed_counts.stride(3),
             self.n_kv_heads, self.head_dim,
-            BLOCK_D=BLOCK_D
+            BLOCK_D=BLOCK_D,
+            USE_COSINE=use_cosine,
         )
 
         # 3. Update capacity tracker (sync-free in the common case)
