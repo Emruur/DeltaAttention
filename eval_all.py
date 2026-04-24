@@ -276,7 +276,8 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
                 avg_ms = stats['time_ms'] / stats['calls']
                 latency_breakdown[metric] = avg_ms
     
-    total_avg_ms = latency_breakdown.get('time_forward_total', 0.0)
+    total_avg_ms = latency_breakdown.get('time_prefill_forward_total',
+                   latency_breakdown.get('time_forward_total', 0.0))
 
     seq_lengths = getattr(globVR, 'sequence_lengths', [])
     

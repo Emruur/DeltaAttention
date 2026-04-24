@@ -13,7 +13,7 @@
     },
     "accuracy": 0.3426575630252101,
     "timings": {
-        "total_avg_ms": 0.0,
+        "total_avg_ms": 59.28734569922089,
         "latency_breakdown_ms": {
             "time_get_row_delta": 1.594584349822253,
             "time_delta_mm_pattern": 52.05804490447044,
