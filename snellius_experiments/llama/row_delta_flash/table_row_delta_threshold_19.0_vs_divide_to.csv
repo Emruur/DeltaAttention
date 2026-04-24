@@ -1,0 +1,17 @@
+divide_to,Metric,longbench_hotpotqa,longbench_multifieldqa_en,longbench_narrativeqa,longbench_passage_retrieval_en,Average
+Baseline,accuracy,0.559,0.558,0.294,1.0,0.603
+Baseline,sparsity,0.0,0.0,0.0,0.0,0.0
+Baseline,total_avg_ms,17.923,11.94,56.865,17.042,25.942
+Baseline,total_benchmark_time_s,113.649,117.096,304.286,104.535,159.892
+32,accuracy,0.477,0.444,0.296,0.76,0.494
+32,sparsity,0.745,0.741,0.728,0.76,0.743
+32,total_avg_ms,7.428,3.796,29.712,6.978,11.979
+32,total_benchmark_time_s,81.991,89.851,214.174,72.402,114.604
+64,accuracy,0.443,0.427,0.254,0.735,0.465
+64,sparsity,0.741,0.734,0.725,0.755,0.739
+64,total_avg_ms,7.303,3.736,29.426,6.852,11.829
+64,total_benchmark_time_s,80.978,89.602,215.191,72.814,114.646
+128,accuracy,0.426,0.446,0.255,0.795,0.48
+128,sparsity,0.729,0.714,0.72,0.755,0.729
+128,total_avg_ms,7.242,3.703,29.252,6.77,11.742
+128,total_benchmark_time_s,85.822,87.706,216.321,71.308,115.289
