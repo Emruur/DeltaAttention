@@ -1,9 +1,0 @@
-Config,Metric,longbench_hotpotqa,longbench_multifieldqa_en,longbench_narrativeqa,longbench_passage_retrieval_en,Average
-Baseline,accuracy,0.559,0.558,0.294,1.0,0.603
-Baseline,sparsity,0.0,0.0,0.0,0.0,0.0
-Baseline,total_avg_ms,17.923,11.94,56.865,17.042,25.942
-Baseline,total_benchmark_time_s,113.649,117.096,304.286,104.535,159.892
-Single_Run,accuracy,0.502,0.532,0.297,0.96,0.573
-Single_Run,sparsity,0.476,0.48,0.438,0.488,0.47
-Single_Run,total_avg_ms,10.774,5.049,49.05,9.89,18.691
-Single_Run,total_benchmark_time_s,95.308,114.274,280.058,82.582,143.056

@@ -1,42 +1,42 @@
 {
     "task_name": "longbench_multifieldqa_en",
-    "timestamp": "2026-04-24T12:43:30.612164",
+    "timestamp": "2026-04-24T14:40:28.930298",
     "shot": 0,
-    "sparsity": 0.10968140719817454,
+    "sparsity": 0.564591915335142,
     "mlp_spars": 0.0,
     "benchmark_stats": {
-        "num_passages": 20,
-        "seq_len_avg": 8069.55,
-        "seq_len_min": 1570,
-        "seq_len_max": 13472,
-        "seq_len_std": 3543.7484458550384
+        "num_passages": 150,
+        "seq_len_avg": 6979.833333333333,
+        "seq_len_min": 1377,
+        "seq_len_max": 15039,
+        "seq_len_std": 3408.094469380539
     },
-    "accuracy": 0.5721436715458454,
+    "accuracy": 0.5174397423148318,
     "timings": {
-        "total_avg_ms": 8.355800147168338,
+        "total_avg_ms": 4.6073120962580045,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 1.368656312674284,
-            "time_delta_mm_pattern": 4.884625703841448,
-            "time_prefill_forward_total": 8.355800147168338,
-            "time_baseline_decode_cache_update": 0.046110613778209825,
-            "time_baseline_decode_attn_calc": 0.33009015312725065,
-            "time_baseline_decode_inner_total": 0.3435347988646656,
-            "time_decode_forward_total": 0.6889610563064674
+            "time_get_row_delta": 0.6331649035525818,
+            "time_delta_mm_pattern": 2.2586475208650034,
+            "time_prefill_forward_total": 4.6073120962580045,
+            "time_baseline_decode_cache_update": 0.043249530597897566,
+            "time_baseline_decode_attn_calc": 0.28968333242586564,
+            "time_baseline_decode_inner_total": 0.30783356631440034,
+            "time_decode_forward_total": 0.6586789586454658
         }
     },
     "metrics": {
         "alias": "longbench_multifieldqa_en",
-        "qa_f1_score,none": 0.5721436715458454,
-        "qa_f1_score_stderr,none": 0.08050319908902892
+        "qa_f1_score,none": 0.5174397423148318,
+        "qa_f1_score_stderr,none": 0.02745158435281751
     },
-    "total_benchmark_time_s": 27.275365829467773,
+    "total_benchmark_time_s": 168.51048517227173,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
         "scale": 0.05,
         "delta_mlp": "Regular",
-        "row_delta_threshold": 0.9,
-        "row_similarity_metric": "cosine",
+        "row_delta_threshold": 16.0,
+        "row_similarity_metric": "euclidian",
         "divide_to": 16,
         "flash": true,
         "delta_decode": false

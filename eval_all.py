@@ -69,8 +69,8 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05], 
-            "delta": [0.6,0.8,0.9,0.95,0.99],
-            "row_sim": ["cosine"],
+            "delta": [14,16],
+            "row_sim": ["euclidian"],
             "divide_to": [16]
         },
         "arg_builder": lambda p: [

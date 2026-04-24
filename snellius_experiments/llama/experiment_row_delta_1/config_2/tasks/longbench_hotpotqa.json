@@ -1,42 +1,42 @@
 {
     "task_name": "longbench_hotpotqa",
-    "timestamp": "2026-04-24T12:41:37.982211",
+    "timestamp": "2026-04-24T14:23:57.782706",
     "shot": 0,
-    "sparsity": 0.4703441704242056,
+    "sparsity": 0.4013691166668377,
     "mlp_spars": 0.0,
     "benchmark_stats": {
-        "num_passages": 20,
-        "seq_len_avg": 13372.4,
-        "seq_len_min": 2289,
-        "seq_len_max": 16385,
-        "seq_len_std": 3796.3850489643437
+        "num_passages": 200,
+        "seq_len_avg": 12895.7,
+        "seq_len_min": 1846,
+        "seq_len_max": 16437,
+        "seq_len_std": 3771.2322588246934
     },
-    "accuracy": 0.5110144927536233,
+    "accuracy": 0.5377701287943446,
     "timings": {
-        "total_avg_ms": 10.455590891838074,
+        "total_avg_ms": 11.55535682020709,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.9447838506661356,
-            "time_delta_mm_pattern": 6.421077392203733,
-            "time_prefill_forward_total": 10.455590891838074,
-            "time_baseline_decode_cache_update": 0.08626740222477922,
-            "time_baseline_decode_attn_calc": 0.4248151630315039,
-            "time_baseline_decode_inner_total": 0.43323363020064554,
-            "time_decode_forward_total": 0.7474795542859837
+            "time_get_row_delta": 0.7870323100965471,
+            "time_delta_mm_pattern": 7.766256607463584,
+            "time_prefill_forward_total": 11.55535682020709,
+            "time_baseline_decode_cache_update": 0.07743330161073296,
+            "time_baseline_decode_attn_calc": 0.40626735317831236,
+            "time_baseline_decode_inner_total": 0.4149349375334366,
+            "time_decode_forward_total": 0.7334038126231779
         }
     },
     "metrics": {
         "alias": "longbench_hotpotqa",
-        "qa_f1_score,none": 0.5110144927536233,
-        "qa_f1_score_stderr,none": 0.10533101097441669
+        "qa_f1_score,none": 0.5377701287943446,
+        "qa_f1_score_stderr,none": 0.031192867827184043
     },
-    "total_benchmark_time_s": 22.760333776474,
+    "total_benchmark_time_s": 186.67839407920837,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
         "scale": 0.05,
         "delta_mlp": "Regular",
-        "row_delta_threshold": 0.8,
-        "row_similarity_metric": "cosine",
+        "row_delta_threshold": 14.0,
+        "row_similarity_metric": "euclidian",
         "divide_to": 16,
         "flash": true,
         "delta_decode": false

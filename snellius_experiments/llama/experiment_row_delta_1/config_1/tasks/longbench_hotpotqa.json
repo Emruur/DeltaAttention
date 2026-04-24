@@ -1,42 +1,42 @@
 {
     "task_name": "longbench_hotpotqa",
-    "timestamp": "2026-04-24T12:39:30.096735",
+    "timestamp": "2026-04-24T13:55:26.136295",
     "shot": 0,
-    "sparsity": 0.8574482605868208,
+    "sparsity": 0.4912762629061439,
     "mlp_spars": 0.0,
     "benchmark_stats": {
-        "num_passages": 20,
-        "seq_len_avg": 13372.4,
-        "seq_len_min": 2289,
-        "seq_len_max": 16385,
-        "seq_len_std": 3796.3850489643437
+        "num_passages": 200,
+        "seq_len_avg": 12895.7,
+        "seq_len_min": 1846,
+        "seq_len_max": 16437,
+        "seq_len_std": 3771.2322588246934
     },
-    "accuracy": 0.3388888888888889,
+    "accuracy": 0.556499615608642,
     "timings": {
-        "total_avg_ms": 6.906010366417467,
+        "total_avg_ms": 10.597193696480245,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.9267010990995914,
-            "time_delta_mm_pattern": 2.9750473016873,
-            "time_prefill_forward_total": 6.906010366417467,
-            "time_baseline_decode_cache_update": 0.07975820593042847,
-            "time_baseline_decode_attn_calc": 0.4011371372148906,
-            "time_baseline_decode_inner_total": 0.40973547059019993,
-            "time_decode_forward_total": 0.7258375687524676
+            "time_get_row_delta": 0.7921953847492114,
+            "time_delta_mm_pattern": 6.818537733615376,
+            "time_prefill_forward_total": 10.597193696480245,
+            "time_baseline_decode_cache_update": 0.07843652846209213,
+            "time_baseline_decode_attn_calc": 0.41702809001553837,
+            "time_baseline_decode_inner_total": 0.4254212765638946,
+            "time_decode_forward_total": 0.7514123025399909
         }
     },
     "metrics": {
         "alias": "longbench_hotpotqa",
-        "qa_f1_score,none": 0.3388888888888889,
-        "qa_f1_score_stderr,none": 0.09640550861993162
+        "qa_f1_score,none": 0.556499615608642,
+        "qa_f1_score_stderr,none": 0.031301636612286285
     },
-    "total_benchmark_time_s": 20.92585515975952,
+    "total_benchmark_time_s": 180.91625213623047,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
         "scale": 0.05,
         "delta_mlp": "Regular",
-        "row_delta_threshold": 0.6,
-        "row_similarity_metric": "cosine",
+        "row_delta_threshold": 15.0,
+        "row_similarity_metric": "euclidian",
         "divide_to": 16,
         "flash": true,
         "delta_decode": false
