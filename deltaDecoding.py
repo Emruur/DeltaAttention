@@ -229,57 +229,58 @@ class HybridCompressedCache(Cache):
     def get_max_cache_shape(self): return None
 
 
-
 @triton.jit
 def fused_hybrid_decode_kernel(
-    Q,                                    # [bsz, num_heads, head_dim]
-    K_packed, V_packed,                   # [bsz, n_kv_heads, capacity, head_dim]
-    Packed_Counts,                        # [bsz, n_kv_heads, capacity]
-    Packed_Lengths,                       # [bsz, n_kv_heads]  -- per-head true length
-    K_exact, V_exact,                     # [bsz, n_kv_heads, window, head_dim]
-    Out,                                  # [bsz, num_heads, head_dim]
-    # Q strides
+    Q,
+    K_packed, V_packed,
+    Packed_Counts,
+    Packed_Lengths,
+    K_exact, V_exact,
+    Out,
     stride_qb, stride_qh, stride_qd,
-    # Packed K/V strides
     stride_kpb, stride_kph, stride_kpn, stride_kpd,
     stride_vpb, stride_vph, stride_vpn, stride_vpd,
-    # Counts strides
     stride_cb, stride_ch, stride_cn,
-    # Lengths strides
     stride_lb, stride_lh,
-    # Exact K/V strides
     stride_keb, stride_keh, stride_ken, stride_ked,
     stride_veb, stride_veh, stride_ven, stride_ved,
-    # Output strides
     stride_ob, stride_oh, stride_od,
     sm_scale,
-    exact_len,                            # scalar: valid entries in ring buffer
-    num_kv_groups,                        # num_heads // n_kv_heads (GQA)
+    exact_len,
+    num_kv_groups,
     head_dim: tl.constexpr,
+    BLOCK_M: tl.constexpr,   # Padding dimension for tensor cores (16)
     BLOCK_N: tl.constexpr,
     BLOCK_D: tl.constexpr,
 ):
-    # One program per (batch, query head)
     pid_b = tl.program_id(0)
     pid_h = tl.program_id(1)
     kv_head = pid_h // num_kv_groups
 
+    offs_m = tl.arange(0, BLOCK_M)
+    offs_n = tl.arange(0, BLOCK_N)
     offs_d = tl.arange(0, BLOCK_D)
     mask_d = offs_d < head_dim
 
-    # ---- Load the single query vector ----
-    q_ptrs = Q + pid_b * stride_qb + pid_h * stride_qh + offs_d * stride_qd
-    q = tl.load(q_ptrs, mask=mask_d, other=0.0).to(tl.float32)
+    # Mask for "real" row (only row 0 is valid; others are zero padding)
+    row_mask = offs_m == 0  # [BLOCK_M], True only at row 0
 
-    # ---- Load this head's packed length (stays on GPU) ----
+    # ---- Load query into row 0 of a [BLOCK_M, BLOCK_D] tile ----
+    q_ptrs = Q + pid_b * stride_qb + pid_h * stride_qh + offs_d * stride_qd
+    q_vec = tl.load(q_ptrs, mask=mask_d, other=0.0)   # [BLOCK_D]
+
+    # Broadcast q into row 0, zeros elsewhere: [BLOCK_M, BLOCK_D]
+    q_tile = tl.where(row_mask[:, None], q_vec[None, :], 0.0)
+
+    # Load per-head packed length (stays on GPU)
     my_packed_len = tl.load(Packed_Lengths + pid_b * stride_lb + kv_head * stride_lh)
 
-    # Running softmax state
-    m_i = -float("inf")
-    l_i = 0.0
-    acc = tl.zeros([BLOCK_D], dtype=tl.float32)
+    # Running softmax state (only row 0 matters, but keep tile-shaped)
+    m_i = tl.full([BLOCK_M], -float("inf"), dtype=tl.float32)
+    l_i = tl.zeros([BLOCK_M], dtype=tl.float32)
+    acc = tl.zeros([BLOCK_M, BLOCK_D], dtype=tl.float32)
 
-    # Base pointers for this (batch, kv_head)
+    # Base pointers
     kp_base = K_packed + pid_b * stride_kpb + kv_head * stride_kph
     vp_base = V_packed + pid_b * stride_vpb + kv_head * stride_vph
     c_base  = Packed_Counts + pid_b * stride_cb + kv_head * stride_ch
@@ -287,64 +288,71 @@ def fused_hybrid_decode_kernel(
     ve_base = V_exact + pid_b * stride_veb + kv_head * stride_veh
 
     # =========================================================
-    # PHASE 1: Packed cache (with log-count weighting)
+    # PHASE 1: Packed cache with log-count weighting
     # =========================================================
     for start_n in range(0, my_packed_len, BLOCK_N):
-        offs_n = start_n + tl.arange(0, BLOCK_N)
-        mask_n = offs_n < my_packed_len
+        cur_n = start_n + offs_n
+        mask_n = cur_n < my_packed_len
 
-        # Load K_packed block: [BLOCK_N, head_dim]
-        k_ptrs = kp_base + offs_n[:, None] * stride_kpn + offs_d[None, :] * stride_kpd
-        k = tl.load(k_ptrs, mask=mask_n[:, None] & mask_d[None, :], other=0.0)
+        # Load K block: K is stored as [N, D]; we want K^T for the dot → [D, N]
+        k_ptrs = kp_base + cur_n[None, :] * stride_kpn + offs_d[:, None] * stride_kpd
+        k = tl.load(k_ptrs, mask=mask_n[None, :] & mask_d[:, None], other=0.0)  # [BLOCK_D, BLOCK_N]
 
-        # q @ k^T  ->  [BLOCK_N]
-        qk = tl.sum(q[None, :] * k.to(tl.float32), axis=1) * sm_scale
+        # Tensor-core dot: [BLOCK_M, BLOCK_D] @ [BLOCK_D, BLOCK_N] → [BLOCK_M, BLOCK_N]
+        qk = tl.dot(q_tile, k) * sm_scale
 
-        # Load counts, apply log-weighting
-        counts = tl.load(c_base + offs_n * stride_cn, mask=mask_n, other=1.0)
-        qk = qk + tl.log(counts.to(tl.float32))
-        qk = tl.where(mask_n, qk, -float("inf"))
+        # Load counts, apply log-weight (broadcasts across BLOCK_M rows)
+        counts = tl.load(c_base + cur_n * stride_cn, mask=mask_n, other=1.0)
+        qk = qk + tl.log(counts.to(tl.float32))[None, :]
+        qk = tl.where(mask_n[None, :], qk, -float("inf"))
 
-        # Online softmax update
-        m_new = tl.maximum(m_i, tl.max(qk, axis=0))
+        # Online softmax
+        m_new = tl.maximum(m_i, tl.max(qk, axis=1))
         alpha = tl.exp(m_i - m_new)
-        p = tl.exp(qk - m_new)
+        p = tl.exp(qk - m_new[:, None])
 
-        # Load V_packed block
-        v_ptrs = vp_base + offs_n[:, None] * stride_vpn + offs_d[None, :] * stride_vpd
+        # Load V block: [BLOCK_N, BLOCK_D]
+        v_ptrs = vp_base + cur_n[:, None] * stride_vpn + offs_d[None, :] * stride_vpd
         v = tl.load(v_ptrs, mask=mask_n[:, None] & mask_d[None, :], other=0.0)
 
-        acc = acc * alpha + tl.sum(p[:, None] * v.to(tl.float32), axis=0)
-        l_i = l_i * alpha + tl.sum(p, axis=0)
+        # Accumulate: [BLOCK_M, BLOCK_N] @ [BLOCK_N, BLOCK_D] → [BLOCK_M, BLOCK_D]
+        acc = acc * alpha[:, None] + tl.dot(p.to(v.dtype), v)
+        l_i = l_i * alpha + tl.sum(p, axis=1)
         m_i = m_new
 
     # =========================================================
-    # PHASE 2: Exact ring buffer (no counts, no causal mask)
+    # PHASE 2: Exact ring buffer
     # =========================================================
     for start_n in range(0, exact_len, BLOCK_N):
-        offs_n = start_n + tl.arange(0, BLOCK_N)
-        mask_n = offs_n < exact_len
+        cur_n = start_n + offs_n
+        mask_n = cur_n < exact_len
 
-        k_ptrs = ke_base + offs_n[:, None] * stride_ken + offs_d[None, :] * stride_ked
-        k = tl.load(k_ptrs, mask=mask_n[:, None] & mask_d[None, :], other=0.0)
+        k_ptrs = ke_base + cur_n[None, :] * stride_ken + offs_d[:, None] * stride_ked
+        k = tl.load(k_ptrs, mask=mask_n[None, :] & mask_d[:, None], other=0.0)
 
-        qk = tl.sum(q[None, :] * k.to(tl.float32), axis=1) * sm_scale
-        qk = tl.where(mask_n, qk, -float("inf"))
+        qk = tl.dot(q_tile, k) * sm_scale
+        qk = tl.where(mask_n[None, :], qk, -float("inf"))
 
-        m_new = tl.maximum(m_i, tl.max(qk, axis=0))
+        m_new = tl.maximum(m_i, tl.max(qk, axis=1))
         alpha = tl.exp(m_i - m_new)
-        p = tl.exp(qk - m_new)
+        p = tl.exp(qk - m_new[:, None])
 
-        v_ptrs = ve_base + offs_n[:, None] * stride_ven + offs_d[None, :] * stride_ved
+        v_ptrs = ve_base + cur_n[:, None] * stride_ven + offs_d[None, :] * stride_ved
         v = tl.load(v_ptrs, mask=mask_n[:, None] & mask_d[None, :], other=0.0)
 
-        acc = acc * alpha + tl.sum(p[:, None] * v.to(tl.float32), axis=0)
-        l_i = l_i * alpha + tl.sum(p, axis=0)
+        acc = acc * alpha[:, None] + tl.dot(p.to(v.dtype), v)
+        l_i = l_i * alpha + tl.sum(p, axis=1)
         m_i = m_new
 
-    # Finalize
-    acc = acc / l_i
+    # =========================================================
+    # Finalize — extract row 0 (the real result)
+    # =========================================================
+    acc = acc / l_i[:, None]
 
-    # Store output
+    # Store only row 0 (index 0 along BLOCK_M)
     out_ptrs = Out + pid_b * stride_ob + pid_h * stride_oh + offs_d * stride_od
-    tl.store(out_ptrs, acc.to(Out.dtype.element_ty), mask=mask_d)
+
+    # Extract row 0 by masked sum (rows 1..15 are zero because q was zero there,
+    # so their softmax accumulates uniformly — we just pick row 0 directly).
+    acc_row0 = tl.sum(tl.where(row_mask[:, None], acc, 0.0), axis=0)
+    tl.store(out_ptrs, acc_row0.to(Out.dtype.element_ty), mask=mask_d)

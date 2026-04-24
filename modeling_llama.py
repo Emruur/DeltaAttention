@@ -357,9 +357,16 @@ class LlamaAttention(nn.Module):
 
         out = torch.empty_like(q)
 
-        BLOCK_N = 64
+        BLOCK_M = 16      # tensor-core minimum
+        BLOCK_N = 128     # bigger blocks, fewer iters
         BLOCK_D = triton.next_power_of_2(head_dim)
         grid = (bsz, num_heads)
+
+        #TODO doTime
+        if True:
+            start = torch.cuda.Event(enable_timing=True)
+            end = torch.cuda.Event(enable_timing=True)
+            start.record()
 
         fused_hybrid_decode_kernel[grid](
             q, k_packed, v_packed, counts, lengths,
@@ -376,9 +383,14 @@ class LlamaAttention(nn.Module):
             exact_len,
             self.num_key_value_groups,
             head_dim=head_dim,
+            BLOCK_M=BLOCK_M,
             BLOCK_N=BLOCK_N,
             BLOCK_D=BLOCK_D,
         )
+
+        if True:
+            end.record()
+            glob_set.queue_event_pair('time_fused_kernel_only', start, end)
 
         return out.unsqueeze(2)  # back to [bsz, num_heads, 1, head_dim]
 

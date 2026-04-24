@@ -48,6 +48,8 @@ json.JSONEncoder.default = safe_json_default
 AutoConfig.register("llama", LlamaConfig, exist_ok=True)
 AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 
+LIMIT= 100
+
 
 # ==========================================
 # EXPERIMENT DEFINITIONS
@@ -86,6 +88,7 @@ EXPERIMENT_DEFINITIONS = {
             "row_similarity_metric": args.row_sim,
             "divide_to": args.divide_to,
             "flash":True,
+            "delta_decode": False,
         }
     },
     "mlp_delta": {
@@ -347,7 +350,7 @@ def run_worker_process(args, experiment_dir):
 
     eval_config = {
         "shot": args.shot, 
-        "limit": 20, 
+        "limit": LIMIT, 
         "batch_size": 1, 
         "model_args": model_args
     }
