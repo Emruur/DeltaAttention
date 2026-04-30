@@ -247,6 +247,7 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
     if hasattr(globVR, 'sequence_lengths'): globVR.sequence_lengths = []
     if hasattr(globVR, 'mlp_spars'): globVR.mlp_spars = 0.0
     if hasattr(globVR, 'mlp_spars_count'): globVR.mlp_spars_count = 0
+    globVR.kv_compression_samples = []
     
     torch.cuda.empty_cache()
     gc.collect()
@@ -297,6 +298,8 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
 
     current_sparsity = getattr(globVR, 'spars', 0.0)
     mlp_sparsity = getattr(globVR, 'mlp_spars', 0.0)
+    kv_samples = getattr(globVR, 'kv_compression_samples', [])
+    avg_kv_compression = float(np.mean(kv_samples)) if kv_samples else 0.0
     raw_metrics = eval_output["results"].get(task, {})
     
     primary_acc = 0.0
@@ -326,6 +329,7 @@ def run_single_pass(lm_model, task, eval_config, glob_settings, time_internal_se
         "shot": eval_config["shot"],
         "sparsity": current_sparsity,
         "mlp_spars": mlp_sparsity,
+        "avg_kv_compression_pct": avg_kv_compression,
         "benchmark_stats": benchmark_stats, 
         "accuracy": primary_acc,
         "timings": {
@@ -380,7 +384,7 @@ def run_worker_process(args, experiment_dir):
 
     # Force gov_report for delta decoding unless explicitly overridden
     if args.experiment_type == "delta_decoding" or args.experiment_type == "baseline_decoding":
-        tasks = ["longbench_gov_report"]
+        tasks = ["longbench_gov_report", "longbench_multinews"]
         print(f"[Worker] 'decoding' triggered. Forcing task: {tasks}", flush=True)
     elif args.all_bench:
         tasks = SHORT_TASKS + LONGBENCH_TASKS

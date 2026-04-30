@@ -471,7 +471,9 @@ class LlamaAttention(nn.Module):
                 uncompressed_mb = (total_len * bytes_per_token) / (1024**2)
                 savings = (1 - (active_mb / uncompressed_mb)) * 100 if uncompressed_mb > 0 else 0
                 
-                print(f"[KV Tracker] Step {total_len} | Active Tokens: {exact_len + packed_len} (E:{exact_len}, P:{packed_len}) | Size: {active_mb:.2f} MB (vs Uncompressed {uncompressed_mb:.2f} MB) | Reduction: {savings:.1f}%")
+                if not hasattr(globVR, 'kv_compression_samples'):
+                    globVR.kv_compression_samples = []
+                globVR.kv_compression_samples.append(savings)
 
         # =========================================================================
         # --- PATH 1: SMART HYBRID ATTENTION (PREFILL ONLY) ---
