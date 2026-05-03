@@ -114,7 +114,7 @@ EXPERIMENT_DEFINITIONS = {
     # === NEW: DELTA DECODING EXPERIMENT ===
     "delta_decoding": {
         "grid": {
-            "window_size": [100],
+            "window_size": [100,500,1000],
             "row_thresh": [15],
             "row_sim": ["euclidean"],
         },
@@ -130,7 +130,7 @@ EXPERIMENT_DEFINITIONS = {
             "delta_pf_key_on": 1,
             "flash": True,
             "delta_type": "row",
-            "divide_to": 16,
+            "divide_to": 32,
         }
     },
 

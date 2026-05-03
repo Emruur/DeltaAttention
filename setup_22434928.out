@@ -1,0 +1,32 @@
+Sun May  3 13:30:41 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.58.03              Driver Version: 595.58.03      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100                    On  |   00000000:06:00.0 Off |                    0 |
+| N/A   34C    P0             68W /  700W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+CUDA version: Cuda compilation tools, release 12.1, V12.1.105
+[Master] Starting baseline_decoding Grid Search for LLAMA.
+[Master] Parameters: []
+[Master] Total Experiments: 1
+[Master] Output Folder: experiment_baseline_decoding_1
+
+=== Step 1/1: {} ===
+[Master] Running worker for {}
+Experiment Globals: {'delta_decode': False, 'delta_pf_key_on': False, 'flash': True}
+[Worker] Setting safe globVR defaults for model initialization...
+[Worker] 'decoding' triggered. Forcing task: ['longbench_gov_report', 'longbench_multinews']
+[Worker] Loading Model: meta-llama/Meta-Llama-3.1-8B-Instruct...
