@@ -320,9 +320,9 @@ if __name__ == "__main__":
                         help="Comma-separated sequence lengths (worker mode)")
 
     # shared
-    parser.add_argument("--n_samples", type=int, default=5,
+    parser.add_argument("--n_samples", type=int, default=20,
                         help="Random wikitext sequences to average per N")
-    parser.add_argument("--n_warmup",  type=int, default=2,
+    parser.add_argument("--n_warmup",  type=int, default=5,
                         help="Warmup forward passes before timing (per N)")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--exp_dir", default=None,
