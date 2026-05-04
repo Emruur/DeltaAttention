@@ -31,7 +31,7 @@ EXPERIMENT_SETTINGS = {
     "baseline": {
         "delta_pf_key_on": 0,
         "delta_type": "regular",
-        "flash": True,
+        "flash": False,
     },
     "row_delta": {
         "delta_pf_key_on": 1,

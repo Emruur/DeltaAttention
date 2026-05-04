@@ -114,7 +114,7 @@ EXPERIMENT_DEFINITIONS = {
     # === NEW: DELTA DECODING EXPERIMENT ===
     "delta_decoding": {
         "grid": {
-            "window_size": [100,500,1000],
+            "window_size": [10],
             "row_thresh": [15],
             "row_sim": ["euclidean"],
         },

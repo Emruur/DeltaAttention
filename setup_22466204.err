@@ -2,9 +2,9 @@
   warnings.warn(
 /home/qchen/DeltaLLM/venv_delta/lib/python3.11/site-packages/transformers/utils/hub.py:111: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
   warnings.warn(
-Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:00<00:00, 21.20it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 26.58it/s]
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:00<00:00, 27.35it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 29.92it/s]
 Token indices sequence length is longer than the specified maximum sequence length for this model (121253440 > 131072). Running this sequence through the model will result in indexing errors
 /home/qchen/DeltaLLM/venv_delta/lib/python3.11/site-packages/transformers/utils/hub.py:111: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
   warnings.warn(
-Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 170.87it/s]
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 171.02it/s]
 Token indices sequence length is longer than the specified maximum sequence length for this model (121253440 > 131072). Running this sequence through the model will result in indexing errors

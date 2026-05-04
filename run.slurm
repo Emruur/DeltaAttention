@@ -27,5 +27,5 @@ export HUGGINGFACE_HUB_CACHE=$SHARED_SCRATCH
 export TRANSFORMERS_CACHE=$SHARED_SCRATCH
 
 export HF_TOKEN="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"
-#srun --export=ALL,HF_TOKEN python eval_all.py --llama --experiment_type delta_decoding
-srun --export=ALL,HF_TOKEN python eval_speedup.py
+srun --export=ALL,HF_TOKEN python eval_all.py --llama --experiment_type delta_decoding --exp_name experiment_delta_decoding_1
+#srun --export=ALL,HF_TOKEN python eval_speedup.py

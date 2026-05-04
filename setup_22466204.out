@@ -1,0 +1,365 @@
+Mon May  4 20:13:25 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.58.03              Driver Version: 595.58.03      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100                    On  |   00000000:C6:00.0 Off |                    0 |
+| N/A   32C    P0             64W /  700W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+CUDA version: Cuda compilation tools, release 12.1, V12.1.105
+[Worker] Loading model: meta-llama/Meta-Llama-3.1-8B-Instruct
+[Data] 121,253,440 tokens from wikitext/wikitext-103-raw-v1
+[Worker] Experiment: baseline  settings: {'delta_pf_key_on': 0, 'delta_type': 'regular', 'flash': False}
+
+--- N=1,024 ---
+   sample 1/20: prefill=10.96ms  wall=34.98ms  sparsity=0.000
+   sample 2/20: prefill=10.92ms  wall=34.92ms  sparsity=0.000
+   sample 3/20: prefill=10.88ms  wall=34.87ms  sparsity=0.000
+   sample 4/20: prefill=10.85ms  wall=34.82ms  sparsity=0.000
+   sample 5/20: prefill=10.87ms  wall=34.81ms  sparsity=0.000
+   sample 6/20: prefill=10.82ms  wall=34.73ms  sparsity=0.000
+   sample 7/20: prefill=10.83ms  wall=34.74ms  sparsity=0.000
+   sample 8/20: prefill=10.75ms  wall=34.63ms  sparsity=0.000
+   sample 9/20: prefill=10.77ms  wall=34.67ms  sparsity=0.000
+   sample 10/20: prefill=10.85ms  wall=34.79ms  sparsity=0.000
+   sample 11/20: prefill=10.82ms  wall=34.76ms  sparsity=0.000
+   sample 12/20: prefill=10.77ms  wall=34.65ms  sparsity=0.000
+   sample 13/20: prefill=10.79ms  wall=34.72ms  sparsity=0.000
+   sample 14/20: prefill=10.74ms  wall=34.60ms  sparsity=0.000
+   sample 15/20: prefill=10.82ms  wall=34.72ms  sparsity=0.000
+   sample 16/20: prefill=10.88ms  wall=34.82ms  sparsity=0.000
+   sample 17/20: prefill=10.86ms  wall=34.79ms  sparsity=0.000
+   sample 18/20: prefill=10.91ms  wall=34.88ms  sparsity=0.000
+   sample 19/20: prefill=10.92ms  wall=34.89ms  sparsity=0.000
+   sample 20/20: prefill=10.84ms  wall=34.78ms  sparsity=0.000
+   => prefill 10.84 ± 0.06 ms   wall 34.78 ± 0.10 ms   sparsity 0.000   (20 valid samples)
+
+--- N=2,048 ---
+   sample 1/20: prefill=21.93ms  wall=68.89ms  sparsity=0.000
+   sample 2/20: prefill=22.46ms  wall=69.91ms  sparsity=0.000
+   sample 3/20: prefill=22.18ms  wall=69.33ms  sparsity=0.000
+   sample 4/20: prefill=22.46ms  wall=69.87ms  sparsity=0.000
+   sample 5/20: prefill=22.13ms  wall=69.26ms  sparsity=0.000
+   sample 6/20: prefill=21.89ms  wall=68.85ms  sparsity=0.000
+   sample 7/20: prefill=22.25ms  wall=69.49ms  sparsity=0.000
+   sample 8/20: prefill=22.06ms  wall=69.06ms  sparsity=0.000
+   sample 9/20: prefill=22.19ms  wall=69.37ms  sparsity=0.000
+   sample 10/20: prefill=22.03ms  wall=69.08ms  sparsity=0.000
+   sample 11/20: prefill=22.29ms  wall=69.62ms  sparsity=0.000
+   sample 12/20: prefill=22.55ms  wall=70.05ms  sparsity=0.000
+   sample 13/20: prefill=22.07ms  wall=69.17ms  sparsity=0.000
+   sample 14/20: prefill=21.95ms  wall=68.96ms  sparsity=0.000
+   sample 15/20: prefill=22.04ms  wall=69.07ms  sparsity=0.000
+   sample 16/20: prefill=22.50ms  wall=70.00ms  sparsity=0.000
+   sample 17/20: prefill=22.57ms  wall=70.07ms  sparsity=0.000
+   sample 18/20: prefill=22.08ms  wall=69.08ms  sparsity=0.000
+   sample 19/20: prefill=21.99ms  wall=69.04ms  sparsity=0.000
+   sample 20/20: prefill=21.89ms  wall=68.84ms  sparsity=0.000
+   => prefill 22.18 ± 0.22 ms   wall 69.35 ± 0.41 ms   sparsity 0.000   (20 valid samples)
+
+--- N=4,096 ---
+   sample 1/20: prefill=48.38ms  wall=145.00ms  sparsity=0.000
+   sample 2/20: prefill=50.24ms  wall=148.06ms  sparsity=0.000
+   sample 3/20: prefill=50.21ms  wall=148.08ms  sparsity=0.000
+   sample 4/20: prefill=49.10ms  wall=146.18ms  sparsity=0.000
+   sample 5/20: prefill=49.42ms  wall=146.57ms  sparsity=0.000
+   sample 6/20: prefill=49.08ms  wall=146.00ms  sparsity=0.000
+   sample 7/20: prefill=48.75ms  wall=145.51ms  sparsity=0.000
+   sample 8/20: prefill=49.29ms  wall=146.30ms  sparsity=0.000
+   sample 9/20: prefill=49.42ms  wall=146.39ms  sparsity=0.000
+   sample 10/20: prefill=49.84ms  wall=147.22ms  sparsity=0.000
+   sample 11/20: prefill=49.38ms  wall=146.14ms  sparsity=0.000
+   sample 12/20: prefill=48.63ms  wall=145.07ms  sparsity=0.000
+   sample 13/20: prefill=48.49ms  wall=144.92ms  sparsity=0.000
+   sample 14/20: prefill=49.02ms  wall=145.67ms  sparsity=0.000
+   sample 15/20: prefill=49.74ms  wall=147.04ms  sparsity=0.000
+   sample 16/20: prefill=48.04ms  wall=144.29ms  sparsity=0.000
+   sample 17/20: prefill=48.11ms  wall=145.68ms  sparsity=0.000
+   sample 18/20: prefill=49.61ms  wall=146.85ms  sparsity=0.000
+   sample 19/20: prefill=49.00ms  wall=145.60ms  sparsity=0.000
+   sample 20/20: prefill=48.90ms  wall=145.46ms  sparsity=0.000
+   => prefill 49.13 ± 0.61 ms   wall 146.10 ± 0.98 ms   sparsity 0.000   (20 valid samples)
+
+--- N=8,192 ---
+   sample 1/20: prefill=121.44ms  wall=312.36ms  sparsity=0.000
+   sample 2/20: prefill=124.46ms  wall=316.61ms  sparsity=0.000
+   sample 3/20: prefill=121.84ms  wall=312.80ms  sparsity=0.000
+   sample 4/20: prefill=123.13ms  wall=315.06ms  sparsity=0.000
+   sample 5/20: prefill=122.59ms  wall=314.07ms  sparsity=0.000
+   sample 6/20: prefill=123.05ms  wall=314.34ms  sparsity=0.000
+   sample 7/20: prefill=122.73ms  wall=313.84ms  sparsity=0.000
+   sample 8/20: prefill=124.69ms  wall=317.49ms  sparsity=0.000
+   sample 9/20: prefill=122.01ms  wall=313.26ms  sparsity=0.000
+   sample 10/20: prefill=120.92ms  wall=311.41ms  sparsity=0.000
+   sample 11/20: prefill=123.72ms  wall=315.71ms  sparsity=0.000
+   sample 12/20: prefill=124.89ms  wall=317.79ms  sparsity=0.000
+   sample 13/20: prefill=121.07ms  wall=311.94ms  sparsity=0.000
+   sample 14/20: prefill=123.56ms  wall=315.23ms  sparsity=0.000
+   sample 15/20: prefill=122.84ms  wall=314.34ms  sparsity=0.000
+   sample 16/20: prefill=123.15ms  wall=315.20ms  sparsity=0.000
+   sample 17/20: prefill=121.94ms  wall=312.87ms  sparsity=0.000
+   sample 18/20: prefill=123.95ms  wall=316.11ms  sparsity=0.000
+   sample 19/20: prefill=123.65ms  wall=315.38ms  sparsity=0.000
+   sample 20/20: prefill=122.69ms  wall=314.18ms  sparsity=0.000
+   => prefill 122.92 ± 1.12 ms   wall 314.50 ± 1.72 ms   sparsity 0.000   (20 valid samples)
+
+--- N=16,384 ---
+   sample 1/20: prefill=342.86ms  wall=719.89ms  sparsity=0.000
+   sample 2/20: prefill=342.36ms  wall=719.74ms  sparsity=0.000
+   sample 3/20: prefill=342.91ms  wall=720.48ms  sparsity=0.000
+   sample 4/20: prefill=342.80ms  wall=720.07ms  sparsity=0.000
+   sample 5/20: prefill=341.31ms  wall=718.15ms  sparsity=0.000
+   sample 6/20: prefill=342.84ms  wall=719.93ms  sparsity=0.000
+   sample 7/20: prefill=340.58ms  wall=717.33ms  sparsity=0.000
+   sample 8/20: prefill=344.11ms  wall=721.16ms  sparsity=0.000
+   sample 9/20: prefill=342.71ms  wall=720.03ms  sparsity=0.000
+   sample 10/20: prefill=340.17ms  wall=716.79ms  sparsity=0.000
+   sample 11/20: prefill=341.88ms  wall=718.50ms  sparsity=0.000
+   sample 12/20: prefill=344.36ms  wall=722.37ms  sparsity=0.000
+   sample 13/20: prefill=343.67ms  wall=721.13ms  sparsity=0.000
+   sample 14/20: prefill=341.29ms  wall=717.96ms  sparsity=0.000
+   sample 15/20: prefill=341.42ms  wall=718.25ms  sparsity=0.000
+   sample 16/20: prefill=342.93ms  wall=719.91ms  sparsity=0.000
+   sample 17/20: prefill=342.83ms  wall=719.91ms  sparsity=0.000
+   sample 18/20: prefill=342.49ms  wall=719.58ms  sparsity=0.000
+   sample 19/20: prefill=342.11ms  wall=720.16ms  sparsity=0.000
+   sample 20/20: prefill=342.64ms  wall=719.88ms  sparsity=0.000
+   => prefill 342.41 ± 1.05 ms   wall 719.56 ± 1.33 ms   sparsity 0.000   (20 valid samples)
+
+--- N=32,768 ---
+   sample 1/20: prefill=1086.73ms  wall=1835.14ms  sparsity=0.000
+   sample 2/20: prefill=1093.01ms  wall=1840.44ms  sparsity=0.000
+   sample 3/20: prefill=1091.76ms  wall=1839.59ms  sparsity=0.000
+   sample 4/20: prefill=1090.01ms  wall=1837.07ms  sparsity=0.000
+   sample 5/20: prefill=1094.12ms  wall=1841.95ms  sparsity=0.000
+   sample 6/20: prefill=1093.47ms  wall=1841.62ms  sparsity=0.000
+   sample 7/20: prefill=1089.87ms  wall=1837.25ms  sparsity=0.000
+   sample 8/20: prefill=1090.00ms  wall=1837.99ms  sparsity=0.000
+   sample 9/20: prefill=1092.86ms  wall=1840.22ms  sparsity=0.000
+   sample 10/20: prefill=1091.80ms  wall=1839.96ms  sparsity=0.000
+   sample 11/20: prefill=1090.44ms  wall=1838.90ms  sparsity=0.000
+   sample 12/20: prefill=1092.27ms  wall=1839.87ms  sparsity=0.000
+   sample 13/20: prefill=1095.51ms  wall=1843.75ms  sparsity=0.000
+   sample 14/20: prefill=1087.94ms  wall=1834.62ms  sparsity=0.000
+   sample 15/20: prefill=1088.88ms  wall=1835.03ms  sparsity=0.000
+   sample 16/20: prefill=1094.93ms  wall=1843.14ms  sparsity=0.000
+   sample 17/20: prefill=1089.30ms  wall=1837.60ms  sparsity=0.000
+   sample 18/20: prefill=1092.86ms  wall=1840.30ms  sparsity=0.000
+   sample 19/20: prefill=1088.92ms  wall=1835.34ms  sparsity=0.000
+   sample 20/20: prefill=1093.40ms  wall=1841.35ms  sparsity=0.000
+   => prefill 1091.40 ± 2.35 ms   wall 1839.06 ± 2.65 ms   sparsity 0.000   (20 valid samples)
+
+--- N=65,536 ---
+   sample 1/20: prefill=3783.27ms  wall=5278.86ms  sparsity=0.000
+   sample 2/20: prefill=3779.46ms  wall=5274.79ms  sparsity=0.000
+   sample 3/20: prefill=3783.97ms  wall=5280.24ms  sparsity=0.000
+   sample 4/20: prefill=3775.82ms  wall=5272.47ms  sparsity=0.000
+   sample 5/20: prefill=3775.41ms  wall=5274.98ms  sparsity=0.000
+   sample 6/20: prefill=3781.35ms  wall=5277.17ms  sparsity=0.000
+   sample 7/20: prefill=3780.16ms  wall=5277.29ms  sparsity=0.000
+   sample 8/20: prefill=3778.92ms  wall=5274.73ms  sparsity=0.000
+   sample 9/20: prefill=3786.51ms  wall=5285.46ms  sparsity=0.000
+   sample 10/20: prefill=3776.38ms  wall=5273.92ms  sparsity=0.000
+   sample 11/20: prefill=3776.00ms  wall=5272.65ms  sparsity=0.000
+   sample 12/20: prefill=3776.87ms  wall=5274.96ms  sparsity=0.000
+   sample 13/20: prefill=3785.59ms  wall=5278.50ms  sparsity=0.000
+   sample 14/20: prefill=3775.81ms  wall=5275.01ms  sparsity=0.000
+   sample 15/20: prefill=3780.24ms  wall=5275.89ms  sparsity=0.000
+   sample 16/20: prefill=3782.22ms  wall=5277.25ms  sparsity=0.000
+   sample 17/20: prefill=3784.66ms  wall=5279.05ms  sparsity=0.000
+   sample 18/20: prefill=3776.04ms  wall=5274.18ms  sparsity=0.000
+   sample 19/20: prefill=3774.33ms  wall=5275.13ms  sparsity=0.000
+   sample 20/20: prefill=3776.54ms  wall=5276.42ms  sparsity=0.000
+   => prefill 3779.48 ± 3.74 ms   wall 5276.45 ± 2.92 ms   sparsity 0.000   (20 valid samples)
+
+[Worker] Saved -> speedup_experiments/run_1/baseline_results.json
+[Worker] Loading model: meta-llama/Meta-Llama-3.1-8B-Instruct
+[Data] 121,253,440 tokens from wikitext/wikitext-103-raw-v1
+[Worker] Experiment: row_delta  settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'flash': True, 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'divide_to': 32}
+
+--- N=1,024 ---
+   sample 1/20: prefill=26.55ms  wall=51.83ms  sparsity=0.482
+   sample 2/20: prefill=26.43ms  wall=51.56ms  sparsity=0.505
+   sample 3/20: prefill=26.65ms  wall=51.73ms  sparsity=0.438
+   sample 4/20: prefill=26.50ms  wall=51.68ms  sparsity=0.512
+   sample 5/20: prefill=26.92ms  wall=55.73ms  sparsity=0.496
+   sample 6/20: prefill=26.57ms  wall=51.85ms  sparsity=0.502
+   sample 7/20: prefill=26.45ms  wall=51.64ms  sparsity=0.518
+   sample 8/20: prefill=26.52ms  wall=51.71ms  sparsity=0.501
+   sample 9/20: prefill=26.50ms  wall=51.66ms  sparsity=0.486
+   sample 10/20: prefill=26.48ms  wall=51.61ms  sparsity=0.500
+   sample 11/20: prefill=26.55ms  wall=51.69ms  sparsity=0.464
+   sample 12/20: prefill=26.47ms  wall=51.64ms  sparsity=0.489
+   sample 13/20: prefill=26.47ms  wall=51.64ms  sparsity=0.494
+   sample 14/20: prefill=26.63ms  wall=51.73ms  sparsity=0.458
+   sample 15/20: prefill=30.46ms  wall=55.88ms  sparsity=0.500
+   sample 16/20: prefill=26.57ms  wall=51.76ms  sparsity=0.479
+   sample 17/20: prefill=26.60ms  wall=51.89ms  sparsity=0.500
+   sample 18/20: prefill=26.58ms  wall=51.83ms  sparsity=0.500
+   sample 19/20: prefill=26.61ms  wall=51.83ms  sparsity=0.470
+   sample 20/20: prefill=26.62ms  wall=51.88ms  sparsity=0.516
+   => prefill 26.76 ± 0.86 ms   wall 52.14 ± 1.23 ms   sparsity 0.491   (20 valid samples)
+
+--- N=2,048 ---
+   sample 1/20: prefill=38.86ms  wall=85.06ms  sparsity=0.485
+   sample 2/20: prefill=41.05ms  wall=87.27ms  sparsity=0.483
+   sample 3/20: prefill=38.93ms  wall=85.20ms  sparsity=0.481
+   sample 4/20: prefill=38.76ms  wall=85.04ms  sparsity=0.486
+   sample 5/20: prefill=38.83ms  wall=85.08ms  sparsity=0.496
+   sample 6/20: prefill=38.86ms  wall=85.16ms  sparsity=0.509
+   sample 7/20: prefill=39.82ms  wall=86.04ms  sparsity=0.469
+   sample 8/20: prefill=38.99ms  wall=85.31ms  sparsity=0.482
+   sample 9/20: prefill=38.69ms  wall=84.95ms  sparsity=0.501
+   sample 10/20: prefill=38.93ms  wall=85.18ms  sparsity=0.484
+   sample 11/20: prefill=38.83ms  wall=85.10ms  sparsity=0.497
+   sample 12/20: prefill=39.02ms  wall=85.57ms  sparsity=0.477
+   sample 13/20: prefill=38.67ms  wall=84.92ms  sparsity=0.501
+   sample 14/20: prefill=39.10ms  wall=85.44ms  sparsity=0.465
+   sample 15/20: prefill=38.91ms  wall=85.19ms  sparsity=0.463
+   sample 16/20: prefill=38.88ms  wall=85.20ms  sparsity=0.477
+   sample 17/20: prefill=40.40ms  wall=86.68ms  sparsity=0.481
+   sample 18/20: prefill=38.59ms  wall=84.87ms  sparsity=0.506
+   sample 19/20: prefill=38.71ms  wall=85.00ms  sparsity=0.501
+   sample 20/20: prefill=38.96ms  wall=85.32ms  sparsity=0.487
+   => prefill 39.09 ± 0.60 ms   wall 85.38 ± 0.60 ms   sparsity 0.487   (20 valid samples)
+
+--- N=4,096 ---
+   sample 1/20: prefill=70.43ms  wall=166.20ms  sparsity=0.484
+   sample 2/20: prefill=70.15ms  wall=165.94ms  sparsity=0.487
+   sample 3/20: prefill=70.59ms  wall=166.28ms  sparsity=0.493
+   sample 4/20: prefill=70.53ms  wall=166.39ms  sparsity=0.483
+   sample 5/20: prefill=71.37ms  wall=167.20ms  sparsity=0.474
+   sample 6/20: prefill=72.16ms  wall=167.82ms  sparsity=0.471
+   sample 7/20: prefill=70.39ms  wall=166.05ms  sparsity=0.467
+   sample 8/20: prefill=70.35ms  wall=166.05ms  sparsity=0.479
+   sample 9/20: prefill=70.58ms  wall=166.33ms  sparsity=0.485
+   sample 10/20: prefill=70.11ms  wall=165.94ms  sparsity=0.489
+   sample 11/20: prefill=70.41ms  wall=166.22ms  sparsity=0.485
+   sample 12/20: prefill=69.84ms  wall=165.63ms  sparsity=0.501
+   sample 13/20: prefill=70.22ms  wall=166.05ms  sparsity=0.494
+   sample 14/20: prefill=71.53ms  wall=167.28ms  sparsity=0.494
+   sample 15/20: prefill=70.96ms  wall=166.88ms  sparsity=0.481
+   sample 16/20: prefill=70.81ms  wall=166.59ms  sparsity=0.468
+   sample 17/20: prefill=70.52ms  wall=166.49ms  sparsity=0.485
+   sample 18/20: prefill=70.66ms  wall=166.51ms  sparsity=0.468
+   sample 19/20: prefill=69.99ms  wall=165.79ms  sparsity=0.478
+   sample 20/20: prefill=69.83ms  wall=165.53ms  sparsity=0.480
+   => prefill 70.57 ± 0.56 ms   wall 166.36 ± 0.56 ms   sparsity 0.482   (20 valid samples)
+
+--- N=8,192 ---
+   sample 1/20: prefill=167.82ms  wall=357.14ms  sparsity=0.477
+   sample 2/20: prefill=165.57ms  wall=354.43ms  sparsity=0.483
+   sample 3/20: prefill=164.83ms  wall=353.79ms  sparsity=0.479
+   sample 4/20: prefill=168.19ms  wall=357.28ms  sparsity=0.479
+   sample 5/20: prefill=168.93ms  wall=357.90ms  sparsity=0.457
+   sample 6/20: prefill=167.69ms  wall=356.93ms  sparsity=0.480
+   sample 7/20: prefill=167.41ms  wall=356.76ms  sparsity=0.481
+   sample 8/20: prefill=164.08ms  wall=353.16ms  sparsity=0.498
+   sample 9/20: prefill=167.30ms  wall=356.18ms  sparsity=0.467
+   sample 10/20: prefill=166.04ms  wall=354.92ms  sparsity=0.483
+   sample 11/20: prefill=165.88ms  wall=354.95ms  sparsity=0.487
+   sample 12/20: prefill=163.78ms  wall=352.88ms  sparsity=0.506
+   sample 13/20: prefill=166.08ms  wall=355.04ms  sparsity=0.486
+   sample 14/20: prefill=164.91ms  wall=353.90ms  sparsity=0.484
+   sample 15/20: prefill=166.72ms  wall=356.18ms  sparsity=0.480
+   sample 16/20: prefill=167.60ms  wall=356.72ms  sparsity=0.468
+   sample 17/20: prefill=168.34ms  wall=357.43ms  sparsity=0.475
+   sample 18/20: prefill=165.22ms  wall=354.20ms  sparsity=0.483
+   sample 19/20: prefill=164.21ms  wall=353.14ms  sparsity=0.484
+   sample 20/20: prefill=168.30ms  wall=357.36ms  sparsity=0.467
+   => prefill 166.45 ± 1.55 ms   wall 355.51 ± 1.61 ms   sparsity 0.480   (20 valid samples)
+
+--- N=16,384 ---
+   sample 1/20: prefill=464.15ms  wall=839.94ms  sparsity=0.470
+   sample 2/20: prefill=469.22ms  wall=845.15ms  sparsity=0.476
+   sample 3/20: prefill=460.64ms  wall=836.30ms  sparsity=0.485
+   sample 4/20: prefill=462.36ms  wall=838.43ms  sparsity=0.479
+   sample 5/20: prefill=454.46ms  wall=830.60ms  sparsity=0.489
+   sample 6/20: prefill=454.25ms  wall=829.69ms  sparsity=0.481
+   sample 7/20: prefill=454.86ms  wall=830.21ms  sparsity=0.476
+   sample 8/20: prefill=464.89ms  wall=840.40ms  sparsity=0.476
+   sample 9/20: prefill=467.69ms  wall=842.76ms  sparsity=0.450
+   sample 10/20: prefill=460.50ms  wall=835.82ms  sparsity=0.474
+   sample 11/20: prefill=460.32ms  wall=834.02ms  sparsity=0.463
+   sample 12/20: prefill=459.36ms  wall=834.96ms  sparsity=0.480
+   sample 13/20: prefill=461.70ms  wall=838.32ms  sparsity=0.475
+   sample 14/20: prefill=458.21ms  wall=833.97ms  sparsity=0.484
+   sample 15/20: prefill=459.68ms  wall=835.59ms  sparsity=0.489
+   sample 16/20: prefill=465.43ms  wall=840.93ms  sparsity=0.463
+   sample 17/20: prefill=458.25ms  wall=834.47ms  sparsity=0.471
+   sample 18/20: prefill=463.47ms  wall=838.77ms  sparsity=0.470
+   sample 19/20: prefill=457.55ms  wall=833.05ms  sparsity=0.484
+   sample 20/20: prefill=457.92ms  wall=833.71ms  sparsity=0.484
+   => prefill 460.75 ± 4.07 ms   wall 836.35 ± 4.08 ms   sparsity 0.476   (20 valid samples)
+
+--- N=32,768 ---
+   sample 1/20: prefill=1484.28ms  wall=2232.00ms  sparsity=0.476
+   sample 2/20: prefill=1500.75ms  wall=2247.95ms  sparsity=0.465
+   sample 3/20: prefill=1482.98ms  wall=2230.61ms  sparsity=0.471
+   sample 4/20: prefill=1487.82ms  wall=2235.86ms  sparsity=0.470
+   sample 5/20: prefill=1502.01ms  wall=2249.98ms  sparsity=0.472
+   sample 6/20: prefill=1483.40ms  wall=2231.42ms  sparsity=0.475
+   sample 7/20: prefill=1471.28ms  wall=2217.94ms  sparsity=0.477
+   sample 8/20: prefill=1497.44ms  wall=2245.15ms  sparsity=0.472
+   sample 9/20: prefill=1524.81ms  wall=2272.29ms  sparsity=0.463
+   sample 10/20: prefill=1496.08ms  wall=2243.37ms  sparsity=0.465
+   sample 11/20: prefill=1493.17ms  wall=2241.02ms  sparsity=0.477
+   sample 12/20: prefill=1490.17ms  wall=2238.18ms  sparsity=0.473
+   sample 13/20: prefill=1523.57ms  wall=2271.44ms  sparsity=0.461
+   sample 14/20: prefill=1479.64ms  wall=2226.37ms  sparsity=0.475
+   sample 15/20: prefill=1491.47ms  wall=2238.13ms  sparsity=0.467
+   sample 16/20: prefill=1493.66ms  wall=2240.43ms  sparsity=0.469
+   sample 17/20: prefill=1491.03ms  wall=2238.32ms  sparsity=0.471
+   sample 18/20: prefill=1492.26ms  wall=2239.04ms  sparsity=0.466
+   sample 19/20: prefill=1493.26ms  wall=2240.50ms  sparsity=0.460
+   sample 20/20: prefill=1479.46ms  wall=2227.96ms  sparsity=0.475
+   => prefill 1492.93 ± 12.77 ms   wall 2240.40 ± 12.85 ms   sparsity 0.470   (20 valid samples)
+
+--- N=65,536 ---
+   sample 1/20: prefill=5308.61ms  wall=6799.11ms  sparsity=0.460
+   sample 2/20: prefill=5265.68ms  wall=6753.67ms  sparsity=0.472
+   sample 3/20: prefill=5268.41ms  wall=6759.74ms  sparsity=0.463
+   sample 4/20: prefill=5294.24ms  wall=6785.28ms  sparsity=0.465
+   sample 5/20: prefill=5239.26ms  wall=6729.58ms  sparsity=0.469
+   sample 6/20: prefill=5225.82ms  wall=6715.88ms  sparsity=0.471
+   sample 7/20: prefill=5302.65ms  wall=6792.80ms  sparsity=0.464
+   sample 8/20: prefill=5196.86ms  wall=6686.30ms  sparsity=0.473
+   sample 9/20: prefill=5196.67ms  wall=6688.83ms  sparsity=0.470
+   sample 10/20: prefill=5266.41ms  wall=6756.78ms  sparsity=0.467
+   sample 11/20: prefill=5302.45ms  wall=6790.72ms  sparsity=0.468
+   sample 12/20: prefill=5253.17ms  wall=6742.06ms  sparsity=0.462
+   sample 13/20: prefill=5217.43ms  wall=6710.66ms  sparsity=0.476
+   sample 14/20: prefill=5284.00ms  wall=6773.94ms  sparsity=0.470
+   sample 15/20: prefill=5252.99ms  wall=6743.12ms  sparsity=0.470
+   sample 16/20: prefill=5285.37ms  wall=6778.09ms  sparsity=0.471
+   sample 17/20: prefill=5225.28ms  wall=6716.61ms  sparsity=0.472
+   sample 18/20: prefill=5168.98ms  wall=6658.57ms  sparsity=0.475
+   sample 19/20: prefill=5228.49ms  wall=6720.84ms  sparsity=0.465
+   sample 20/20: prefill=5203.44ms  wall=6694.34ms  sparsity=0.475
+   => prefill 5249.31 ± 39.64 ms   wall 6739.85 ± 39.41 ms   sparsity 0.469   (20 valid samples)
+
+[Worker] Saved -> speedup_experiments/run_1/row_delta_results.json
+[Master] Output dir: speedup_experiments/run_1
+[Master] Seq lengths: [1024, 2048, 4096, 8192, 16384, 32768, 65536]
+[Master] n_samples=20  n_warmup=5
+
+============================================================
+[Master] Launching worker: baseline
+============================================================
+
+============================================================
+[Master] Launching worker: row_delta
+============================================================
+[Plot] Saved -> speedup_experiments/run_1/plots/prefill_speedup.png

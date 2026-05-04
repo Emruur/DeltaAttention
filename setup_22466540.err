@@ -1,0 +1,15 @@
+/home/qchen/DeltaLLM/venv_delta/lib/python3.11/site-packages/transformers/utils/hub.py:111: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+/home/qchen/DeltaLLM/venv_delta/lib/python3.11/site-packages/transformers/utils/hub.py:111: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:00<00:00, 23.97it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 29.98it/s]
+/home/qchen/DeltaLLM/venv_delta/lib/python3.11/site-packages/fuzzywuzzy/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning
+  warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
+/home/qchen/DeltaLLM/venv_delta/lib/python3.11/site-packages/datasets/load.py:1486: FutureWarning: The repository for THUDM/LongBench contains custom code which must be executed to correctly load the dataset. You can inspect the repository content at https://hf.co/datasets/THUDM/LongBench
+You can avoid this message in future by passing the argument `trust_remote_code=True`.
+Passing `trust_remote_code=True` will be mandatory to load this dataset from the next major release of `datasets`.
+  warnings.warn(
+Overwriting default num_fewshot of longbench_gov_report from None to 0
+Chat template formatting change affects loglikelihood and multiple-choice tasks. See docs/chat-template-readme.md for details.
+  0%|          | 0/200 [00:00<?, ?it/s] 97%|█████████▋| 194/200 [00:00<00:00, 1938.03it/s]100%|██████████| 200/200 [00:00<00:00, 1942.68it/s]
+Running generate_until requests:   0%|          | 0/200 [00:00<?, ?it/s]Running generate_until requests:   0%|          | 1/200 [00:26<1:28:24, 26.66s/it]Running generate_until requests:   1%|          | 2/200 [00:47<1:16:23, 23.15s/it]Running generate_until requests:   2%|▏         | 3/200 [01:07<1:11:25, 21.76s/it]Running generate_until requests:   2%|▏         | 4/200 [01:26<1:07:26, 20.64s/it]Running generate_until requests:   2%|▎         | 5/200 [01:44<1:04:31, 19.85s/it]Running generate_until requests:   3%|▎         | 6/200 [02:03<1:03:09, 19.53s/it]Running generate_until requests:   4%|▎         | 7/200 [02:22<1:01:43, 19.19s/it]Running generate_until requests:   4%|▍         | 8/200 [02:41<1:01:00, 19.07s/it]Running generate_until requests:   4%|▍         | 9/200 [02:59<59:46, 18.78s/it]  Running generate_until requests:   5%|▌         | 10/200 [03:15<56:37, 17.88s/it]Running generate_until requests:   6%|▌         | 11/200 [03:33<56:26, 17.92s/it]Running generate_unti
