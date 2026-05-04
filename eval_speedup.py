@@ -341,7 +341,7 @@ if __name__ == "__main__":
     # row_delta overrides
     parser.add_argument("--delta",    type=float, default=15.0)
     parser.add_argument("--row_sim",  type=str,   default="euclidean")
-    parser.add_argument("--divide_to",type=int,   default=2)
+    parser.add_argument("--divide_to",type=int,   default=32)
 
     args = parser.parse_args()
 
