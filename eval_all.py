@@ -125,6 +125,7 @@ EXPERIMENT_DEFINITIONS = {
         ],
         "injector": lambda args: {
             "delta_decode": True,
+            "window_size": args.window_size,
             "row_delta_threshold": args.row_thresh,
             "row_similarity_metric": args.row_sim,
             "delta_pf_key_on": 1,
@@ -438,7 +439,7 @@ def run_worker_process(args, experiment_dir):
                 config=lm_model.model.config,
                 batch_size=bsz,
                 dtype=lm_model.model.dtype, # <--- ADD THIS LINE
-                exact_window_size=getattr(globVR, 'exact_window_size', 50)
+                exact_window_size=getattr(globVR, 'window_size', 50)
             )
             gen_kwargs['use_cache'] = True
             

@@ -25,21 +25,21 @@ AutoConfig.register("llama", LlamaConfig, exist_ok=True)
 AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 
 MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-SEQ_LENGTHS = [10, 100, 500, 1000, 5000, 10000, 20000, 30000, 40000, 50000]
+SEQ_LENGTHS = [1024, 2048, 4096, 8192, 16384, 32768, 65536]
 
 EXPERIMENT_SETTINGS = {
     "baseline": {
         "delta_pf_key_on": 0,
-        "use_row_delta": False,
         "delta_type": "regular",
+        "flash": True,
     },
     "row_delta": {
         "delta_pf_key_on": 1,
-        "use_row_delta": True,
         "delta_type": "row",
+        "flash": True,
         "row_delta_threshold": 15,
         "row_similarity_metric": "euclidean",
-        "divide_to": 2,
+        "divide_to": 32,
     },
 }
 
