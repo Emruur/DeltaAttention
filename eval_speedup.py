@@ -19,12 +19,12 @@ from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 import globVR
 import glob_set
-from modeling_bitnet import BitNetForCausalLM, BitNetConfig
+from modeling_llama import LlamaForCausalLM, LlamaConfig
 
-AutoConfig.register("bitnet", BitNetConfig, exist_ok=True)
-AutoModelForCausalLM.register(BitNetConfig, BitNetForCausalLM, exist_ok=True)
+AutoConfig.register("llama", LlamaConfig, exist_ok=True)
+AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 
-MODEL_ID = "microsoft/bitnet-b1.58-2B-4T"
+MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 SEQ_LENGTHS = [10, 100, 500, 1000, 5000, 10000, 20000, 30000, 40000, 50000]
 
 EXPERIMENT_SETTINGS = {

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from pandas.plotting import table
 
 # Hardcoded baseline path
-BASELINE_PATH = "snellius_experiments/llama/baseline_full_prefill"
+BASELINE_PATH = "snellius_experiments/llama/full_baseline_decoding"
 
 def load_experiment_data(exp_dir):
     """Crawls an experiment directory and compiles all task JSONs into a DataFrame."""
@@ -38,6 +38,13 @@ def load_experiment_data(exp_dir):
                         timings = d.get('timings', {})
                         # Fallback to root dict just in case it's not nested inside 'timings'
                         row['total_avg_ms'] = timings.get('total_avg_ms', d.get('total_avg_ms', 0.0))
+
+                        # Delta-decoding-only metrics (only present in those experiments)
+                        if 'avg_kv_compression_pct' in d:
+                            row['avg_kv_compression_pct'] = d['avg_kv_compression_pct']
+                        breakdown = timings.get('latency_breakdown_ms', {})
+                        if 'time_decode_forward_total' in breakdown:
+                            row['time_decode_forward_total'] = breakdown['time_decode_forward_total']
                         
                         # Extract all parameters
                         params = d.get('parameters', {})
@@ -54,7 +61,8 @@ def load_experiment_data(exp_dir):
 
 def identify_variables(df):
     """Finds which parameters change across the experiment configs."""
-    reserved_cols = ['task', 'accuracy', 'sparsity', 'total_benchmark_time_s', 'total_avg_ms']
+    reserved_cols = ['task', 'accuracy', 'sparsity', 'total_benchmark_time_s', 'total_avg_ms',
+                     'time_decode_forward_total', 'avg_kv_compression_pct']
     param_cols = [c for c in df.columns if c not in reserved_cols]
     
     variables = []
@@ -66,6 +74,9 @@ def identify_variables(df):
 def build_table_df(exp_df, baseline_df, x_param):
     """Builds the multi-index Pandas table structure (Pivot/Melt logic)."""
     metrics = ['accuracy', 'sparsity', 'total_avg_ms', 'total_benchmark_time_s']
+    for optional in ('time_decode_forward_total', 'avg_kv_compression_pct'):
+        if optional in exp_df.columns:
+            metrics.append(optional)
     
     # 1. Calculate Averages for the Experiment runs
     exp_avg = exp_df.groupby([x_param])[metrics].mean().reset_index()
@@ -116,7 +127,9 @@ def save_table_as_png(df, title, out_path):
         'accuracy': 'Acc (%)',
         'sparsity': 'Spars (%)',
         'total_avg_ms': 'Attn Fwd (ms)',
-        'total_benchmark_time_s': 'Bench (s)'
+        'total_benchmark_time_s': 'Bench (s)',
+        'time_decode_forward_total': 'Decode Fwd (ms)',
+        'avg_kv_compression_pct': 'KV Compress (%)',
     }
 
     render_df = df.reset_index()
