@@ -90,6 +90,7 @@ def apply_settings(settings):
 def reset_timing():
     globVR.latency_stats = {}
     globVR.latency_events = []
+    globVR.spars = 0.0
 
 
 def read_prefill_ms():
@@ -102,8 +103,14 @@ def read_prefill_ms():
     return 0.0
 
 
+def read_sparsity():
+    """Moving-average sparsity accumulated across layers during last forward pass."""
+    v = getattr(globVR, "spars", 0.0)
+    return float(v.item() if isinstance(v, torch.Tensor) else v)
+
+
 def single_pass(model, input_ids):
-    """One forward pass. Returns (prefill_internal_ms, wall_clock_ms)."""
+    """One forward pass. Returns (prefill_internal_ms, wall_clock_ms, sparsity)."""
     reset_timing()
     torch.cuda.synchronize()
     t0 = time.perf_counter()
@@ -116,7 +123,7 @@ def single_pass(model, input_ids):
 
     glob_set.resolve_latency_events()
 
-    return read_prefill_ms(), (t1 - t0) * 1000.0
+    return read_prefill_ms(), (t1 - t0) * 1000.0, read_sparsity()
 
 
 def benchmark_one_len(model, tokens, seq_len, n_samples, n_warmup, rng):
@@ -137,15 +144,16 @@ def benchmark_one_len(model, tokens, seq_len, n_samples, n_warmup, rng):
         print(f"   [OOM] N={seq_len:,} during warmup — skipping")
         return None
 
-    prefill_samples, wall_samples = [], []
+    prefill_samples, wall_samples, sparsity_samples = [], [], []
 
     for i in range(n_samples):
         inp = random_slice(tokens, seq_len, rng).to("cuda")
         try:
-            pf, wl = single_pass(model, inp)
+            pf, wl, spars = single_pass(model, inp)
             prefill_samples.append(pf)
             wall_samples.append(wl)
-            print(f"   sample {i+1}/{n_samples}: prefill={pf:.2f}ms  wall={wl:.2f}ms")
+            sparsity_samples.append(spars)
+            print(f"   sample {i+1}/{n_samples}: prefill={pf:.2f}ms  wall={wl:.2f}ms  sparsity={spars:.3f}")
         except torch.cuda.OutOfMemoryError:
             torch.cuda.empty_cache()
             gc.collect()
@@ -161,6 +169,7 @@ def benchmark_one_len(model, tokens, seq_len, n_samples, n_warmup, rng):
     return {
         "prefill_ms": stats(prefill_samples),
         "wall_ms": stats(wall_samples),
+        "sparsity": stats(sparsity_samples),
         "n_valid": len(prefill_samples),
     }
 
@@ -201,6 +210,7 @@ def run_worker(args, output_dir):
             print(
                 f"   => prefill {stats['prefill_ms']['mean']:.2f} ± {stats['prefill_ms']['std']:.2f} ms"
                 f"   wall {stats['wall_ms']['mean']:.2f} ± {stats['wall_ms']['std']:.2f} ms"
+                f"   sparsity {stats['sparsity']['mean']:.3f}"
                 f"   ({stats['n_valid']} valid samples)"
             )
         gc.collect()
