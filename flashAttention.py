@@ -2,13 +2,6 @@ import torch
 import triton
 import triton.language as tl
 
-@triton.autotune(
-    configs=[
-        triton.Config({'BLOCK_M': 128, 'BLOCK_N': 128}, num_warps=8, num_stages=3),
-        triton.Config({'BLOCK_M': 64, 'BLOCK_N': 64}, num_warps=4, num_stages=2),
-    ],
-    key=['Z', 'H', 'N_CTX']
-)
 @triton.jit
 def _attn_fwd_flat(
     Q, K, V, sm_scale, Out,
@@ -112,23 +105,26 @@ def triton_flash_attention(q, k, v, causal=True, sm_scale=None):
     if sm_scale is None:
         sm_scale = 1.0 / (head_dim ** 0.5)
 
+    BLOCK_M = 128
+    BLOCK_N = 128
+
     out = torch.empty_like(q)
 
-    grid = lambda META: (
-        triton.cdiv(q_len, META['BLOCK_M']),
-        batch_size * num_heads,
-        1
-    )
+    grid = (triton.cdiv(q_len, BLOCK_M), batch_size * num_heads, 1)
 
     _attn_fwd_flat[grid](
         q, k, v, sm_scale, out,
         q.stride(0), q.stride(1), q.stride(2), q.stride(3),
-        k.stride(0), k.stride(1), k.stride(2), k.stride(3), # Note: k strides transposed for tl.dot
+        k.stride(0), k.stride(1), k.stride(2), k.stride(3),
         v.stride(0), v.stride(1), v.stride(2), v.stride(3),
         out.stride(0), out.stride(1), out.stride(2), out.stride(3),
         batch_size, num_heads, q_len,
         HEAD_DIM=head_dim,
-        IS_CAUSAL=causal
+        BLOCK_M=BLOCK_M,
+        BLOCK_N=BLOCK_N,
+        IS_CAUSAL=causal,
+        num_warps=8,
+        num_stages=3,
     )
     
     return out
