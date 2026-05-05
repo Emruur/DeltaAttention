@@ -69,9 +69,9 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05],
-            "delta": [14, 15, 16],
+            "delta": [19],
             "row_sim": ["euclidian"],
-            "chunk_size": [512, 1024],
+            "chunk_size": [512],
         },
         "arg_builder": lambda p: [
             "--scale",      str(p["scale"]),
@@ -115,7 +115,7 @@ EXPERIMENT_DEFINITIONS = {
     # === NEW: DELTA DECODING EXPERIMENT ===
     "delta_decoding": {
         "grid": {
-            "window_size": [10],
+            "window_size": [100],
             "row_thresh": [15],
             "row_sim": ["euclidean"],
         },
@@ -132,7 +132,8 @@ EXPERIMENT_DEFINITIONS = {
             "delta_pf_key_on": 1,
             "flash": True,
             "delta_type": "row",
-            "divide_to": 32,
+            "divide_to": 0,
+            "chunk_size":512,
         }
     },
 

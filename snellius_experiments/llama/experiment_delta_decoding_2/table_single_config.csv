@@ -1,0 +1,13 @@
+Config,Metric,longbench_gov_report,Average
+Baseline,accuracy,0.338,0.338
+Baseline,avg_kv_compression_pct,0.0,0.0
+Baseline,sparsity,0.0,0.0
+Baseline,time_decode_forward_total,0.712,0.712
+Baseline,total_avg_ms,7.021,7.021
+Baseline,total_benchmark_time_s,3399.206,3399.206
+Single_Run,accuracy,0.326,0.326
+Single_Run,avg_kv_compression_pct,42.905,42.905
+Single_Run,sparsity,0.504,0.504
+Single_Run,time_decode_forward_total,0.61,0.61
+Single_Run,total_avg_ms,6.373,6.373
+Single_Run,total_benchmark_time_s,3152.519,3152.519
