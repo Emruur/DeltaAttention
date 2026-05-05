@@ -283,74 +283,49 @@ class LlamaAttention(nn.Module):
         )
 
     def _forward_hybrid_flash(
-        self, q, k_dense, v_dense, k_packed, v_packed,
+        self, q, k_dense, v_dense, k_packed, v_packed, 
         packed_timestamps, packed_counts
     ):
         """Python wrapper for the Two-Phase Hybrid Flash Kernel"""
         batch_size, num_heads, q_len, head_dim = q.shape
         k_len = k_dense.shape[2]
         num_packed = k_packed.shape[2]
-
-        q             = q.contiguous()
-        k_dense       = k_dense.contiguous()
-        v_dense       = v_dense.contiguous()
-        k_packed      = k_packed.contiguous()
-        v_packed      = v_packed.contiguous()
+        
+        # Ensure contiguity for strict Triton strides
+        q = q.contiguous()
+        k_dense = k_dense.contiguous()
+        v_dense = v_dense.contiguous()
+        k_packed = k_packed.contiguous()
+        v_packed = v_packed.contiguous()
         packed_timestamps = packed_timestamps.contiguous().to(torch.int32)
-        packed_counts = packed_counts.contiguous().to(torch.float32)
-
+        packed_counts = packed_counts.contiguous().to(torch.float32) # Must be float for Softmax weighting
+        
+        out = torch.empty_like(q)
+        
         BLOCK_M = 128
         BLOCK_N = 128
         BLOCK_D = triton.next_power_of_2(head_dim)
-        bsz_h       = batch_size * num_heads
-        num_q_blocks = triton.cdiv(q_len, BLOCK_M)
 
-        # ------------------------------------------------------------------
-        # Precompute per-CTA loop bounds so Phase 1 becomes a static for loop.
-        # packed_timestamps is sorted ascending (tokens packed in sequence order).
-        # searchsorted gives, for each query-block start, the first packed index
-        # whose timestamp >= start_m  →  that is the exclusive upper bound.
-        # We round down to BLOCK_N so every block in the range is fully valid.
-        # ------------------------------------------------------------------
-        pt_flat = packed_timestamps.view(bsz_h, num_packed)           # [B*H, P]
-        q_starts = torch.arange(0, q_len, BLOCK_M,
-                                device=q.device, dtype=torch.int32)   # [num_q_blocks]
-        q_starts_exp = q_starts.unsqueeze(0).expand(bsz_h, -1).contiguous()
-
-        packed_limits      = torch.searchsorted(pt_flat, q_starts_exp)          # [B*H, Q]
-        packed_block_limits = ((packed_limits // BLOCK_N) * BLOCK_N             # align down
-                               ).to(torch.int32).contiguous()
-
-        # Phase 2 starts where the last safe packed block ends in physical time.
-        last_idx = (packed_block_limits.long() - 1).clamp(min=0)
-        last_ts  = torch.gather(pt_flat.long(), 1, last_idx)
-        last_ts  = torch.where(packed_block_limits > 0, last_ts,
-                               torch.full_like(last_ts, -1))
-        dense_starts = (((last_ts + 1) // BLOCK_N) * BLOCK_N
-                        ).clamp(min=0).to(torch.int32).contiguous()  # [B*H, Q]
-
-        out  = torch.empty_like(q)
-        grid = (num_q_blocks, bsz_h, 1)
+        grid = (triton.cdiv(q_len, BLOCK_M), batch_size * num_heads, 1)
 
         hybrid_compressed_flash_kernel[grid](
             q, k_dense, v_dense,
             k_packed, v_packed,
-            packed_counts,
-            packed_block_limits, dense_starts,
+            packed_timestamps, packed_counts,
             out,
             q.stride(0), q.stride(1), q.stride(2), q.stride(3),
             k_dense.stride(0), k_dense.stride(1), k_dense.stride(2), k_dense.stride(3),
             v_dense.stride(0), v_dense.stride(1), v_dense.stride(2), v_dense.stride(3),
             k_packed.stride(0), k_packed.stride(1), k_packed.stride(2), k_packed.stride(3),
             v_packed.stride(0), v_packed.stride(1), v_packed.stride(2), v_packed.stride(3),
+            packed_timestamps.stride(0), packed_timestamps.stride(1), packed_timestamps.stride(2),
             packed_counts.stride(0), packed_counts.stride(1), packed_counts.stride(2),
-            num_q_blocks,
             out.stride(0), out.stride(1), out.stride(2), out.stride(3),
             self.scaling,
             q_len, k_len, num_packed, head_dim, num_heads,
             BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_D=BLOCK_D,
             num_warps=8,
-            num_stages=2,
+            num_stages=1,
         )
         return out
 
