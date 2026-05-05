@@ -22,7 +22,7 @@ AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 
 MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
-SEQ_LENGTHS = [512, 1024, 2048, 4096, 8192, 16384, 32768, 64000]
+SEQ_LENGTHS = [512, 1024, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 32768, 64000, 96000, 128000]
 
 
 # ==========================================
@@ -68,12 +68,22 @@ def get_wikitext_tokens(tokenizer, max_tokens):
     from datasets import load_dataset
     print("Loading wikitext-103-raw-v1 ...", flush=True)
     dataset = load_dataset("wikitext", "wikitext-103-raw-v1", split="train")
-    text = "\n".join(t for t in dataset["text"] if t.strip())
+    # Concatenate until we have enough characters (~5 chars/token is conservative)
+    char_budget = max_tokens * 6
+    chunks, total = [], 0
+    for t in dataset["text"]:
+        if not t.strip():
+            continue
+        chunks.append(t)
+        total += len(t)
+        if total >= char_budget:
+            break
+    text = "\n".join(chunks)
     tokens = tokenizer.encode(text, add_special_tokens=False, return_tensors="pt")
     flat = tokens[0]
     if len(flat) < max_tokens:
         raise ValueError(f"Only got {len(flat)} tokens from wikitext, need {max_tokens}")
-    print(f"Tokenized {len(flat)} tokens.", flush=True)
+    print(f"Tokenized {len(flat)} tokens (using {len(chunks)} articles).", flush=True)
     return flat[:max_tokens]
 
 
@@ -220,23 +230,58 @@ def main():
     # ------------------------------------------
     # Plot
     # ------------------------------------------
-    fig, ax = plt.subplots(figsize=(10, 6))
-
     valid_bl = [(N, t) for N, t in zip(SEQ_LENGTHS, baseline_times) if not np.isnan(t)]
     valid_rd = [(N, t) for N, t in zip(SEQ_LENGTHS, row_delta_times) if not np.isnan(t)]
 
+    # Speedup ratio where both measurements exist
+    paired = [(N, bl, rd)
+              for (N, bl), (N2, rd) in zip(valid_bl, valid_rd)
+              if N == N2 and rd > 0]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    fig.suptitle("Row Delta vs Baseline Flash  |  LLaMA 3.1 8B-Instruct, Wikitext",
+                 fontsize=14)
+
+    # --- Left: raw latency ---
     if valid_bl:
         ns, ts = zip(*valid_bl)
-        ax.plot(ns, ts, "b-o", label="Baseline Flash", linewidth=2, markersize=7)
+        ax1.plot(ns, ts, "b-o", label="Baseline Flash", linewidth=2, markersize=6)
     if valid_rd:
         ns, ts = zip(*valid_rd)
-        ax.plot(ns, ts, "r-o", label="Row Delta (prefill)", linewidth=2, markersize=7)
+        ax1.plot(ns, ts, "r-o", label="Row Delta (prefill)", linewidth=2, markersize=6)
 
-    ax.set_xlabel("Sequence Length N (tokens)", fontsize=13)
-    ax.set_ylabel("time_prefill_forward_total (ms, all layers)", fontsize=13)
-    ax.set_title("Prefill Latency: Row Delta vs Baseline Flash\n(LLaMA 3.1 8B-Instruct, Wikitext)", fontsize=14)
-    ax.legend(fontsize=12)
-    ax.grid(True, alpha=0.35)
+    ax1.set_xscale("log", base=2)
+    ax1.set_xlabel("Sequence Length N (tokens)", fontsize=12)
+    ax1.set_ylabel("time_prefill_forward_total (ms, all layers)", fontsize=12)
+    ax1.set_title("Absolute latency", fontsize=13)
+    ax1.legend(fontsize=11)
+    ax1.grid(True, alpha=0.35, which="both")
+    ax1.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{int(x):,}"))
+
+    # --- Right: speedup ratio (baseline / row_delta) ---
+    if paired:
+        ns_p, bls, rds = zip(*paired)
+        ratios = [bl / rd for bl, rd in zip(bls, rds)]
+        colors = ["green" if r >= 1.0 else "salmon" for r in ratios]
+        ax2.scatter(ns_p, ratios, c=colors, zorder=5, s=60)
+        ax2.plot(ns_p, ratios, "k-", linewidth=1.5, alpha=0.6)
+        ax2.axhline(1.0, color="gray", linestyle="--", linewidth=1.5, label="Break-even")
+        # Shade regions
+        ax2.fill_between(ns_p, ratios, 1.0,
+                         where=[r >= 1.0 for r in ratios],
+                         alpha=0.15, color="green", label="Row delta faster")
+        ax2.fill_between(ns_p, ratios, 1.0,
+                         where=[r < 1.0 for r in ratios],
+                         alpha=0.15, color="red", label="Row delta slower")
+
+    ax2.set_xscale("log", base=2)
+    ax2.set_xlabel("Sequence Length N (tokens)", fontsize=12)
+    ax2.set_ylabel("Speedup  (baseline / row_delta)", fontsize=12)
+    ax2.set_title("Speedup ratio", fontsize=13)
+    ax2.legend(fontsize=11)
+    ax2.grid(True, alpha=0.35, which="both")
+    ax2.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{int(x):,}"))
+
     plt.tight_layout()
 
     for ext in ("png", "pdf"):
