@@ -1,0 +1,83 @@
+Tue May  5 16:13:35 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.58.03              Driver Version: 595.58.03      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100                    On  |   00000000:06:00.0 Off |                    0 |
+| N/A   32C    P0             65W /  700W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+CUDA version: Cuda compilation tools, release 12.1, V12.1.105
+[Master] Starting baseline_decoding Grid Search for LLAMA.
+[Master] Parameters: []
+[Master] Total Experiments: 1
+[Master] Output Folder: experiment_baseline_decoding_1
+
+=== Step 1/1: {} ===
+[Master] Running worker for {}
+Experiment Globals: {'delta_decode': False, 'delta_pf_key_on': False, 'flash': True}
+[Worker] Setting safe globVR defaults for model initialization...
+[Worker] 'decoding' triggered. Forcing task: ['longbench_gov_report', 'longbench_multinews']
+[Worker] Loading Model: meta-llama/Meta-Llama-3.1-8B-Instruct...
+[Worker] Applying baseline_decoding settings: {'delta_decode': False, 'delta_pf_key_on': False, 'flash': True}
+[Config] Created new directory: snellius_experiments/llama/experiment_baseline_decoding_1/config_1
+--- Running Task: longbench_gov_report ---
+    - Setting time_internal: True
+    - Task 'longbench_gov_report' completed in 3399.21 seconds.
+Task: longbench_gov_report | Acc: 0.3377 | Total Time: 3399.21s
+{
+    "task_name": "longbench_gov_report",
+    "timestamp": "2026-05-05T17:11:43.240505",
+    "shot": 0,
+    "sparsity": 0.0,
+    "mlp_spars": 0.0,
+    "avg_kv_compression_pct": 0.0,
+    "benchmark_stats": {
+        "num_passages": 200,
+        "seq_len_avg": 10316.095,
+        "seq_len_min": 2095,
+        "seq_len_max": 51468,
+        "seq_len_std": 6687.865082817909
+    },
+    "accuracy": 0.33770380149726487,
+    "timings": {
+        "total_avg_ms": 7.021294358158484,
+        "latency_breakdown_ms": {
+            "time_triton_flash_attention": 5.5468316833861175,
+            "time_prefill_forward_total": 7.021294358158484,
+            "time_baseline_decode_cache_update": 0.0500234056503804,
+            "time_baseline_decode_attn_calc": 0.3630418056245128,
+            "time_baseline_decode_inner_total": 0.3763257639821898,
+            "time_decode_forward_total": 0.7120111640641792
+        }
+    },
+    "metrics": {
+        "alias": "longbench_gov_report",
+        "rouge_score,none": 0.33770380149726487,
+        "rouge_score_stderr,none": 0.004294356987940934
+    },
+    "total_benchmark_time_s": 3399.2059366703033,
+    "parameters": {
+        "delta_decode": false,
+        "delta_pf_key_on": false,
+        "flash": true
+    },
+    "experiment_type": "baseline_decoding"
+}
+[IO] Saved full result to longbench_gov_report.json
+--- Running Task: longbench_multinews ---
+    - Setting time_internal: True
+    - [Error] simple_evaluate failed for task longbench_multinews: 'longbench_multinews'
+[Error] No results generated for task longbench_multinews.
+[Worker] Finished. Exiting.

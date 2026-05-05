@@ -1,0 +1,10 @@
+{
+    "delta_decode": true,
+    "window_size": 10,
+    "row_delta_threshold": 15.0,
+    "row_similarity_metric": "euclidean",
+    "delta_pf_key_on": 1,
+    "flash": true,
+    "delta_type": "row",
+    "divide_to": 32
+}
