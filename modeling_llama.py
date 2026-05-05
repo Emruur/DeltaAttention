@@ -303,15 +303,15 @@ class LlamaAttention(nn.Module):
         out = torch.empty_like(q)
         
         BLOCK_M = 128
-        BLOCK_N = 64
+        BLOCK_N = 128
         BLOCK_D = triton.next_power_of_2(head_dim)
-        
+
         grid = (triton.cdiv(q_len, BLOCK_M), batch_size * num_heads, 1)
-        
+
         hybrid_compressed_flash_kernel[grid](
-            q, k_dense, v_dense, 
-            k_packed, v_packed, 
-            packed_timestamps, packed_counts, 
+            q, k_dense, v_dense,
+            k_packed, v_packed,
+            packed_timestamps, packed_counts,
             out,
             q.stride(0), q.stride(1), q.stride(2), q.stride(3),
             k_dense.stride(0), k_dense.stride(1), k_dense.stride(2), k_dense.stride(3),
@@ -321,9 +321,11 @@ class LlamaAttention(nn.Module):
             packed_timestamps.stride(0), packed_timestamps.stride(1), packed_timestamps.stride(2),
             packed_counts.stride(0), packed_counts.stride(1), packed_counts.stride(2),
             out.stride(0), out.stride(1), out.stride(2), out.stride(3),
-            self.scaling, 
+            self.scaling,
             q_len, k_len, num_packed, head_dim, num_heads,
-            BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_D=BLOCK_D
+            BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_D=BLOCK_D,
+            num_warps=8,
+            num_stages=1,
         )
         return out
 
