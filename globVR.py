@@ -67,6 +67,7 @@ delta_type = "regular" # regular, row, nm
 row_delta_threshold = 10
 row_similarity_metric= "cos"
 divide_to = 1
+chunk_size = 0  # 0 = use divide_to; >0 = fixed tokens per chunk
 
 ## DELTA MLP
 delta_mlp= "Delta"

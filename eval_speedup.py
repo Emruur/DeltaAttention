@@ -54,7 +54,8 @@ def set_row_delta():
     globVR.delta_mlp = "Regular"
     globVR.row_delta_threshold = 15
     globVR.row_similarity_metric = "euclidian"
-    globVR.divide_to = 32
+    globVR.chunk_size = 512
+    globVR.divide_to = 0
     globVR.flash = True
     globVR.delta_decode = False
     globVR.time_internal = True
@@ -230,25 +231,26 @@ def main():
     # ------------------------------------------
     # Plot
     # ------------------------------------------
-    valid_bl = [(N, t) for N, t in zip(SEQ_LENGTHS, baseline_times) if not np.isnan(t)]
-    valid_rd = [(N, t) for N, t in zip(SEQ_LENGTHS, row_delta_times) if not np.isnan(t)]
+    def valid(times):
+        return [(N, t) for N, t in zip(SEQ_LENGTHS, times) if not np.isnan(t)]
 
-    # Speedup ratio where both measurements exist
-    paired = [(N, bl, rd)
-              for (N, bl), (N2, rd) in zip(valid_bl, valid_rd)
-              if N == N2 and rd > 0]
+    def paired_ratios(bl_list, rd_list):
+        bl_d = {N: t for N, t in valid(bl_list)}
+        return [(N, bl_d[N] / t) for N, t in valid(rd_list) if N in bl_d and t > 0]
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
     fig.suptitle("Row Delta vs Baseline Flash  |  LLaMA 3.1 8B-Instruct, Wikitext",
                  fontsize=14)
 
     # --- Left: raw latency ---
-    if valid_bl:
-        ns, ts = zip(*valid_bl)
-        ax1.plot(ns, ts, "b-o", label="Baseline Flash", linewidth=2, markersize=6)
-    if valid_rd:
-        ns, ts = zip(*valid_rd)
-        ax1.plot(ns, ts, "r-o", label="Row Delta (prefill)", linewidth=2, markersize=6)
+    for times, color, label in [
+        (baseline_times,  "blue", "Baseline Flash"),
+        (row_delta_times, "red",  "Row Delta (prefill)"),
+    ]:
+        pts = valid(times)
+        if pts:
+            ns, ts = zip(*pts)
+            ax1.plot(ns, ts, "-o", color=color, label=label, linewidth=2, markersize=6)
 
     ax1.set_xscale("log", base=2)
     ax1.set_xlabel("Sequence Length N (tokens)", fontsize=12)
@@ -259,21 +261,18 @@ def main():
     ax1.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{int(x):,}"))
 
     # --- Right: speedup ratio (baseline / row_delta) ---
-    if paired:
-        ns_p, bls, rds = zip(*paired)
-        ratios = [bl / rd for bl, rd in zip(bls, rds)]
-        colors = ["green" if r >= 1.0 else "salmon" for r in ratios]
-        ax2.scatter(ns_p, ratios, c=colors, zorder=5, s=60)
-        ax2.plot(ns_p, ratios, "k-", linewidth=1.5, alpha=0.6)
-        ax2.axhline(1.0, color="gray", linestyle="--", linewidth=1.5, label="Break-even")
-        # Shade regions
+    pr = paired_ratios(baseline_times, row_delta_times)
+    if pr:
+        ns_p, ratios = zip(*pr)
+        ax2.plot(ns_p, ratios, "-o", color="red", linewidth=2, markersize=6,
+                 label="Row Delta (prefill)")
         ax2.fill_between(ns_p, ratios, 1.0,
                          where=[r >= 1.0 for r in ratios],
                          alpha=0.15, color="green", label="Row delta faster")
         ax2.fill_between(ns_p, ratios, 1.0,
                          where=[r < 1.0 for r in ratios],
                          alpha=0.15, color="red", label="Row delta slower")
-
+    ax2.axhline(1.0, color="gray", linestyle="--", linewidth=1.5, label="Break-even")
     ax2.set_xscale("log", base=2)
     ax2.set_xlabel("Sequence Length N (tokens)", fontsize=12)
     ax2.set_ylabel("Speedup  (baseline / row_delta)", fontsize=12)

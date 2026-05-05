@@ -482,22 +482,28 @@ class LlamaAttention(nn.Module):
         # =========================================================================
         if is_prefill and getattr(globVR, 'delta_pf_key_on', 0) == 1 and globVR.delta_type == "row":
             
-            divide_to = getattr(globVR, 'divide_to', 0)
-            actual_divide_to = 1 if divide_to == 0 else divide_to
-            
+            fixed_chunk = getattr(globVR, 'chunk_size', 0)
+            if fixed_chunk > 0:
+                chunk_size = min(fixed_chunk, q_len)
+                num_chunks = max(1, (q_len + chunk_size - 1) // chunk_size)
+            else:
+                divide_to = getattr(globVR, 'divide_to', 0)
+                actual_divide_to = 1 if divide_to == 0 else divide_to
+                chunk_size = (q_len + actual_divide_to - 1) // actual_divide_to
+                num_chunks = actual_divide_to
+
             if do_time:
                 start_evt_rd = torch.cuda.Event(enable_timing=True)
                 end_evt_rd = torch.cuda.Event(enable_timing=True)
                 start_evt_rd.record()
 
             # --- 1. EVALUATE DELTAS ---
-            chunk_size = (q_len + actual_divide_to - 1) // actual_divide_to
             BLOCK_D_EVAL = triton.next_power_of_2(self.head_dim)
-            
+
             keep_mask = torch.zeros((bsz, self.config.num_key_value_heads, q_len), dtype=torch.int32, device=key_states.device)
-            chunk_counts = torch.zeros((bsz, self.config.num_key_value_heads, actual_divide_to), dtype=torch.int32, device=key_states.device)
-            
-            grid_eval = (bsz * self.config.num_key_value_heads, actual_divide_to)
+            chunk_counts = torch.zeros((bsz, self.config.num_key_value_heads, num_chunks), dtype=torch.int32, device=key_states.device)
+
+            grid_eval = (bsz * self.config.num_key_value_heads, num_chunks)
             similarity_metric = getattr(globVR, 'row_similarity_metric', 'euclidean')
             use_cosine = (similarity_metric == 'cosine')
             raw_threshold = getattr(globVR, 'row_delta_threshold', 0.0)

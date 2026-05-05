@@ -68,26 +68,27 @@ EXPERIMENT_DEFINITIONS = {
     },
     "row_delta": {
         "grid": {
-            "scale": [0.05], 
-            "delta": [14,15,16],
+            "scale": [0.05],
+            "delta": [14, 15, 16],
             "row_sim": ["euclidian"],
-            "divide_to": [32]
+            "chunk_size": [512, 1024],
         },
         "arg_builder": lambda p: [
-            "--scale", str(p["scale"]), 
-            "--delta", str(p["delta"]),  
-            "--row_sim", str(p["row_sim"]),
-            "--divide_to", str(p["divide_to"])
+            "--scale",      str(p["scale"]),
+            "--delta",      str(p["delta"]),
+            "--row_sim",    str(p["row_sim"]),
+            "--chunk_size", str(p["chunk_size"]),
         ],
         "injector": lambda args: {
             "delta_pf_key_on": 1,
             "delta_type": "row",
             "scale": args.scale,
-            "delta_mlp": "Regular", 
+            "delta_mlp": "Regular",
             "row_delta_threshold": args.delta,
             "row_similarity_metric": args.row_sim,
-            "divide_to": args.divide_to,
-            "flash":True,
+            "chunk_size": args.chunk_size,
+            "divide_to": 0,
+            "flash": True,
             "delta_decode": False,
         }
     },
@@ -507,7 +508,8 @@ if __name__ == "__main__":
     parser.add_argument('--mlp_thresh', default=0.0, type=float)
     parser.add_argument('--delta', default=1.0, type=float)
     parser.add_argument('--row_sim', default="cos", type=str)
-    parser.add_argument('--divide_to', default=1, type=int)
+    parser.add_argument('--divide_to', default=0, type=int)
+    parser.add_argument('--chunk_size', default=512, type=int)
     
     # NEW ARGUMENTS FOR DECODING
     parser.add_argument('--window_size', default=50, type=int)
