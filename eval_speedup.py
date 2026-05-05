@@ -1,403 +1,249 @@
 import os
-os.environ["TORCH_COMPILE_DISABLE"] = "1"
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+os.environ["HF_DATASETS_TRUST_REMOTE_CODE"] = "1"
+os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
+import matplotlib
+matplotlib.use("Agg")
 
-import sys
-import json
 import argparse
 import gc
-import re
-import subprocess
-import time
-from datetime import datetime
-
+import json
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-from datasets import load_dataset
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM
 
 import globVR
 import glob_set
+
 from modeling_llama import LlamaForCausalLM, LlamaConfig
 
 AutoConfig.register("llama", LlamaConfig, exist_ok=True)
 AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 
 MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-SEQ_LENGTHS = [1024, 2048, 4096, 8192, 16384, 32768, 65536]
 
-EXPERIMENT_SETTINGS = {
-    "baseline": {
-        "delta_pf_key_on": 0,
-        "delta_type": "regular",
-        "flash": False,
-    },
-    "row_delta": {
-        "delta_pf_key_on": 1,
-        "delta_type": "row",
-        "flash": True,
-        "row_delta_threshold": 15,
-        "row_similarity_metric": "euclidean",
-        "divide_to": 32,
-    },
-}
+SEQ_LENGTHS = [512, 1024, 2048, 4096, 8192, 16384, 32768, 64000]
 
 
-class NpEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, (np.integer,)):
-            return int(obj)
-        if isinstance(obj, (np.floating,)):
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        if isinstance(obj, torch.Tensor):
-            return obj.item() if obj.numel() == 1 else obj.tolist()
-        return super().default(obj)
-
-
-def load_wikitext_tokens(tokenizer):
-    """Tokenize wikitext into one flat CPU tensor. Falls back from 103 to 2."""
-    for name in ("wikitext-103-raw-v1", "wikitext-2-raw-v1"):
-        try:
-            ds = load_dataset("wikitext", name, split="train")
-            text = " ".join(t for t in ds["text"] if t.strip())
-            ids = tokenizer(text, return_tensors="pt").input_ids[0]
-            print(f"[Data] {ids.shape[0]:,} tokens from wikitext/{name}")
-            return ids
-        except Exception as e:
-            print(f"[Data] Could not load {name}: {e}")
-    raise RuntimeError("Could not load any wikitext split")
-
-
-def random_slice(tokens, seq_len, rng):
-    """Return a [1, seq_len] CPU tensor, repeating corpus if needed."""
-    if tokens.shape[0] <= seq_len:
-        repeats = (seq_len // tokens.shape[0]) + 2
-        tokens = tokens.repeat(repeats)
-    max_start = tokens.shape[0] - seq_len
-    start = int(rng.integers(0, max_start + 1))
-    return tokens[start : start + seq_len].unsqueeze(0)
-
-
-def apply_settings(settings):
-    for k, v in settings.items():
-        setattr(globVR, k, v)
-    globVR.time_internal = True
-
+# ==========================================
+# GLOBVR HELPERS
+# ==========================================
 
 def reset_timing():
     globVR.latency_stats = {}
     globVR.latency_events = []
     globVR.spars = 0.0
+    globVR.sequence_lengths = []
+    if not hasattr(globVR, "kv_compression_samples"):
+        globVR.kv_compression_samples = []
+    globVR.kv_compression_samples = []
 
 
-def read_prefill_ms():
-    """Sum of all-layer prefill time from the last resolved forward pass (ms)."""
-    stats = getattr(globVR, "latency_stats", {})
-    for key in ("time_prefill_forward_total", "time_forward_total"):
-        entry = stats.get(key)
-        if entry and entry["calls"] > 0:
-            return entry["time_ms"]   # total across all layers, not per-call avg
-    return 0.0
+def set_baseline_flash():
+    globVR.delta_pf_key_on = 0
+    globVR.delta_mlp = "Regular"
+    globVR.flash = True
+    globVR.delta_decode = False
+    globVR.time_internal = True
 
 
-def read_sparsity():
-    """Moving-average sparsity accumulated across layers during last forward pass."""
-    v = getattr(globVR, "spars", 0.0)
-    return float(v.item() if isinstance(v, torch.Tensor) else v)
+def set_row_delta():
+    globVR.delta_pf_key_on = 1
+    globVR.delta_type = "row"
+    globVR.scale = 0.05
+    globVR.delta_mlp = "Regular"
+    globVR.row_delta_threshold = 15
+    globVR.row_similarity_metric = "euclidian"
+    globVR.divide_to = 32
+    globVR.flash = True
+    globVR.delta_decode = False
+    globVR.time_internal = True
 
 
-def single_pass(model, input_ids):
-    """One forward pass. Returns (prefill_internal_ms, wall_clock_ms, sparsity)."""
+# ==========================================
+# DATA
+# ==========================================
+
+def get_wikitext_tokens(tokenizer, max_tokens):
+    from datasets import load_dataset
+    print("Loading wikitext-103-raw-v1 ...", flush=True)
+    dataset = load_dataset("wikitext", "wikitext-103-raw-v1", split="train")
+    text = "\n".join(t for t in dataset["text"] if t.strip())
+    tokens = tokenizer.encode(text, add_special_tokens=False, return_tensors="pt")
+    flat = tokens[0]
+    if len(flat) < max_tokens:
+        raise ValueError(f"Only got {len(flat)} tokens from wikitext, need {max_tokens}")
+    print(f"Tokenized {len(flat)} tokens.", flush=True)
+    return flat[:max_tokens]
+
+
+# ==========================================
+# BENCHMARK CORE
+# ==========================================
+
+@torch.no_grad()
+def run_prefill(model, input_ids, device):
+    """Single timed prefill forward. Returns total attention time in ms (summed across all layers)."""
     reset_timing()
+    ids = input_ids.unsqueeze(0).to(device)
+    mask = torch.ones_like(ids)
     torch.cuda.synchronize()
-    t0 = time.perf_counter()
-
-    with torch.no_grad():
-        model(input_ids)
-
+    model(input_ids=ids, attention_mask=mask, use_cache=False)
     torch.cuda.synchronize()
-    t1 = time.perf_counter()
-
     glob_set.resolve_latency_events()
+    stats = globVR.latency_stats.get("time_prefill_forward_total", {"time_ms": 0.0, "calls": 0})
+    return stats["time_ms"]  # sum across all 32 attention layers
 
-    return read_prefill_ms(), (t1 - t0) * 1000.0, read_sparsity()
 
+def benchmark_mode(model, tokens, seq_lengths, device, mode_name, setup_fn, n_warmup, n_runs):
+    print(f"\n=== {mode_name} (warmup={n_warmup}, runs={n_runs}) ===", flush=True)
 
-def benchmark_one_len(model, tokens, seq_len, n_samples, n_warmup, rng):
-    """
-    Benchmark a single sequence length.
-    Returns stats dict or None on OOM.
-    """
-    # allocate a warmup input first to detect OOM early
-    try:
-        inp = random_slice(tokens, seq_len, rng).to("cuda")
-        with torch.no_grad():
-            for _ in range(n_warmup):
-                model(inp)
-                torch.cuda.synchronize()
-    except torch.cuda.OutOfMemoryError:
+    # Initial warmup at smallest N to trigger Triton JIT
+    print(f"  Warming up at N={seq_lengths[0]} ...", flush=True)
+    for _ in range(n_warmup):
+        setup_fn()
+        try:
+            run_prefill(model, tokens[: seq_lengths[0]], device)
+        except torch.cuda.OutOfMemoryError:
+            pass
         torch.cuda.empty_cache()
         gc.collect()
-        print(f"   [OOM] N={seq_len:,} during warmup — skipping")
-        return None
 
-    prefill_samples, wall_samples, sparsity_samples = [], [], []
+    results = []
+    for N in seq_lengths:
+        if N > len(tokens):
+            print(f"  N={N:>6}: skipped (not enough tokens)", flush=True)
+            results.append(float("nan"))
+            continue
 
-    for i in range(n_samples):
-        inp = random_slice(tokens, seq_len, rng).to("cuda")
-        try:
-            pf, wl, spars = single_pass(model, inp)
-            prefill_samples.append(pf)
-            wall_samples.append(wl)
-            sparsity_samples.append(spars)
-            print(f"   sample {i+1}/{n_samples}: prefill={pf:.2f}ms  wall={wl:.2f}ms  sparsity={spars:.3f}")
-        except torch.cuda.OutOfMemoryError:
+        ids = tokens[:N]
+
+        # Per-length warmup (new Triton tile sizes may recompile)
+        for _ in range(n_warmup):
+            setup_fn()
+            try:
+                run_prefill(model, ids, device)
+            except torch.cuda.OutOfMemoryError:
+                print(f"  N={N:>6}: OOM during warmup — skipping", flush=True)
+                results.append(float("nan"))
+                torch.cuda.empty_cache()
+                gc.collect()
+                break
+        else:
             torch.cuda.empty_cache()
             gc.collect()
-            print(f"   [OOM] N={seq_len:,} sample {i} — stopping")
-            break
 
-    if not prefill_samples:
-        return None
+            # Timed runs
+            run_times = []
+            oom = False
+            for _ in range(n_runs):
+                setup_fn()
+                try:
+                    t = run_prefill(model, ids, device)
+                    run_times.append(t)
+                except torch.cuda.OutOfMemoryError:
+                    print(f"  N={N:>6}: OOM during measurement", flush=True)
+                    oom = True
+                    break
+                torch.cuda.empty_cache()
+                gc.collect()
 
-    def stats(xs):
-        return {"mean": float(np.mean(xs)), "std": float(np.std(xs)), "samples": [float(x) for x in xs]}
+            if oom or not run_times:
+                results.append(float("nan"))
+            else:
+                avg_t = float(np.mean(run_times))
+                print(f"  N={N:>6}: {avg_t:9.2f} ms  (avg of {len(run_times)} runs)", flush=True)
+                results.append(avg_t)
 
-    return {
-        "prefill_ms": stats(prefill_samples),
-        "wall_ms": stats(wall_samples),
-        "sparsity": stats(sparsity_samples),
-        "n_valid": len(prefill_samples),
-    }
+    return results
 
 
-def run_worker(args, output_dir):
-    torch.set_grad_enabled(False)
+# ==========================================
+# MAIN
+# ==========================================
 
-    print(f"[Worker] Loading model: {MODEL_ID}")
-    config = AutoConfig.from_pretrained(MODEL_ID)
-    config.attn_implementation = "eager"
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--n_warmup", type=int, default=1, help="Warmup iterations per sequence length")
+    parser.add_argument("--n_runs", type=int, default=3, help="Timed iterations per sequence length")
+    args = parser.parse_args()
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Device: {device}  |  warmup={args.n_warmup}  runs={args.n_runs}", flush=True)
+
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+    tokens = get_wikitext_tokens(tokenizer, max(SEQ_LENGTHS))
+
+    # Disable timing/delta during model load to avoid spurious state
+    globVR.delta_pf_key_on = 0
+    globVR.delta_mlp = "Regular"
+    globVR.delta_decode = False
+    globVR.flash = False
+    globVR.time_internal = False
+
+    print(f"Loading {MODEL_ID} ...", flush=True)
     model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID, config=config, torch_dtype=torch.bfloat16
-    ).to("cuda").eval()
+        MODEL_ID,
+        torch_dtype=torch.bfloat16,
+        attn_implementation="eager",
+        trust_remote_code=True,
+    ).to(device)
+    model.eval()
+    torch.set_grad_enabled(False)
+    print("Model ready.", flush=True)
 
-    tokens = load_wikitext_tokens(tokenizer)
-    rng = np.random.default_rng(args.seed)
+    baseline_times = benchmark_mode(
+        model, tokens, SEQ_LENGTHS, device,
+        "Baseline Flash", set_baseline_flash,
+        n_warmup=args.n_warmup, n_runs=args.n_runs,
+    )
+    row_delta_times = benchmark_mode(
+        model, tokens, SEQ_LENGTHS, device,
+        "Row Delta (prefill only)", set_row_delta,
+        n_warmup=args.n_warmup, n_runs=args.n_runs,
+    )
 
-    settings = EXPERIMENT_SETTINGS[args.experiment_type]
-    apply_settings(settings)
-    print(f"[Worker] Experiment: {args.experiment_type}  settings: {settings}")
-
-    seq_lengths = [int(x) for x in args.seq_lengths.split(",")]
+    # ------------------------------------------
+    # Save raw results
+    # ------------------------------------------
+    os.makedirs("speedup_experiments", exist_ok=True)
     results = {
-        "experiment_type": args.experiment_type,
-        "settings": settings,
-        "timestamp": datetime.now().isoformat(),
-        "n_samples": args.n_samples,
-        "n_warmup": args.n_warmup,
-        "data": {},
+        "seq_lengths": SEQ_LENGTHS,
+        "baseline_flash_total_ms": baseline_times,
+        "row_delta_total_ms": row_delta_times,
     }
+    json_path = "speedup_experiments/speedup_results.json"
+    with open(json_path, "w") as f:
+        json.dump(results, f, indent=2)
+    print(f"\nResults saved to {json_path}", flush=True)
 
-    for N in seq_lengths:
-        print(f"\n--- N={N:,} ---")
-        stats = benchmark_one_len(model, tokens, N, args.n_samples, args.n_warmup, rng)
-        results["data"][str(N)] = stats
-        if stats:
-            print(
-                f"   => prefill {stats['prefill_ms']['mean']:.2f} ± {stats['prefill_ms']['std']:.2f} ms"
-                f"   wall {stats['wall_ms']['mean']:.2f} ± {stats['wall_ms']['std']:.2f} ms"
-                f"   sparsity {stats['sparsity']['mean']:.3f}"
-                f"   ({stats['n_valid']} valid samples)"
-            )
-        gc.collect()
-        torch.cuda.empty_cache()
+    # ------------------------------------------
+    # Plot
+    # ------------------------------------------
+    fig, ax = plt.subplots(figsize=(10, 6))
 
-    os.makedirs(output_dir, exist_ok=True)
-    out_path = os.path.join(output_dir, f"{args.experiment_type}_results.json")
-    with open(out_path, "w") as f:
-        json.dump(results, f, indent=2, cls=NpEncoder)
-    print(f"\n[Worker] Saved -> {out_path}")
+    valid_bl = [(N, t) for N, t in zip(SEQ_LENGTHS, baseline_times) if not np.isnan(t)]
+    valid_rd = [(N, t) for N, t in zip(SEQ_LENGTHS, row_delta_times) if not np.isnan(t)]
 
+    if valid_bl:
+        ns, ts = zip(*valid_bl)
+        ax.plot(ns, ts, "b-o", label="Baseline Flash", linewidth=2, markersize=7)
+    if valid_rd:
+        ns, ts = zip(*valid_rd)
+        ax.plot(ns, ts, "r-o", label="Row Delta (prefill)", linewidth=2, markersize=7)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Plotting
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _extract_series(data_dict, metric, seq_lengths):
-    """Pull mean/std arrays aligned to seq_lengths; None entries become NaN."""
-    ns, means, stds = [], [], []
-    for N in seq_lengths:
-        entry = data_dict.get(str(N))
-        ns.append(N)
-        if entry is None:
-            means.append(float("nan"))
-            stds.append(float("nan"))
-        else:
-            means.append(entry[metric]["mean"])
-            stds.append(entry[metric]["std"])
-    return np.array(ns), np.array(means), np.array(stds)
-
-
-def _find_crossover(ns, bl_means, rd_means):
-    """Return the approximate N where rd_means first drops below bl_means."""
-    for i in range(len(ns)):
-        if np.isnan(bl_means[i]) or np.isnan(rd_means[i]):
-            continue
-        if rd_means[i] < bl_means[i]:
-            if i == 0:
-                return float(ns[0])
-            # linear interpolation in log-space for cleaner result
-            diff_prev = bl_means[i - 1] - rd_means[i - 1]
-            diff_curr = bl_means[i] - rd_means[i]
-            if diff_curr == diff_prev:
-                return float(ns[i])
-            frac = diff_prev / (diff_prev - diff_curr)
-            return ns[i - 1] + frac * (ns[i] - ns[i - 1])
-    return None
-
-
-def plot_results(baseline_path, row_delta_path, out_dir):
-    with open(baseline_path) as f:
-        bl = json.load(f)
-    with open(row_delta_path) as f:
-        rd = json.load(f)
-
-    all_ns = sorted(set(int(k) for k in bl["data"]) | set(int(k) for k in rd["data"]))
-
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    fig.suptitle("Prefill Latency: Baseline vs Row-Delta", fontsize=13)
-
-    panels = [
-        ("prefill_ms", "Prefill Forward Time (ms)", "Internal prefill forward (all layers summed)"),
-        ("wall_ms",    "Wall-Clock Time (ms)",       "End-to-end forward pass wall time"),
-    ]
-
-    for ax, (metric, ylabel, subtitle) in zip(axes, panels):
-        bl_ns, bl_m, bl_s = _extract_series(bl["data"], metric, all_ns)
-        rd_ns, rd_m, rd_s = _extract_series(rd["data"], metric, all_ns)
-
-        ax.errorbar(bl_ns, bl_m, yerr=bl_s, marker="o", label="baseline",  capsize=4, linewidth=1.5)
-        ax.errorbar(rd_ns, rd_m, yerr=rd_s, marker="s", label="row_delta", capsize=4, linewidth=1.5)
-
-        cross = _find_crossover(all_ns, bl_m, rd_m)
-        if cross is not None:
-            ax.axvline(cross, color="gray", linestyle="--", alpha=0.75,
-                       label=f"crossover ≈ {cross:,.0f} tok")
-
-        ax.set_xscale("log")
-        ax.set_xlabel("Sequence Length N (tokens, log scale)")
-        ax.set_ylabel(ylabel)
-        ax.set_title(subtitle)
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
+    ax.set_xlabel("Sequence Length N (tokens)", fontsize=13)
+    ax.set_ylabel("time_prefill_forward_total (ms, all layers)", fontsize=13)
+    ax.set_title("Prefill Latency: Row Delta vs Baseline Flash\n(LLaMA 3.1 8B-Instruct, Wikitext)", fontsize=14)
+    ax.legend(fontsize=12)
+    ax.grid(True, alpha=0.35)
     plt.tight_layout()
-    plots_dir = os.path.join(out_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
-    out_path = os.path.join(plots_dir, "prefill_speedup.png")
-    plt.savefig(out_path, dpi=150, bbox_inches="tight")
-    print(f"[Plot] Saved -> {out_path}")
-    plt.close()
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Entry point
-# ──────────────────────────────────────────────────────────────────────────────
-
-def get_next_run_id(base):
-    if not os.path.exists(base):
-        return 1
-    pat = re.compile(r"^run_(\d+)$")
-    ids = {int(m.group(1)) for d in os.listdir(base) if (m := pat.match(d))}
-    i = 1
-    while i in ids:
-        i += 1
-    return i
+    for ext in ("png", "pdf"):
+        path = f"speedup_experiments/speedup_plot.{ext}"
+        plt.savefig(path, dpi=150)
+        print(f"Plot saved to {path}", flush=True)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Prefill latency benchmark: baseline vs row_delta")
-    parser.add_argument("--mode", choices=["master", "worker", "plot"], default="master")
-
-    # worker-only
-    parser.add_argument("--experiment_type", choices=list(EXPERIMENT_SETTINGS.keys()), default="baseline")
-    parser.add_argument("--output_dir", default=None)
-    parser.add_argument("--seq_lengths", default=",".join(str(x) for x in SEQ_LENGTHS),
-                        help="Comma-separated sequence lengths (worker mode)")
-
-    # shared
-    parser.add_argument("--n_samples", type=int, default=20,
-                        help="Random wikitext sequences to average per N")
-    parser.add_argument("--n_warmup",  type=int, default=5,
-                        help="Warmup forward passes before timing (per N)")
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--exp_dir", default=None,
-                        help="Output directory (master creates; worker/plot reads)")
-
-    # row_delta overrides
-    parser.add_argument("--delta",    type=float, default=15.0)
-    parser.add_argument("--row_sim",  type=str,   default="euclidean")
-    parser.add_argument("--divide_to",type=int,   default=32)
-
-    args = parser.parse_args()
-
-    # Apply CLI overrides to row_delta settings
-    EXPERIMENT_SETTINGS["row_delta"]["row_delta_threshold"]    = args.delta
-    EXPERIMENT_SETTINGS["row_delta"]["row_similarity_metric"]  = args.row_sim
-    EXPERIMENT_SETTINGS["row_delta"]["divide_to"]              = args.divide_to
-
-    base_storage = "speedup_experiments"
-
-    if args.mode == "master":
-        run_id = get_next_run_id(base_storage)
-        exp_dir = args.exp_dir or os.path.join(base_storage, f"run_{run_id}")
-        os.makedirs(exp_dir, exist_ok=True)
-        print(f"[Master] Output dir: {exp_dir}")
-        print(f"[Master] Seq lengths: {SEQ_LENGTHS}")
-        print(f"[Master] n_samples={args.n_samples}  n_warmup={args.n_warmup}")
-
-        for exp_type in ("baseline", "row_delta"):
-            print(f"\n{'='*60}")
-            print(f"[Master] Launching worker: {exp_type}")
-            print(f"{'='*60}")
-            cmd = [
-                sys.executable, sys.argv[0],
-                "--mode", "worker",
-                "--experiment_type", exp_type,
-                "--output_dir", exp_dir,
-                "--seq_lengths", args.seq_lengths,
-                "--n_samples", str(args.n_samples),
-                "--n_warmup",  str(args.n_warmup),
-                "--seed",      str(args.seed),
-                "--delta",     str(args.delta),
-                "--row_sim",   args.row_sim,
-                "--divide_to", str(args.divide_to),
-            ]
-            subprocess.run(cmd, check=True)
-
-        # plot after both workers finish
-        bl_path = os.path.join(exp_dir, "baseline_results.json")
-        rd_path = os.path.join(exp_dir, "row_delta_results.json")
-        if os.path.exists(bl_path) and os.path.exists(rd_path):
-            plot_results(bl_path, rd_path, exp_dir)
-        else:
-            print("[Master] Missing result files — skipping plot")
-
-    elif args.mode == "worker":
-        if args.output_dir is None:
-            print("[Worker] --output_dir required in worker mode")
-            sys.exit(1)
-        run_worker(args, args.output_dir)
-
-    elif args.mode == "plot":
-        exp_dir = args.exp_dir
-        if exp_dir is None:
-            print("[Plot] --exp_dir required in plot mode")
-            sys.exit(1)
-        bl_path = os.path.join(exp_dir, "baseline_results.json")
-        rd_path = os.path.join(exp_dir, "row_delta_results.json")
-        plot_results(bl_path, rd_path, exp_dir)
+    main()
