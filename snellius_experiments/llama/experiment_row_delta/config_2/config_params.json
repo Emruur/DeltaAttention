@@ -3,9 +3,9 @@
     "delta_type": "row",
     "scale": 0.05,
     "delta_mlp": "Regular",
-    "row_delta_threshold": 14.0,
+    "row_delta_threshold": 15.0,
     "row_similarity_metric": "euclidian",
-    "divide_to": 16,
+    "divide_to": 32,
     "flash": true,
     "delta_decode": false
 }

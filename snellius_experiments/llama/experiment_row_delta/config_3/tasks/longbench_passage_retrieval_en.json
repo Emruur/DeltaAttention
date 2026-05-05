@@ -1,9 +1,10 @@
 {
     "task_name": "longbench_passage_retrieval_en",
-    "timestamp": "2026-04-24T14:55:00.449970",
+    "timestamp": "2026-05-05T15:22:50.891249",
     "shot": 0,
-    "sparsity": 0.5716536110885356,
+    "sparsity": 0.568341024579559,
     "mlp_spars": 0.0,
+    "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
         "num_passages": 200,
         "seq_len_avg": 12565.945,
@@ -11,25 +12,25 @@
         "seq_len_max": 15253,
         "seq_len_std": 1169.2672799556995
     },
-    "accuracy": 0.9266666666666667,
+    "accuracy": 0.955,
     "timings": {
-        "total_avg_ms": 8.868228659406304,
+        "total_avg_ms": 6.428606926873326,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.7722459650877863,
-            "time_delta_mm_pattern": 5.2013354954496025,
-            "time_prefill_forward_total": 8.868228659406304,
-            "time_baseline_decode_cache_update": 0.08452587067367207,
-            "time_baseline_decode_attn_calc": 0.3926708681089148,
-            "time_baseline_decode_inner_total": 0.4100061803531479,
-            "time_decode_forward_total": 0.7607193661534087
+            "time_get_row_delta": 0.535185260316357,
+            "time_delta_mm_pattern": 2.972162482999265,
+            "time_prefill_forward_total": 6.428606926873326,
+            "time_baseline_decode_cache_update": 0.08898827999214907,
+            "time_baseline_decode_attn_calc": 0.39551897277789455,
+            "time_baseline_decode_inner_total": 0.40381717145709056,
+            "time_decode_forward_total": 0.764111341844712
         }
     },
     "metrics": {
         "alias": "longbench_passage_retrieval_en",
-        "retrieval_score,none": 0.9266666666666667,
-        "retrieval_score_stderr,none": 0.018327622073706244
+        "retrieval_score,none": 0.955,
+        "retrieval_score_stderr,none": 0.014695399751940952
     },
-    "total_benchmark_time_s": 158.29574346542358,
+    "total_benchmark_time_s": 138.06389474868774,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -37,7 +38,7 @@
         "delta_mlp": "Regular",
         "row_delta_threshold": 16.0,
         "row_similarity_metric": "euclidian",
-        "divide_to": 16,
+        "divide_to": 32,
         "flash": true,
         "delta_decode": false
     },

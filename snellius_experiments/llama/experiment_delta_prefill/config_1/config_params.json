@@ -1,8 +1,0 @@
-{
-    "delta_decode": false,
-    "row_delta_threshold": 15.0,
-    "delta_pf_key_on": 1,
-    "flash": true,
-    "delta_type": "row",
-    "divide_to": 16
-}

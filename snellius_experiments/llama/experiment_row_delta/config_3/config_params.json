@@ -5,7 +5,7 @@
     "delta_mlp": "Regular",
     "row_delta_threshold": 16.0,
     "row_similarity_metric": "euclidian",
-    "divide_to": 16,
+    "divide_to": 32,
     "flash": true,
     "delta_decode": false
 }
