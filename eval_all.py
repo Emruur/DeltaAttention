@@ -72,12 +72,14 @@ EXPERIMENT_DEFINITIONS = {
             "delta": [19],
             "row_sim": ["euclidian"],
             "chunk_size": [512],
+            "dense_window_size": [128],
         },
         "arg_builder": lambda p: [
-            "--scale",      str(p["scale"]),
-            "--delta",      str(p["delta"]),
-            "--row_sim",    str(p["row_sim"]),
-            "--chunk_size", str(p["chunk_size"]),
+            "--scale",             str(p["scale"]),
+            "--delta",             str(p["delta"]),
+            "--row_sim",           str(p["row_sim"]),
+            "--chunk_size",        str(p["chunk_size"]),
+            "--dense_window_size", str(p["dense_window_size"]),
         ],
         "injector": lambda args: {
             "delta_pf_key_on": 1,
@@ -90,6 +92,7 @@ EXPERIMENT_DEFINITIONS = {
             "divide_to": 0,
             "flash": True,
             "delta_decode": False,
+            "dense_window_size": args.dense_window_size,
         }
     },
     "mlp_delta": {
@@ -515,6 +518,9 @@ if __name__ == "__main__":
     # NEW ARGUMENTS FOR DECODING
     parser.add_argument('--window_size', default=50, type=int)
     parser.add_argument('--row_thresh', default=0.5, type=float)
+
+    # PREFILL DENSE WINDOW
+    parser.add_argument('--dense_window_size', default=128, type=int)
     
     args = parser.parse_args()
 

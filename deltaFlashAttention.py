@@ -20,8 +20,9 @@ def hybrid_compressed_flash_kernel(
     stride_ptb, stride_pth, stride_ptn,
     stride_pcb, stride_pch, stride_pcn,
     stride_ob, stride_oh, stride_om, stride_od,
-    sm_scale, 
+    sm_scale,
     seq_len_q, seq_len_k, num_packed_keys, head_dim, num_heads,
+    denseWindowSize,
     BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, BLOCK_D: tl.constexpr
 ):
     pid_m = tl.program_id(0)
@@ -70,7 +71,7 @@ def hybrid_compressed_flash_kernel(
         timestamps = tl.load(pt_base + offs_n * stride_ptn, mask=packed_mask, other=seq_len_k + 1)
         max_timestamp_in_block = tl.max(timestamps)
         
-        if max_timestamp_in_block >= start_m:
+        if max_timestamp_in_block >= start_m - denseWindowSize:
             # We hit the critical diagonal boundary!
             # To "break" in Triton, we just force the loop counter past the boundary.
             start_n = num_packed_keys 

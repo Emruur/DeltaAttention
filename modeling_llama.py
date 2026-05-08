@@ -283,8 +283,8 @@ class LlamaAttention(nn.Module):
         )
 
     def _forward_hybrid_flash(
-        self, q, k_dense, v_dense, k_packed, v_packed, 
-        packed_timestamps, packed_counts
+        self, q, k_dense, v_dense, k_packed, v_packed,
+        packed_timestamps, packed_counts, dense_window_size
     ):
         """Python wrapper for the Two-Phase Hybrid Flash Kernel"""
         batch_size, num_heads, q_len, head_dim = q.shape
@@ -323,6 +323,7 @@ class LlamaAttention(nn.Module):
             out.stride(0), out.stride(1), out.stride(2), out.stride(3),
             self.scaling,
             q_len, k_len, num_packed, head_dim, num_heads,
+            dense_window_size,
             BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_D=BLOCK_D,
             num_warps=8,
             num_stages=1,
@@ -581,13 +582,14 @@ class LlamaAttention(nn.Module):
                 start_evt_mm.record()
 
             attn_output = self._forward_hybrid_flash(
-                query_states, 
-                key_states_expanded, 
+                query_states,
+                key_states_expanded,
                 value_states_expanded,
-                k_packed_expanded, 
-                v_packed_expanded, 
-                timestamps_expanded, 
-                counts_expanded
+                k_packed_expanded,
+                v_packed_expanded,
+                timestamps_expanded,
+                counts_expanded,
+                getattr(globVR, 'dense_window_size', 128),
             )
             attn_weights = None 
 

@@ -5,15 +5,6 @@ import triton.language as tl
 import globVR 
 
 
-from tritonModules import (
-    chunked_eval_kernel,
-    parallel_scatter_pack_kv_kernel
-)
-import torch
-import triton
-from transformers.cache_utils import Cache
-import globVR
-
 
 @triton.jit
 def fused_hybrid_decode_update_kernel(
