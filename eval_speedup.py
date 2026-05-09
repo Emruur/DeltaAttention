@@ -176,32 +176,6 @@ def main():
     tokens = get_wikitext_tokens(tokenizer, max(SEQ_LENGTHS))
 
     # ------------------------------------------
-    # Baseline: real FlashAttention (flash_attention_2)
-    # Load standard HF class directly to bypass our custom registration
-    # ------------------------------------------
-    print(f"\nLoading baseline model (sdpa): {MODEL_ID} ...", flush=True)
-    baseline_model = HFLlamaForCausalLM.from_pretrained(
-        MODEL_ID,
-        torch_dtype=torch.bfloat16,
-        attn_implementation="sdpa",
-        trust_remote_code=True,
-    ).to(device)
-    baseline_model.eval()
-    torch.set_grad_enabled(False)
-    print("Baseline model ready.", flush=True)
-
-    baseline_times = benchmark_mode(
-        baseline_model, tokens, SEQ_LENGTHS, device,
-        "Baseline SDPA", setup_fn=None,
-        n_warmup=args.n_warmup, n_runs=args.n_runs,
-    )
-
-    del baseline_model
-    torch.cuda.empty_cache()
-    gc.collect()
-    print("Baseline model freed.", flush=True)
-
-    # ------------------------------------------
     # Delta model: custom LlamaForCausalLM (row delta)
     # ------------------------------------------
     globVR.delta_pf_key_on = 0
@@ -227,6 +201,32 @@ def main():
     )
 
     del delta_model
+    torch.cuda.empty_cache()
+    gc.collect()
+    print("Delta model freed.", flush=True)
+
+    # ------------------------------------------
+    # Baseline: SDPA
+    # Load standard HF class directly to bypass our custom registration
+    # ------------------------------------------
+    print(f"\nLoading baseline model (sdpa): {MODEL_ID} ...", flush=True)
+    baseline_model = HFLlamaForCausalLM.from_pretrained(
+        MODEL_ID,
+        torch_dtype=torch.bfloat16,
+        attn_implementation="sdpa",
+        trust_remote_code=True,
+    ).to(device)
+    baseline_model.eval()
+    torch.set_grad_enabled(False)
+    print("Baseline model ready.", flush=True)
+
+    baseline_times = benchmark_mode(
+        baseline_model, tokens, SEQ_LENGTHS, device,
+        "Baseline SDPA", setup_fn=None,
+        n_warmup=args.n_warmup, n_runs=args.n_runs,
+    )
+
+    del baseline_model
     torch.cuda.empty_cache()
     gc.collect()
 
