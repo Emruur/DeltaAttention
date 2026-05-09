@@ -940,7 +940,7 @@ class LlamaModel(LlamaPreTrainedModel):
         # Skip O(N²) mask only when explicitly requested (e.g. single-sequence speedup benchmarks
         # with no padding). Never set this in eval_all.py — lm_eval uses batched+padded inputs
         # and relies on the mask for padding suppression.
-        if getattr(globVR, 'skip_causal_mask', False) and input_tensor.shape[1] > 1 and input_tensor.shape[0] == 1:
+        if getattr(globVR, 'skip_causal_mask', False) and input_tensor.shape[1] > 1:
             return None
 
         if self.config._attn_implementation == "flash_attention_2":
