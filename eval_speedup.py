@@ -103,6 +103,22 @@ def run_prefill_e2e(model, input_ids, device, setup_fn=None):
     return start_evt.elapsed_time(end_evt)
 
 
+def is_cuda_error(e):
+    return isinstance(e, torch.cuda.OutOfMemoryError) or (
+        isinstance(e, RuntimeError) and
+        any(x in str(e) for x in ["CUDA", "cuda", "Triton", "triton", "illegal"])
+    )
+
+
+def recover_cuda():
+    try:
+        torch.cuda.synchronize()
+    except Exception:
+        pass
+    torch.cuda.empty_cache()
+    gc.collect()
+
+
 def benchmark_mode(model, tokens, seq_lengths, device, mode_name, setup_fn, n_warmup, n_runs):
     print(f"\n=== {mode_name} (warmup={n_warmup}, runs={n_runs}) ===", flush=True)
 
@@ -110,52 +126,67 @@ def benchmark_mode(model, tokens, seq_lengths, device, mode_name, setup_fn, n_wa
     for _ in range(n_warmup):
         try:
             run_prefill_e2e(model, tokens[: seq_lengths[0]], device, setup_fn)
-        except torch.cuda.OutOfMemoryError:
-            pass
-        torch.cuda.empty_cache()
-        gc.collect()
+        except Exception as e:
+            if is_cuda_error(e):
+                recover_cuda()
+            else:
+                raise
+        recover_cuda()
 
     results = []
+    cuda_dead = False  # once GPU enters bad state, skip remaining lengths
     for N in seq_lengths:
+        if cuda_dead:
+            results.append(float("nan"))
+            continue
+
         if N > len(tokens):
             print(f"  N={N:>7}: skipped (not enough tokens)", flush=True)
             results.append(float("nan"))
             continue
 
         ids = tokens[:N]
+        error_msg = None
 
         for _ in range(n_warmup):
             try:
                 run_prefill_e2e(model, ids, device, setup_fn)
-            except torch.cuda.OutOfMemoryError:
-                print(f"  N={N:>7}: OOM during warmup — skipping", flush=True)
-                results.append(float("nan"))
-                torch.cuda.empty_cache()
-                gc.collect()
-                break
+            except Exception as e:
+                if is_cuda_error(e):
+                    error_msg = str(e)[:60]
+                    recover_cuda()
+                    break
+                raise
         else:
-            torch.cuda.empty_cache()
-            gc.collect()
+            recover_cuda()
 
             run_times = []
-            oom = False
             for _ in range(n_runs):
                 try:
                     t = run_prefill_e2e(model, ids, device, setup_fn)
                     run_times.append(t)
-                except torch.cuda.OutOfMemoryError:
-                    print(f"  N={N:>7}: OOM during measurement", flush=True)
-                    oom = True
-                    break
-                torch.cuda.empty_cache()
-                gc.collect()
+                except Exception as e:
+                    if is_cuda_error(e):
+                        error_msg = str(e)[:60]
+                        recover_cuda()
+                        break
+                    raise
+                recover_cuda()
 
-            if oom or not run_times:
-                results.append(float("nan"))
-            else:
-                avg_t = float(np.mean(run_times))
-                print(f"  N={N:>7}: {avg_t:9.2f} ms  (avg of {len(run_times)} runs)", flush=True)
-                results.append(avg_t)
+        if error_msg is not None:
+            is_oom = "memory" in error_msg.lower() or "OutOfMemory" in error_msg
+            label = "OOM" if is_oom else "CUDA error"
+            print(f"  N={N:>7}: {label} — skipping ({error_msg})", flush=True)
+            results.append(float("nan"))
+            if not is_oom:
+                # Illegal memory access puts GPU in unrecoverable state
+                cuda_dead = True
+        elif run_times:
+            avg_t = float(np.mean(run_times))
+            print(f"  N={N:>7}: {avg_t:9.2f} ms  (avg of {len(run_times)} runs)", flush=True)
+            results.append(avg_t)
+        else:
+            results.append(float("nan"))
 
     return results
 
