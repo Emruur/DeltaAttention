@@ -23,7 +23,6 @@ def hybrid_compressed_flash_kernel(
     sm_scale,
     seq_len_q, seq_len_k, num_packed_keys, head_dim, num_heads,
     denseWindowSize,
-    num_key_value_groups: tl.constexpr,
     BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, BLOCK_D: tl.constexpr
 ):
     pid_m = tl.program_id(0)
@@ -31,8 +30,6 @@ def hybrid_compressed_flash_kernel(
 
     batch_idx = pid_bh // num_heads
     head_idx = pid_bh % num_heads
-    # GQA: map query head to its shared KV head
-    kv_head_idx = head_idx // num_key_value_groups
 
     # -----------------------------------------------------------
     # 1. Setup Query Pointers
@@ -49,14 +46,14 @@ def hybrid_compressed_flash_kernel(
     l_i = tl.zeros([BLOCK_M], dtype=tl.float32)
     acc = tl.zeros([BLOCK_M, BLOCK_D], dtype=tl.float32)
 
-    # Base pointers for packed and dense data — indexed by kv_head_idx
-    k_pack_base = K_packed + batch_idx * stride_kpb + kv_head_idx * stride_kph
-    v_pack_base = V_packed + batch_idx * stride_vpb + kv_head_idx * stride_vph
-    pt_base = Packed_Timestamps + batch_idx * stride_ptb + kv_head_idx * stride_pth
-    pc_base = Packed_Counts + batch_idx * stride_pcb + kv_head_idx * stride_pch
+    # Base pointers for packed and dense data
+    k_pack_base = K_packed + batch_idx * stride_kpb + head_idx * stride_kph
+    v_pack_base = V_packed + batch_idx * stride_vpb + head_idx * stride_vph
+    pt_base = Packed_Timestamps + batch_idx * stride_ptb + head_idx * stride_pth
+    pc_base = Packed_Counts + batch_idx * stride_pcb + head_idx * stride_pch
 
-    k_dense_base = K_dense + batch_idx * stride_kdb + kv_head_idx * stride_kdh
-    v_dense_base = V_dense + batch_idx * stride_vdb + kv_head_idx * stride_vdh
+    k_dense_base = K_dense + batch_idx * stride_kdb + head_idx * stride_kdh
+    v_dense_base = V_dense + batch_idx * stride_vdb + head_idx * stride_vdh
 
     last_safe_physical_timestamp = -1
 

@@ -286,8 +286,7 @@ class LlamaAttention(nn.Module):
         self, q, k_dense, v_dense, k_packed, v_packed,
         packed_timestamps, packed_counts, dense_window_size
     ):
-        """Python wrapper for the Two-Phase Hybrid Flash Kernel.
-        K/V tensors use num_key_value_heads; GQA mapping is handled inside the kernel."""
+        """Python wrapper for the Two-Phase Hybrid Flash Kernel."""
         batch_size, num_heads, q_len, head_dim = q.shape
         k_len = k_dense.shape[2]
         num_packed = k_packed.shape[2]
@@ -324,7 +323,6 @@ class LlamaAttention(nn.Module):
             self.scaling,
             q_len, k_len, num_packed, head_dim, num_heads,
             dense_window_size,
-            self.num_key_value_groups,
             BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_D=BLOCK_D,
             num_warps=8,
             num_stages=1,
@@ -566,7 +564,17 @@ class LlamaAttention(nn.Module):
             new_scale = blk_size / q_len
             glob_set.compute_sparsity_scale(key_delta_all, new_scale, keep_mask=keep_mask.to(torch.bool), active_counts=active_counts)
 
-            # --- 4. HYBRID FLASH ATTENTION (GQA handled inside kernel) ---
+            # --- 4. GQA EXPANSION ---
+            key_states_expanded = repeat_kv(key_states, self.num_key_value_groups)
+            value_states_expanded = repeat_kv(value_states, self.num_key_value_groups)
+
+            k_packed_expanded = repeat_kv(k_packed, self.num_key_value_groups)
+            v_packed_expanded = repeat_kv(v_packed, self.num_key_value_groups)
+
+            timestamps_expanded = repeat_kv(packed_timestamps.unsqueeze(-1), self.num_key_value_groups).squeeze(-1)
+            counts_expanded = repeat_kv(packed_counts.unsqueeze(-1), self.num_key_value_groups).squeeze(-1)
+
+            # --- 5. HYBRID FLASH ATTENTION ---
             if do_time:
                 start_evt_mm = torch.cuda.Event(enable_timing=True)
                 end_evt_mm = torch.cuda.Event(enable_timing=True)
@@ -574,12 +582,12 @@ class LlamaAttention(nn.Module):
 
             attn_output = self._forward_hybrid_flash(
                 query_states,
-                key_states,
-                value_states,
-                k_packed,
-                v_packed,
-                packed_timestamps,
-                packed_counts,
+                key_states_expanded,
+                value_states_expanded,
+                k_packed_expanded,
+                v_packed_expanded,
+                timestamps_expanded,
+                counts_expanded,
                 getattr(globVR, 'dense_window_size', 128),
             )
             attn_weights = None 
