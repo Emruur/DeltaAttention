@@ -929,6 +929,10 @@ class LlamaModel(LlamaPreTrainedModel):
         past_key_values: Cache,
         output_attentions: bool = False,
     ):
+        # Delta prefill handles causal masking inside the Triton kernel — skip the O(N²) 4D mask entirely
+        if getattr(globVR, 'delta_pf_key_on', 0) == 1 and input_tensor.shape[1] > 1:
+            return None
+
         if self.config._attn_implementation == "flash_attention_2":
             if attention_mask is not None and (attention_mask == 0.0).any():
                 return attention_mask
