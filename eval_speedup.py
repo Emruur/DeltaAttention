@@ -53,6 +53,7 @@ def set_row_delta():
     globVR.flash = False
     globVR.delta_decode = False
     globVR.time_internal = False
+    globVR.skip_causal_mask = True  # safe: batch_size=1, no padding in speedup benchmark
 
 
 # ==========================================

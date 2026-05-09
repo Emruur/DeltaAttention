@@ -937,8 +937,10 @@ class LlamaModel(LlamaPreTrainedModel):
         past_key_values: Cache,
         output_attentions: bool = False,
     ):
-        # Delta prefill handles causal masking inside the Triton kernel — skip the O(N²) 4D mask entirely
-        if getattr(globVR, 'delta_pf_key_on', 0) == 1 and input_tensor.shape[1] > 1:
+        # Skip O(N²) mask only when explicitly requested (e.g. single-sequence speedup benchmarks
+        # with no padding). Never set this in eval_all.py — lm_eval uses batched+padded inputs
+        # and relies on the mask for padding suppression.
+        if getattr(globVR, 'skip_causal_mask', False) and input_tensor.shape[1] > 1 and input_tensor.shape[0] == 1:
             return None
 
         if self.config._attn_implementation == "flash_attention_2":
