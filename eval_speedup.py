@@ -11,6 +11,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM
+from transformers.models.llama.modeling_llama import LlamaForCausalLM as HFLlamaForCausalLM
 
 import globVR
 import glob_set
@@ -20,9 +21,9 @@ from modeling_llama import LlamaForCausalLM, LlamaConfig
 AutoConfig.register("llama", LlamaConfig, exist_ok=True)
 AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 
-MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+MODEL_ID = "gradientai/Llama-3-8b-Instruct-Gradient-1048k"
 
-SEQ_LENGTHS = [512, 1024, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 32768, 64000, 96000, 128000]
+SEQ_LENGTHS = [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1000000]
 
 
 # ==========================================
@@ -39,14 +40,6 @@ def reset_timing():
     globVR.kv_compression_samples = []
 
 
-def set_baseline_flash():
-    globVR.delta_pf_key_on = 0
-    globVR.delta_mlp = "Regular"
-    globVR.flash = True
-    globVR.delta_decode = False
-    globVR.time_internal = True
-
-
 def set_row_delta():
     globVR.delta_pf_key_on = 1
     globVR.delta_type = "row"
@@ -56,9 +49,9 @@ def set_row_delta():
     globVR.row_similarity_metric = "euclidian"
     globVR.chunk_size = 512
     globVR.divide_to = 0
-    globVR.flash = True
+    globVR.flash = False
     globVR.delta_decode = False
-    globVR.time_internal = True
+    globVR.time_internal = False
 
 
 # ==========================================
@@ -69,7 +62,6 @@ def get_wikitext_tokens(tokenizer, max_tokens):
     from datasets import load_dataset
     print("Loading wikitext-103-raw-v1 ...", flush=True)
     dataset = load_dataset("wikitext", "wikitext-103-raw-v1", split="train")
-    # Concatenate until we have enough characters (~5 chars/token is conservative)
     char_budget = max_tokens * 6
     chunks, total = [], 0
     for t in dataset["text"]:
@@ -93,28 +85,30 @@ def get_wikitext_tokens(tokenizer, max_tokens):
 # ==========================================
 
 @torch.no_grad()
-def run_prefill(model, input_ids, device):
-    """Single timed prefill forward. Returns total attention time in ms (summed across all layers)."""
-    reset_timing()
+def run_prefill_e2e(model, input_ids, device, setup_fn=None):
+    """Single timed prefill forward. Returns end-to-end latency in ms."""
+    if setup_fn is not None:
+        reset_timing()
+        setup_fn()
     ids = input_ids.unsqueeze(0).to(device)
     mask = torch.ones_like(ids)
+    start_evt = torch.cuda.Event(enable_timing=True)
+    end_evt = torch.cuda.Event(enable_timing=True)
     torch.cuda.synchronize()
+    start_evt.record()
     model(input_ids=ids, attention_mask=mask, use_cache=False)
+    end_evt.record()
     torch.cuda.synchronize()
-    glob_set.resolve_latency_events()
-    stats = globVR.latency_stats.get("time_prefill_forward_total", {"time_ms": 0.0, "calls": 0})
-    return stats["time_ms"]  # sum across all 32 attention layers
+    return start_evt.elapsed_time(end_evt)
 
 
 def benchmark_mode(model, tokens, seq_lengths, device, mode_name, setup_fn, n_warmup, n_runs):
     print(f"\n=== {mode_name} (warmup={n_warmup}, runs={n_runs}) ===", flush=True)
 
-    # Initial warmup at smallest N to trigger Triton JIT
     print(f"  Warming up at N={seq_lengths[0]} ...", flush=True)
     for _ in range(n_warmup):
-        setup_fn()
         try:
-            run_prefill(model, tokens[: seq_lengths[0]], device)
+            run_prefill_e2e(model, tokens[: seq_lengths[0]], device, setup_fn)
         except torch.cuda.OutOfMemoryError:
             pass
         torch.cuda.empty_cache()
@@ -123,19 +117,17 @@ def benchmark_mode(model, tokens, seq_lengths, device, mode_name, setup_fn, n_wa
     results = []
     for N in seq_lengths:
         if N > len(tokens):
-            print(f"  N={N:>6}: skipped (not enough tokens)", flush=True)
+            print(f"  N={N:>7}: skipped (not enough tokens)", flush=True)
             results.append(float("nan"))
             continue
 
         ids = tokens[:N]
 
-        # Per-length warmup (new Triton tile sizes may recompile)
         for _ in range(n_warmup):
-            setup_fn()
             try:
-                run_prefill(model, ids, device)
+                run_prefill_e2e(model, ids, device, setup_fn)
             except torch.cuda.OutOfMemoryError:
-                print(f"  N={N:>6}: OOM during warmup — skipping", flush=True)
+                print(f"  N={N:>7}: OOM during warmup — skipping", flush=True)
                 results.append(float("nan"))
                 torch.cuda.empty_cache()
                 gc.collect()
@@ -144,16 +136,14 @@ def benchmark_mode(model, tokens, seq_lengths, device, mode_name, setup_fn, n_wa
             torch.cuda.empty_cache()
             gc.collect()
 
-            # Timed runs
             run_times = []
             oom = False
             for _ in range(n_runs):
-                setup_fn()
                 try:
-                    t = run_prefill(model, ids, device)
+                    t = run_prefill_e2e(model, ids, device, setup_fn)
                     run_times.append(t)
                 except torch.cuda.OutOfMemoryError:
-                    print(f"  N={N:>6}: OOM during measurement", flush=True)
+                    print(f"  N={N:>7}: OOM during measurement", flush=True)
                     oom = True
                     break
                 torch.cuda.empty_cache()
@@ -163,7 +153,7 @@ def benchmark_mode(model, tokens, seq_lengths, device, mode_name, setup_fn, n_wa
                 results.append(float("nan"))
             else:
                 avg_t = float(np.mean(run_times))
-                print(f"  N={N:>6}: {avg_t:9.2f} ms  (avg of {len(run_times)} runs)", flush=True)
+                print(f"  N={N:>7}: {avg_t:9.2f} ms  (avg of {len(run_times)} runs)", flush=True)
                 results.append(avg_t)
 
     return results
@@ -185,43 +175,70 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
     tokens = get_wikitext_tokens(tokenizer, max(SEQ_LENGTHS))
 
-    # Disable timing/delta during model load to avoid spurious state
+    # ------------------------------------------
+    # Baseline: real FlashAttention (flash_attention_2)
+    # Load standard HF class directly to bypass our custom registration
+    # ------------------------------------------
+    print(f"\nLoading baseline model (FlashAttention2): {MODEL_ID} ...", flush=True)
+    baseline_model = HFLlamaForCausalLM.from_pretrained(
+        MODEL_ID,
+        torch_dtype=torch.bfloat16,
+        attn_implementation="flash_attention_2",
+        trust_remote_code=True,
+    ).to(device)
+    baseline_model.eval()
+    torch.set_grad_enabled(False)
+    print("Baseline model ready.", flush=True)
+
+    baseline_times = benchmark_mode(
+        baseline_model, tokens, SEQ_LENGTHS, device,
+        "Baseline FlashAttention2", setup_fn=None,
+        n_warmup=args.n_warmup, n_runs=args.n_runs,
+    )
+
+    del baseline_model
+    torch.cuda.empty_cache()
+    gc.collect()
+    print("Baseline model freed.", flush=True)
+
+    # ------------------------------------------
+    # Delta model: custom LlamaForCausalLM (row delta)
+    # ------------------------------------------
     globVR.delta_pf_key_on = 0
     globVR.delta_mlp = "Regular"
     globVR.delta_decode = False
     globVR.flash = False
     globVR.time_internal = False
 
-    print(f"Loading {MODEL_ID} ...", flush=True)
-    model = AutoModelForCausalLM.from_pretrained(
+    print(f"\nLoading delta model: {MODEL_ID} ...", flush=True)
+    delta_model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID,
         torch_dtype=torch.bfloat16,
         attn_implementation="eager",
         trust_remote_code=True,
     ).to(device)
-    model.eval()
-    torch.set_grad_enabled(False)
-    print("Model ready.", flush=True)
+    delta_model.eval()
+    print("Delta model ready.", flush=True)
 
-    baseline_times = benchmark_mode(
-        model, tokens, SEQ_LENGTHS, device,
-        "Baseline Flash", set_baseline_flash,
-        n_warmup=args.n_warmup, n_runs=args.n_runs,
-    )
     row_delta_times = benchmark_mode(
-        model, tokens, SEQ_LENGTHS, device,
-        "Row Delta (prefill only)", set_row_delta,
+        delta_model, tokens, SEQ_LENGTHS, device,
+        "Row Delta (prefill only)", setup_fn=set_row_delta,
         n_warmup=args.n_warmup, n_runs=args.n_runs,
     )
+
+    del delta_model
+    torch.cuda.empty_cache()
+    gc.collect()
 
     # ------------------------------------------
     # Save raw results
     # ------------------------------------------
     os.makedirs("speedup_experiments", exist_ok=True)
     results = {
+        "model": MODEL_ID,
         "seq_lengths": SEQ_LENGTHS,
-        "baseline_flash_total_ms": baseline_times,
-        "row_delta_total_ms": row_delta_times,
+        "baseline_flash2_e2e_ms": baseline_times,
+        "row_delta_e2e_ms": row_delta_times,
     }
     json_path = "speedup_experiments/speedup_results.json"
     with open(json_path, "w") as f:
@@ -239,12 +256,11 @@ def main():
         return [(N, bl_d[N] / t) for N, t in valid(rd_list) if N in bl_d and t > 0]
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
-    fig.suptitle("Row Delta vs Baseline Flash  |  LLaMA 3.1 8B-Instruct, Wikitext",
+    fig.suptitle("Row Delta vs FlashAttention2  |  Llama-3-8B-1M (Gradient), Wikitext",
                  fontsize=14)
 
-    # --- Left: raw latency ---
     for times, color, label in [
-        (baseline_times,  "blue", "Baseline Flash"),
+        (baseline_times,  "blue", "FlashAttention2 (baseline)"),
         (row_delta_times, "red",  "Row Delta (prefill)"),
     ]:
         pts = valid(times)
@@ -254,13 +270,12 @@ def main():
 
     ax1.set_xscale("log", base=2)
     ax1.set_xlabel("Sequence Length N (tokens)", fontsize=12)
-    ax1.set_ylabel("time_prefill_forward_total (ms, all layers)", fontsize=12)
+    ax1.set_ylabel("End-to-end prefill latency (ms)", fontsize=12)
     ax1.set_title("Absolute latency", fontsize=13)
     ax1.legend(fontsize=11)
     ax1.grid(True, alpha=0.35, which="both")
     ax1.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{int(x):,}"))
 
-    # --- Right: speedup ratio (baseline / row_delta) ---
     pr = paired_ratios(baseline_times, row_delta_times)
     if pr:
         ns_p, ratios = zip(*pr)
@@ -275,7 +290,7 @@ def main():
     ax2.axhline(1.0, color="gray", linestyle="--", linewidth=1.5, label="Break-even")
     ax2.set_xscale("log", base=2)
     ax2.set_xlabel("Sequence Length N (tokens)", fontsize=12)
-    ax2.set_ylabel("Speedup  (baseline / row_delta)", fontsize=12)
+    ax2.set_ylabel("Speedup  (FlashAttention2 / row_delta)", fontsize=12)
     ax2.set_title("Speedup ratio", fontsize=13)
     ax2.legend(fontsize=11)
     ax2.grid(True, alpha=0.35, which="both")
