@@ -179,11 +179,11 @@ def main():
     # Baseline: real FlashAttention (flash_attention_2)
     # Load standard HF class directly to bypass our custom registration
     # ------------------------------------------
-    print(f"\nLoading baseline model (flash_attention_2): {MODEL_ID} ...", flush=True)
+    print(f"\nLoading baseline model (sdpa): {MODEL_ID} ...", flush=True)
     baseline_model = HFLlamaForCausalLM.from_pretrained(
         MODEL_ID,
         torch_dtype=torch.bfloat16,
-        attn_implementation="flash_attention_2",
+        attn_implementation="sdpa",
         trust_remote_code=True,
     ).to(device)
     baseline_model.eval()
@@ -192,7 +192,7 @@ def main():
 
     baseline_times = benchmark_mode(
         baseline_model, tokens, SEQ_LENGTHS, device,
-        "Baseline FlashAttention2", setup_fn=None,
+        "Baseline SDPA", setup_fn=None,
         n_warmup=args.n_warmup, n_runs=args.n_runs,
     )
 
@@ -237,7 +237,7 @@ def main():
     results = {
         "model": MODEL_ID,
         "seq_lengths": SEQ_LENGTHS,
-        "baseline_fa2_e2e_ms": baseline_times,
+        "baseline_sdpa_e2e_ms": baseline_times,
         "row_delta_e2e_ms": row_delta_times,
     }
     json_path = "speedup_experiments/speedup_results.json"
@@ -256,11 +256,11 @@ def main():
         return [(N, bl_d[N] / t) for N, t in valid(rd_list) if N in bl_d and t > 0]
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
-    fig.suptitle("Row Delta vs FlashAttention2  |  Llama-3-8B-1M (Gradient), Wikitext",
+    fig.suptitle("Row Delta vs SDPA  |  Llama-3-8B-1M (Gradient), Wikitext",
                  fontsize=14)
 
     for times, color, label in [
-        (baseline_times,  "blue", "FlashAttention2 (baseline)"),
+        (baseline_times,  "blue", "SDPA (baseline)"),
         (row_delta_times, "red",  "Row Delta (prefill)"),
     ]:
         pts = valid(times)
@@ -290,7 +290,7 @@ def main():
     ax2.axhline(1.0, color="gray", linestyle="--", linewidth=1.5, label="Break-even")
     ax2.set_xscale("log", base=2)
     ax2.set_xlabel("Sequence Length N (tokens)", fontsize=12)
-    ax2.set_ylabel("Speedup  (FlashAttention2 / row_delta)", fontsize=12)
+    ax2.set_ylabel("Speedup  (SDPA / row_delta)", fontsize=12)
     ax2.set_title("Speedup ratio", fontsize=13)
     ax2.legend(fontsize=11)
     ax2.grid(True, alpha=0.35, which="both")
