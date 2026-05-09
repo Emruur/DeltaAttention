@@ -23,7 +23,7 @@ def hybrid_compressed_flash_kernel(
     sm_scale,
     seq_len_q, seq_len_k, num_packed_keys, head_dim, num_heads,
     denseWindowSize,
-    num_key_value_groups,
+    num_key_value_groups: tl.constexpr,
     BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, BLOCK_D: tl.constexpr
 ):
     pid_m = tl.program_id(0)

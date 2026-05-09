@@ -1,6 +1,7 @@
 import os
 os.environ["HF_DATASETS_TRUST_REMOTE_CODE"] = "1"
 os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 import matplotlib
 matplotlib.use("Agg")
 
