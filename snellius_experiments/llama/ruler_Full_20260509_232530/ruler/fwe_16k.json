@@ -1,0 +1,13 @@
+{
+    "task": "fwe",
+    "ctx_len": 16384,
+    "accuracy_pct": 98.0,
+    "num_samples": 50,
+    "experiment_type": "baseline",
+    "parameters": {
+        "delta_pf_key_on": 0,
+        "delta_mlp": "Regular",
+        "flash": true
+    },
+    "timestamp": "2026-05-09T23:48:20.528989"
+}

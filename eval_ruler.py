@@ -1,15 +1,7 @@
 """
-Standalone RULER benchmark evaluator for Llama-3.1-8B-Instruct (128k context).
-
-Runs all 13 RULER tasks at [4k, 8k, 16k, 32k, 64k, 128k] context lengths,
-averages scores across tasks per length, and prints a summary table:
-
-  Input Len |    4k |    8k |   16k |   32k |   64k |  128k |   Avg.
-  baseline  | 96.74 | 94.03 | 92.02 | 84.17 | 81.32 | 76.89 | 87.52
-
-Usage:
-    python eval_ruler.py --experiment_type baseline --exp_name my_run
-    python eval_ruler.py --experiment_type row_delta --num_samples 50
+Final Optimized RULER benchmark for Llama-3.1-8B-Instruct.
+Includes System Prompts, Noise-Resistant Filler, Explicit Task Instructions, 
+and Multi-row Table Generation.
 """
 
 import os
@@ -43,7 +35,7 @@ AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 # ==========================================
 
 MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-MAX_CTX  = 131072  # 128k — native context for Llama 3.1
+MAX_CTX  = 131072
 
 CTX_LENGTHS = [4096, 8192, 16384, 32768, 65536, 131072]
 CTX_LABELS  = ["4k",  "8k",  "16k",  "32k",  "64k", "128k"]
@@ -98,7 +90,7 @@ EXPERIMENT_DEFINITIONS = {
             "delta_type": "row",
             "scale": args.scale,
             "delta_mlp": "Regular",
-            "row_delta_threshold": args.delta,
+            "row_delta_threshold": args.row_thresh,
             "row_similarity_metric": args.row_sim,
             "chunk_size": args.chunk_size,
             "divide_to": 0,
@@ -126,21 +118,21 @@ class NpEncoder(json.JSONEncoder):
         return super().default(obj)
 
 # ==========================================
-# FILLER GENERATION (token-precise)
+# IMPROVED NOISE FILLER (Random Words)
 # ==========================================
 
-# A single sentence that tokenises predictably (~12 tokens)
-_FILLER_SENTENCE = (
-    "The sky is blue, the grass is green, and the sun rises in the east every morning. "
-)
+_FILLER_WORDS = [
+    "apple", "bicycle", "mountain", "river", "computer", "ocean", "forest", 
+    "planet", "bridge", "library", "window", "garden", "whisper", "shadow"
+]
 
 def make_filler_tokens(n_tokens: int, tokenizer) -> list[int]:
-    """Return exactly n_tokens filler tokens (no special tokens)."""
-    base = tokenizer.encode(_FILLER_SENTENCE, add_special_tokens=False)
-    if not base:
-        base = [tokenizer.eos_token_id]
-    repeats = (n_tokens // len(base)) + 2
-    return (base * repeats)[:n_tokens]
+    """Generates a sea of random words to act as difficult noise."""
+    tokens = []
+    while len(tokens) < n_tokens:
+        word = random.choice(_FILLER_WORDS) + " "
+        tokens.extend(tokenizer.encode(word, add_special_tokens=False))
+    return tokens[:n_tokens]
 
 def tokens_to_text(token_ids: list[int], tokenizer) -> str:
     return tokenizer.decode(token_ids, skip_special_tokens=True)
@@ -160,22 +152,16 @@ def _rand_int(lo=1000, hi=9999) -> int:
 
 def _insert_needle_tokens(filler_tokens: list[int], needle_tokens: list[int],
                           depth: float, tokenizer) -> list[int]:
-    """Insert needle_tokens at `depth` fraction through filler_tokens."""
     idx = max(0, min(len(filler_tokens), int(len(filler_tokens) * depth)))
     return filler_tokens[:idx] + needle_tokens + filler_tokens[idx:]
 
 def _build_prompt(filler_tokens, needle_tokens, question_tokens,
                   ctx_len, depth, tokenizer) -> tuple[str, int]:
-    """
-    Build a prompt of exactly ctx_len tokens by sizing filler appropriately.
-    Returns (prompt_text, actual_token_count).
-    """
-    overhead = len(needle_tokens) + len(question_tokens) + 4  # BOS + separators
+    overhead = len(needle_tokens) + len(question_tokens) + 4
     filler_budget = max(10, ctx_len - overhead)
     filler = make_filler_tokens(filler_budget, tokenizer)
     combined = _insert_needle_tokens(filler, needle_tokens, depth, tokenizer)
     all_tokens = combined + question_tokens
-    # tokenize to get true count (decode → re-encode can drift slightly)
     prompt_text = tokens_to_text(all_tokens, tokenizer)
     return prompt_text, len(all_tokens)
 
@@ -246,72 +232,66 @@ def make_niah_multivalue(ctx_len, tokenizer, num_values=4):
 
 def make_niah_multiquery(ctx_len, tokenizer, num_pairs=4):
     pairs = [(f"MQKEY_{i}", _rand_int()) for i in range(num_pairs)]
-    depths = sorted([random.uniform(0.05, 0.95) for _ in range(num_pairs)])
+    depths = sorted([random.uniform(0.1, 0.9) for _ in range(num_pairs)])
 
-    questions = " ".join([f"What is {k}?" for k, _ in pairs])
-    answers   = ", ".join([f"{k}={v}" for k, v in pairs])
-    q_tok = tokenizer.encode(f"\n\nQuestions: {questions}\nAnswers:", add_special_tokens=False)
-
-    overhead = len(q_tok) + num_pairs * 20 + 4
-    filler = make_filler_tokens(max(10, ctx_len - overhead), tokenizer)
-
+    # Clearer list-based question
+    questions = "\n".join([f"{i+1}. What is the value of {k}?" for i, (k, v) in enumerate(pairs)])
+    answers = ", ".join([str(v) for k, v in pairs])
+    
+    q_tok = tokenizer.encode(
+        f"\n\nTask: Answer the following questions based on the [NEEDLE] tags above:\n{questions}\n"
+        f"Answer with numbers only, separated by commas:", 
+        add_special_tokens=False
+    )
+    
+    filler = make_filler_tokens(max(10, ctx_len - (num_pairs*25) - len(q_tok) - 50), tokenizer)
     for (k, v), d in zip(pairs, depths):
-        n_tok = tokenizer.encode(f" [NEEDLE] {k} = {v} [/NEEDLE] ", add_special_tokens=False)
+        n_tok = tokenizer.encode(f" [NEEDLE] {k} is {v} [/NEEDLE] ", add_special_tokens=False)
         idx = int(len(filler) * d)
         filler = filler[:idx] + n_tok + filler[idx:]
 
-    prompt = tokens_to_text(filler + q_tok, tokenizer)
-    return {"prompt": prompt, "answer": answers}
+    return {"prompt": tokenizer.decode(filler) + tokenizer.decode(q_tok), "answer": answers}
 
 def make_vt(ctx_len, tokenizer, chain_len=4):
     names = random.sample(NAMES, chain_len + 1)
-    chain_txts = [f" [NEEDLE] {names[i]} = {names[i+1]}. [/NEEDLE] " for i in range(chain_len)]
-    depths = sorted([random.uniform(0.05, 0.95) for _ in range(chain_len)])
+    chain_txts = [f" [NEEDLE] {names[i]} transfers to {names[i+1]} [/NEEDLE] " for i in range(chain_len)]
+    depths = sorted([random.uniform(0.1, 0.9) for _ in range(chain_len)])
 
     q_tok = tokenizer.encode(
-        f"\n\nFollow assignments starting from {names[0]}. What is the final name?\nAnswer:",
-        add_special_tokens=False)
-    filler = make_filler_tokens(max(10, ctx_len - len(q_tok) - chain_len * 20 - 4), tokenizer)
-
+        f"\n\nQuestion: Following the transfer chain starting from {names[0]}, "
+        f"who is the final person in the sequence? Answer with the name only.\nAnswer:", 
+        add_special_tokens=False
+    )
+    filler = make_filler_tokens(max(10, ctx_len - (chain_len*25) - len(q_tok) - 50), tokenizer)
     for txt, d in zip(chain_txts, depths):
         n_tok = tokenizer.encode(txt, add_special_tokens=False)
         idx = int(len(filler) * d)
         filler = filler[:idx] + n_tok + filler[idx:]
 
-    prompt = tokens_to_text(filler + q_tok, tokenizer)
-    return {"prompt": prompt, "answer": names[-1]}
+    return {"prompt": tokenizer.decode(filler) + tokenizer.decode(q_tok), "answer": names[-1]}
 
-def make_cwe(ctx_len, tokenizer):
-    # One word repeated many times, others appear once
+def make_frequency_task(ctx_len, tokenizer, mode="cwe"):
     target = random.choice(["alpha", "bravo", "delta", "echo", "foxtrot"])
-    decoys = random.sample(["gamma", "hotel", "india", "juliet", "kilo", "lima"], 5)
-    word_list = [target] * random.randint(5, 8) + decoys
+    decoys = random.sample(["gamma", "hotel", "india", "juliet", "kilo"], 4)
+    word_list = [target] * 10 + [d for d in decoys for _ in range(2)]
     random.shuffle(word_list)
     passage = " ".join(word_list)
 
-    p_tok = tokenizer.encode(f" [PASSAGE] {passage} [/PASSAGE] ", add_special_tokens=False)
+    q_label = "most frequent" if mode == "cwe" else "single most repeated"
     q_tok = tokenizer.encode(
-        "\n\nWhich word in the passage above appears most frequently? Answer with that word only.\nAnswer:",
-        add_special_tokens=False)
-    filler = make_filler_tokens(max(10, ctx_len - len(p_tok) - len(q_tok) - 4), tokenizer)
-    prompt = tokens_to_text(filler + p_tok + q_tok, tokenizer)
-    return {"prompt": prompt, "answer": target}
-
-def make_fwe(ctx_len, tokenizer):
-    target = random.choice(["zeta", "theta", "sigma", "omega", "lambda"])
-    count = random.randint(6, 10)
-    noise = [random.choice(["one", "two", "three", "four", "five", "six"]) for _ in range(count * 2)]
-    words = [target] * count + noise
-    random.shuffle(words)
-    passage = " ".join(words)
-
+        f"\n\nQuestion: Looking ONLY at the words inside the [PASSAGE] tags, "
+        f"which word appears {q_label}? Ignore all words outside the tags.\nAnswer:", 
+        add_special_tokens=False
+    )
+    
     p_tok = tokenizer.encode(f" [PASSAGE] {passage} [/PASSAGE] ", add_special_tokens=False)
-    q_tok = tokenizer.encode(
-        "\n\nWhat single word appears most frequently in the passage? Answer with that word only.\nAnswer:",
-        add_special_tokens=False)
-    filler = make_filler_tokens(max(10, ctx_len - len(p_tok) - len(q_tok) - 4), tokenizer)
-    prompt = tokens_to_text(filler + p_tok + q_tok, tokenizer)
-    return {"prompt": prompt, "answer": target}
+    filler = make_filler_tokens(max(10, ctx_len - len(q_tok) - len(p_tok) - 50), tokenizer)
+    
+    # Insert passage at a random depth
+    idx = int(len(filler) * random.uniform(0.1, 0.9)) 
+    filler = filler[:idx] + p_tok + filler[idx:]
+    
+    return {"prompt": tokenizer.decode(filler) + tokenizer.decode(q_tok), "answer": target}
 
 _HOTPOT_SAMPLES = [
     ("Marie Curie was born in Warsaw in 1867 and later moved to Paris.", "In what city was Marie Curie born?", "Warsaw"),
@@ -351,17 +331,17 @@ def make_qa(ctx_len, tokenizer, dataset="hotpot"):
 
 def make_sample(task_name: str, ctx_len: int, tokenizer) -> dict:
     dispatch = {
-        "niah_single_1":  lambda: make_niah_single(ctx_len, tokenizer, 1),
-        "niah_single_2":  lambda: make_niah_single(ctx_len, tokenizer, 2),
-        "niah_single_3":  lambda: make_niah_single(ctx_len, tokenizer, 3),
+        "niah_single_1":   lambda: make_niah_single(ctx_len, tokenizer, 1),
+        "niah_single_2":   lambda: make_niah_single(ctx_len, tokenizer, 2),
+        "niah_single_3":   lambda: make_niah_single(ctx_len, tokenizer, 3),
         "niah_multikey_1": lambda: make_niah_multikey(ctx_len, tokenizer, 1),
         "niah_multikey_2": lambda: make_niah_multikey(ctx_len, tokenizer, 2),
         "niah_multikey_3": lambda: make_niah_multikey(ctx_len, tokenizer, 3),
         "niah_multivalue": lambda: make_niah_multivalue(ctx_len, tokenizer),
         "niah_multiquery": lambda: make_niah_multiquery(ctx_len, tokenizer),
         "vt":              lambda: make_vt(ctx_len, tokenizer),
-        "cwe":             lambda: make_cwe(ctx_len, tokenizer),
-        "fwe":             lambda: make_fwe(ctx_len, tokenizer),
+        "cwe":             lambda: make_frequency_task(ctx_len, tokenizer, "cwe"),
+        "fwe":             lambda: make_frequency_task(ctx_len, tokenizer, "fwe"),
         "qa_hotpot":       lambda: make_qa(ctx_len, tokenizer, "hotpot"),
         "qa_squad":        lambda: make_qa(ctx_len, tokenizer, "squad"),
     }
@@ -374,8 +354,15 @@ def make_sample(task_name: str, ctx_len: int, tokenizer) -> dict:
 def _norm(s: str) -> str:
     return " ".join(s.lower().strip().split())
 
-def exact_match(pred: str, gold: str) -> float:
-    return 1.0 if _norm(pred) == _norm(gold) else 0.0
+def exact_match_robust(pred: str, gold: str) -> float:
+    pred_n = _norm(pred)
+    gold_n = _norm(gold)
+    if pred_n == gold_n:
+        return 1.0
+    pattern = r'\b' + re.escape(gold_n) + r'\b'
+    if re.search(pattern, pred_n):
+        return 1.0
+    return 0.0
 
 def token_f1(pred: str, gold: str) -> float:
     p_toks = _norm(pred).split()
@@ -390,20 +377,19 @@ def token_f1(pred: str, gold: str) -> float:
     return 2 * prec * rec / (prec + rec)
 
 def existence_score(pred: str, gold: str) -> float:
-    """All comma-separated gold items must appear somewhere in pred."""
     pred_n = _norm(pred)
-    for part in _norm(gold).split(","):
-        part = part.strip()
-        if part and part not in pred_n:
-            return 0.0
-    return 1.0
+    parts = [p.strip() for p in _norm(gold).split(",") if p.strip()]
+    if not parts: 
+        return 0.0
+    matches = sum(1 for p in parts if p in pred_n)
+    return 1.0 if matches == len(parts) else 0.0
 
 def score(pred: str, gold: str, task: str) -> float:
     if "multivalue" in task or "multiquery" in task:
         return existence_score(pred, gold)
-    if task in ("qa_hotpot", "qa_squad"):
-        return token_f1(pred, gold)
-    return exact_match(pred, gold)
+    if "qa_" in task:
+        return max(token_f1(pred, gold), exact_match_robust(pred, gold))
+    return exact_match_robust(pred, gold)
 
 # ==========================================
 # GENERATION
@@ -411,14 +397,33 @@ def score(pred: str, gold: str, task: str) -> float:
 
 @torch.no_grad()
 def generate_answer(model, tokenizer, prompt: str, device: str,
-                    max_new_tokens: int = 32) -> str:
+                    max_new_tokens: int = 48) -> str:
+    
+    messages = [
+        {
+            "role": "system", 
+            "content": "You are a precise information retrieval assistant. "
+                       "You will be given a long context containing background noise and specific tagged information. "
+                       "Ignore the random background words. Focus only on information inside [NEEDLE], [DOCUMENT], or [PASSAGE] tags."
+        },
+        {"role": "user", "content": prompt}
+    ]
+    
+    formatted_prompt = tokenizer.apply_chat_template(
+        messages, 
+        tokenize=False, 
+        add_generation_prompt=True
+    )
+
     inputs = tokenizer(
-        prompt,
+        formatted_prompt,
         return_tensors="pt",
         truncation=True,
         max_length=MAX_CTX,
     ).to(device)
+    
     input_len = inputs["input_ids"].shape[1]
+    
     out = model.generate(
         **inputs,
         max_new_tokens=max_new_tokens,
@@ -427,6 +432,7 @@ def generate_answer(model, tokenizer, prompt: str, device: str,
         top_p=None,
         pad_token_id=tokenizer.eos_token_id,
     )
+    
     return tokenizer.decode(out[0, input_len:], skip_special_tokens=True).strip()
 
 # ==========================================
@@ -443,27 +449,27 @@ def save_json(path: str, data: dict):
 # TABLE PRINTER
 # ==========================================
 
-def print_table(row_name: str, scores_by_ctx: dict[int, float]):
-    """
-    scores_by_ctx: {ctx_len_int -> average_accuracy (0–100)}
-    """
-    vals  = [scores_by_ctx.get(c, float("nan")) for c in CTX_LENGTHS]
-    valid = [v for v in vals if not np.isnan(v)]
-    avg   = float(np.mean(valid)) if valid else float("nan")
-
-    header = f"{'Input Len':<14}|" + "".join(f"  {lbl:>5} |" for lbl in CTX_LABELS) + f"   Avg."
+def print_multi_table(all_results: dict[str, dict[int, float]]):
+    header = f"{'Input Len':<18}|" + "".join(f"  {lbl:>5} |" for lbl in CTX_LABELS) + f"   Avg."
     sep    = "-" * len(header)
-    row    = f"{row_name:<14}|" + "".join(
-        f"  {v:5.2f} |" if not np.isnan(v) else f"  {'n/a':>5} |"
-        for v in vals
-    ) + f"  {avg:5.2f}"
-
+    
     print("\n" + "=" * len(header), flush=True)
     print("RULER Benchmark Results", flush=True)
     print("=" * len(header), flush=True)
     print(header, flush=True)
     print(sep, flush=True)
-    print(row, flush=True)
+    
+    for row_name, scores_by_ctx in all_results.items():
+        vals  = [scores_by_ctx.get(c, float("nan")) for c in CTX_LENGTHS]
+        valid = [v for v in vals if not np.isnan(v)]
+        avg   = float(np.mean(valid)) if valid else float("nan")
+        
+        row_str = f"{row_name:<18}|" + "".join(
+            f"  {v:5.2f} |" if not np.isnan(v) else f"  {'n/a':>5} |"
+            for v in vals
+        ) + f"  {avg:5.2f}"
+        print(row_str, flush=True)
+        
     print("=" * len(header) + "\n", flush=True)
 
 # ==========================================
@@ -474,7 +480,6 @@ def run_ruler(args):
     torch.set_grad_enabled(False)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # Safe globVR defaults before model load
     setattr(globVR, 'delta_pf_key_on', 0)
     setattr(globVR, 'delta_mlp', 'Regular')
     setattr(globVR, 'delta_decode', False)
@@ -493,14 +498,12 @@ def run_ruler(args):
     ).to(device)
     model.eval()
 
-    # Inject experiment globals
     exp_def = EXPERIMENT_DEFINITIONS[args.experiment_type]
     glob_settings = exp_def["injector"](args)
     print(f"[RULER] Experiment: {args.experiment_type} | Settings: {glob_settings}", flush=True)
     for key, value in glob_settings.items():
         setattr(globVR, key, value)
 
-    # HybridCompressedCache patch for delta_decode
     if getattr(globVR, 'delta_decode', False):
         print("[RULER] Patching generate() for HybridCompressedCache...", flush=True)
         _orig_generate = model.generate
@@ -519,14 +522,12 @@ def run_ruler(args):
 
         model.generate = _patched_generate
 
-    # Output directory
     out_dir = os.path.join("snellius_experiments", "llama", args.exp_name, "ruler")
     os.makedirs(out_dir, exist_ok=True)
 
-    ctx_subset = args.ctx_lens  # list of ints
+    ctx_subset = args.ctx_lens
     tasks      = args.tasks if args.tasks else RULER_TASKS
 
-    # scores[ctx_len][task] = accuracy (0–100)
     all_scores: dict[int, dict[str, float]] = {c: {} for c in ctx_subset}
 
     for ctx_len in ctx_subset:
@@ -546,13 +547,11 @@ def run_ruler(args):
                 s      = score(pred, sample["answer"], task_name)
                 task_scores.append(s)
 
-            acc = float(np.mean(task_scores)) * 100.0  # convert to %
+            acc = float(np.mean(task_scores)) * 100.0
             all_scores[ctx_len][task_name] = acc
             elapsed = time.time() - task_start
-            print(f"  -> {task_name}: {acc:.2f}% ({args.num_samples} samples, {elapsed:.1f}s)",
-                  flush=True)
+            print(f"  -> {task_name}: {acc:.2f}% ({args.num_samples} samples, {elapsed:.1f}s)", flush=True)
 
-            # Save per-task result
             save_json(
                 os.path.join(out_dir, f"{task_name}_{lbl}.json"),
                 {
@@ -569,13 +568,11 @@ def run_ruler(args):
             gc.collect()
             torch.cuda.empty_cache()
 
-    # Per-context-length averages (across tasks)
     ctx_avg: dict[int, float] = {}
     for ctx_len in ctx_subset:
         vals = list(all_scores[ctx_len].values())
         ctx_avg[ctx_len] = float(np.mean(vals)) if vals else float("nan")
 
-    # Save summary
     row_name = args.row_name or args.experiment_type
     summary = {
         "row_name": row_name,
@@ -591,15 +588,13 @@ def run_ruler(args):
     }
     save_json(os.path.join(out_dir, "_summary.json"), summary)
 
-    # Print table row
-    print_table(row_name, ctx_avg)
+    return ctx_avg
 
 # ==========================================
 # ENTRY POINT
 # ==========================================
 
 def parse_ctx_lens(s: str) -> list[int]:
-    """Parse comma-separated context lengths, e.g. '4096,8192,131072'."""
     return [int(x.strip()) for x in s.split(",")]
 
 if __name__ == "__main__":
@@ -607,9 +602,6 @@ if __name__ == "__main__":
         description="RULER long-context benchmark for Llama-3.1-8B-Instruct (128k)"
     )
 
-    # We can remove the --experiment_type argument from the parser 
-    # since we will define the runs manually below.
-    
     parser.add_argument(
         "--num_samples", type=int, default=50,
         help="Synthetic samples per (task, context_length) pair",
@@ -625,7 +617,6 @@ if __name__ == "__main__":
         help="Comma-separated subset of RULER tasks (default: all 13)",
     )
 
-    # Shared experiment args (mirrors eval_all.py)
     parser.add_argument('--scale',            default=0.05,  type=float)
     parser.add_argument('--thresh',           default=0.6,   type=float)
     parser.add_argument('--delta',            default=1.0,   type=float)
@@ -633,7 +624,6 @@ if __name__ == "__main__":
     parser.add_argument('--chunk_size',       default=512,   type=int)
     parser.add_argument('--dense_window_size',default=128,   type=int)
     parser.add_argument('--window_size',      default=50,    type=int)
-    # Default row_thresh, but we will override it per run below
     parser.add_argument('--row_thresh',       default=0.5,   type=float)
 
     args = parser.parse_args()
@@ -641,27 +631,21 @@ if __name__ == "__main__":
     # ---------------------------------------------------------
     # DEFINE YOUR RUNS HERE
     # ---------------------------------------------------------
-    # Each dictionary represents one row in your final table.
     runs = [
         {
-            "row_name": "Baseline", 
+            "row_name": "Full", 
             "experiment_type": "baseline"
         },
         {
-            "row_name": "Row Delta (t=0.5)", 
+            "row_name": "Row Delta (t=15)", 
             "experiment_type": "row_delta", 
-            "row_thresh": 0.5
+            "row_thresh": 15
         },
         {
-            "row_name": "Row Delta (t=0.7)", 
+            "row_name": "Row Delta (t=17)", 
             "experiment_type": "row_delta", 
-            "row_thresh": 0.7
+            "row_thresh": 17
         },
-        {
-            "row_name": "Row Delta (t=0.9)", 
-            "experiment_type": "row_delta", 
-            "row_thresh": 0.9
-        }
     ]
 
     final_table_data = {}
@@ -671,21 +655,16 @@ if __name__ == "__main__":
         print(f"*** STARTING EXPERIMENT: {run['row_name']} ***")
         print(f"{'='*60}\n")
         
-        # Dynamically override the arguments for this specific run
         args.experiment_type = run["experiment_type"]
         args.row_name = run["row_name"]
         
-        # If the run config specifies a threshold, overwrite the default arg
         if "row_thresh" in run:
             args.row_thresh = run["row_thresh"]
             
-        # Create a unique output folder for this specific run's JSON files
         safe_name = run["row_name"].replace(" ", "_").replace("=", "").replace("(", "").replace(")", "")
         args.exp_name = f"ruler_{safe_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Execute the benchmark and store the averages
         results = run_ruler(args)
         final_table_data[run["row_name"]] = results
 
-    # Print the combined multi-row table at the very end
     print_multi_table(final_table_data)

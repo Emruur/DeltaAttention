@@ -1,0 +1,21 @@
+{
+    "task": "niah_single_3",
+    "ctx_len": 65536,
+    "accuracy_pct": 100.0,
+    "num_samples": 50,
+    "experiment_type": "row_delta",
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "delta_type": "row",
+        "scale": 0.05,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 0.5,
+        "row_similarity_metric": "cos",
+        "chunk_size": 512,
+        "divide_to": 0,
+        "flash": true,
+        "delta_decode": false,
+        "dense_window_size": 128
+    },
+    "timestamp": "2026-05-10T02:43:01.741468"
+}

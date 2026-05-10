@@ -24,7 +24,7 @@ AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 
 MODEL_ID = "gradientai/Llama-3-8b-Instruct-Gradient-1048k"
 
-SEQ_LENGTHS = [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1000000]
+SEQ_LENGTHS = [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144]
 
 
 # ==========================================
@@ -46,11 +46,11 @@ def set_row_delta():
     globVR.delta_type = "row"
     globVR.scale = 0.05
     globVR.delta_mlp = "Regular"
-    globVR.row_delta_threshold = 15
+    globVR.row_delta_threshold = 17
     globVR.row_similarity_metric = "euclidian"
     globVR.chunk_size = 512
     globVR.divide_to = 0
-    globVR.flash = False
+    globVR.flash = True
     globVR.delta_decode = False
     globVR.time_internal = False
     globVR.skip_causal_mask = True  # safe: batch_size=1, no padding in speedup benchmark
