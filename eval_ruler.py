@@ -1,7 +1,7 @@
 """
 Final Optimized RULER benchmark for Llama-3.1-8B-Instruct.
 Includes System Prompts, Noise-Resistant Filler, Explicit Task Instructions, 
-and Multi-row Table Generation.
+Multi-row Table Generation, CSV export, and PNG Rendering.
 """
 
 import os
@@ -16,10 +16,13 @@ import gc
 import time
 import string
 import uuid
+import glob
 from collections import Counter
 from datetime import datetime
 
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import torch
 from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM
 
@@ -41,68 +44,31 @@ CTX_LENGTHS = [4096, 8192, 16384, 32768, 65536, 131072]
 CTX_LABELS  = ["4k",  "8k",  "16k",  "32k",  "64k", "128k"]
 
 RULER_TASKS = [
-    "niah_single_1",
-    "niah_single_2",
-    "niah_single_3",
-    "niah_multikey_1",
-    "niah_multikey_2",
-    "niah_multikey_3",
-    "niah_multivalue",
-    "niah_multiquery",
-    "vt",
-    "cwe",
-    "fwe",
-    "qa_hotpot",
-    "qa_squad",
+    "niah_single_1", "niah_single_2", "niah_single_3",
+    "niah_multikey_1", "niah_multikey_2", "niah_multikey_3",
+    "niah_multivalue", "niah_multiquery", "vt", "cwe", "fwe",
+    "qa_hotpot", "qa_squad",
 ]
 
 EXPERIMENT_DEFINITIONS = {
     "baseline": {
         "injector": lambda args: {
-            "delta_pf_key_on": 0,
-            "delta_mlp": "Regular",
-            "flash": True,
-        }
-    },
-    "baseline_decoding": {
-        "injector": lambda args: {
-            "delta_decode": False,
-            "delta_pf_key_on": False,
-            "flash": True,
-        }
-    },
-    "delta_decoding": {
-        "injector": lambda args: {
-            "delta_decode": True,
-            "window_size": args.window_size,
-            "row_delta_threshold": args.row_thresh,
-            "row_similarity_metric": args.row_sim,
-            "delta_pf_key_on": 1,
-            "flash": True,
-            "delta_type": "row",
-            "divide_to": 0,
-            "chunk_size": 512,
+            "delta_pf_key_on": 0, "delta_mlp": "Regular", "flash": True,
         }
     },
     "row_delta": {
         "injector": lambda args: {
-            "delta_pf_key_on": 1,
-            "delta_type": "row",
-            "scale": args.scale,
-            "delta_mlp": "Regular",
-            "row_delta_threshold": args.row_thresh,
-            "row_similarity_metric": args.row_sim,
-            "chunk_size": args.chunk_size,
-            "divide_to": 0,
-            "flash": True,
-            "delta_decode": False,
+            "delta_pf_key_on": 1, "delta_type": "row", "scale": args.scale,
+            "delta_mlp": "Regular", "row_delta_threshold": args.row_thresh,
+            "row_similarity_metric": args.row_sim, "chunk_size": args.chunk_size,
+            "divide_to": 0, "flash": True, "delta_decode": False,
             "dense_window_size": args.dense_window_size,
         }
     },
 }
 
 # ==========================================
-# JSON ENCODER
+# JSON ENCODER & FILE I/O
 # ==========================================
 
 class NpEncoder(json.JSONEncoder):
@@ -117,6 +83,78 @@ class NpEncoder(json.JSONEncoder):
             return obj.tolist()
         return super().default(obj)
 
+def save_json(path: str, data: dict):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4, cls=NpEncoder)
+    print(f"[IO] Saved {path}", flush=True)
+
+# ==========================================
+# TABLE EXPORT (CSV & PNG)
+# ==========================================
+
+def print_multi_table(all_results: dict[str, dict[int, float]], out_dir: str):
+    header = f"{'Input Len':<18}|" + "".join(f"  {lbl:>5} |" for lbl in CTX_LABELS) + f"   Avg."
+    sep    = "-" * len(header)
+    
+    print("\n" + "=" * len(header), flush=True)
+    print("RULER Benchmark Results", flush=True)
+    print("=" * len(header), flush=True)
+    print(header, flush=True)
+    print(sep, flush=True)
+    
+    # Prepare data for Dataframe
+    df_data = []
+    
+    for row_name, scores_by_ctx in all_results.items():
+        vals  = [scores_by_ctx.get(c, float("nan")) for c in CTX_LENGTHS]
+        valid = [v for v in vals if not np.isnan(v)]
+        avg   = float(np.mean(valid)) if valid else float("nan")
+        
+        row_str = f"{row_name:<18}|" + "".join(
+            f"  {v:5.2f} |" if not np.isnan(v) else f"  {'n/a':>5} |"
+            for v in vals
+        ) + f"  {avg:5.2f}"
+        print(row_str, flush=True)
+        
+        # Build dict for Pandas
+        row_dict = {"Input Len": row_name}
+        for i, lbl in enumerate(CTX_LABELS):
+            row_dict[lbl] = f"{vals[i]:.2f}" if not np.isnan(vals[i]) else "n/a"
+        row_dict["Avg."] = f"{avg:.2f}" if not np.isnan(avg) else "n/a"
+        df_data.append(row_dict)
+        
+    print("=" * len(header) + "\n", flush=True)
+    
+    # Generate Outputs
+    df = pd.DataFrame(df_data)
+    
+    # 1. Save CSV
+    csv_path = os.path.join(out_dir, "final_table.csv")
+    df.to_csv(csv_path, index=False)
+    print(f"[IO] Final table saved to: {csv_path}", flush=True)
+    
+    # 2. Save PNG using Matplotlib
+    png_path = os.path.join(out_dir, "final_table.png")
+    fig, ax = plt.subplots(figsize=(10, len(df) * 0.5 + 1.5)) # Dynamically scale height
+    ax.axis('tight')
+    ax.axis('off')
+    
+    table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(12)
+    table.scale(1.2, 1.5)
+    
+    # Optional styling for header row
+    for (i, j), cell in table.get_celld().items():
+        if i == 0:
+            cell.set_text_props(weight='bold')
+            cell.set_facecolor('#f2f2f2')
+            
+    plt.savefig(png_path, bbox_inches='tight', dpi=300)
+    plt.close()
+    print(f"[IO] Final table image saved to: {png_path}", flush=True)
+
 # ==========================================
 # IMPROVED NOISE FILLER (Random Words)
 # ==========================================
@@ -127,7 +165,6 @@ _FILLER_WORDS = [
 ]
 
 def make_filler_tokens(n_tokens: int, tokenizer) -> list[int]:
-    """Generates a sea of random words to act as difficult noise."""
     tokens = []
     while len(tokens) < n_tokens:
         word = random.choice(_FILLER_WORDS) + " "
@@ -162,8 +199,7 @@ def _build_prompt(filler_tokens, needle_tokens, question_tokens,
     filler = make_filler_tokens(filler_budget, tokenizer)
     combined = _insert_needle_tokens(filler, needle_tokens, depth, tokenizer)
     all_tokens = combined + question_tokens
-    prompt_text = tokens_to_text(all_tokens, tokenizer)
-    return prompt_text, len(all_tokens)
+    return tokens_to_text(all_tokens, tokenizer), len(all_tokens)
 
 # ==========================================
 # RULER TASK GENERATORS
@@ -219,22 +255,19 @@ def make_niah_multivalue(ctx_len, tokenizer, num_values=4):
         f"\n\nQuestion: List all values of {key} in order of appearance, separated by commas.\nAnswer:",
         add_special_tokens=False)
     overhead = len(q_tok) + num_values * 15 + 4
-    filler_budget = max(10, ctx_len - overhead)
-    filler = make_filler_tokens(filler_budget, tokenizer)
+    filler = make_filler_tokens(max(10, ctx_len - overhead), tokenizer)
 
     for i, (v, d) in enumerate(zip(values, depths)):
         n_tok = tokenizer.encode(f" [NEEDLE] {key} value: {v} [/NEEDLE] ", add_special_tokens=False)
         idx = int(len(filler) * d)
         filler = filler[:idx] + n_tok + filler[idx:]
 
-    prompt = tokens_to_text(filler + q_tok, tokenizer)
-    return {"prompt": prompt, "answer": ", ".join(values)}
+    return {"prompt": tokens_to_text(filler + q_tok, tokenizer), "answer": ", ".join(values)}
 
 def make_niah_multiquery(ctx_len, tokenizer, num_pairs=4):
     pairs = [(f"MQKEY_{i}", _rand_int()) for i in range(num_pairs)]
     depths = sorted([random.uniform(0.1, 0.9) for _ in range(num_pairs)])
 
-    # Clearer list-based question
     questions = "\n".join([f"{i+1}. What is the value of {k}?" for i, (k, v) in enumerate(pairs)])
     answers = ", ".join([str(v) for k, v in pairs])
     
@@ -287,7 +320,6 @@ def make_frequency_task(ctx_len, tokenizer, mode="cwe"):
     p_tok = tokenizer.encode(f" [PASSAGE] {passage} [/PASSAGE] ", add_special_tokens=False)
     filler = make_filler_tokens(max(10, ctx_len - len(q_tok) - len(p_tok) - 50), tokenizer)
     
-    # Insert passage at a random depth
     idx = int(len(filler) * random.uniform(0.1, 0.9)) 
     filler = filler[:idx] + p_tok + filler[idx:]
     
@@ -325,10 +357,6 @@ def make_qa(ctx_len, tokenizer, dataset="hotpot"):
     prompt, _ = _build_prompt([], p_tok, q_tok, ctx_len, depth, tokenizer)
     return {"prompt": prompt, "answer": answer}
 
-# ==========================================
-# TASK DISPATCHER
-# ==========================================
-
 def make_sample(task_name: str, ctx_len: int, tokenizer) -> dict:
     dispatch = {
         "niah_single_1":   lambda: make_niah_single(ctx_len, tokenizer, 1),
@@ -355,40 +383,29 @@ def _norm(s: str) -> str:
     return " ".join(s.lower().strip().split())
 
 def exact_match_robust(pred: str, gold: str) -> float:
-    pred_n = _norm(pred)
-    gold_n = _norm(gold)
-    if pred_n == gold_n:
-        return 1.0
+    pred_n, gold_n = _norm(pred), _norm(gold)
+    if pred_n == gold_n: return 1.0
     pattern = r'\b' + re.escape(gold_n) + r'\b'
-    if re.search(pattern, pred_n):
-        return 1.0
-    return 0.0
+    return 1.0 if re.search(pattern, pred_n) else 0.0
 
 def token_f1(pred: str, gold: str) -> float:
-    p_toks = _norm(pred).split()
-    g_toks = _norm(gold).split()
-    if not p_toks or not g_toks:
-        return 0.0
+    p_toks, g_toks = _norm(pred).split(), _norm(gold).split()
+    if not p_toks or not g_toks: return 0.0
     common = sum((Counter(p_toks) & Counter(g_toks)).values())
-    if common == 0:
-        return 0.0
-    prec = common / len(p_toks)
-    rec  = common / len(g_toks)
+    if common == 0: return 0.0
+    prec, rec = common / len(p_toks), common / len(g_toks)
     return 2 * prec * rec / (prec + rec)
 
 def existence_score(pred: str, gold: str) -> float:
     pred_n = _norm(pred)
     parts = [p.strip() for p in _norm(gold).split(",") if p.strip()]
-    if not parts: 
-        return 0.0
+    if not parts: return 0.0
     matches = sum(1 for p in parts if p in pred_n)
     return 1.0 if matches == len(parts) else 0.0
 
 def score(pred: str, gold: str, task: str) -> float:
-    if "multivalue" in task or "multiquery" in task:
-        return existence_score(pred, gold)
-    if "qa_" in task:
-        return max(token_f1(pred, gold), exact_match_robust(pred, gold))
+    if "multivalue" in task or "multiquery" in task: return existence_score(pred, gold)
+    if "qa_" in task: return max(token_f1(pred, gold), exact_match_robust(pred, gold))
     return exact_match_robust(pred, gold)
 
 # ==========================================
@@ -396,9 +413,7 @@ def score(pred: str, gold: str, task: str) -> float:
 # ==========================================
 
 @torch.no_grad()
-def generate_answer(model, tokenizer, prompt: str, device: str,
-                    max_new_tokens: int = 48) -> str:
-    
+def generate_answer(model, tokenizer, prompt: str, device: str, max_new_tokens: int = 48) -> str:
     messages = [
         {
             "role": "system", 
@@ -409,74 +424,22 @@ def generate_answer(model, tokenizer, prompt: str, device: str,
         {"role": "user", "content": prompt}
     ]
     
-    formatted_prompt = tokenizer.apply_chat_template(
-        messages, 
-        tokenize=False, 
-        add_generation_prompt=True
-    )
-
-    inputs = tokenizer(
-        formatted_prompt,
-        return_tensors="pt",
-        truncation=True,
-        max_length=MAX_CTX,
-    ).to(device)
+    formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    inputs = tokenizer(formatted_prompt, return_tensors="pt", truncation=True, max_length=MAX_CTX).to(device)
     
     input_len = inputs["input_ids"].shape[1]
-    
     out = model.generate(
-        **inputs,
-        max_new_tokens=max_new_tokens,
-        do_sample=False,
-        temperature=None,
-        top_p=None,
-        pad_token_id=tokenizer.eos_token_id,
+        **inputs, max_new_tokens=max_new_tokens, do_sample=False,
+        temperature=None, top_p=None, pad_token_id=tokenizer.eos_token_id,
     )
     
     return tokenizer.decode(out[0, input_len:], skip_special_tokens=True).strip()
 
 # ==========================================
-# RESULT I/O
-# ==========================================
-
-def save_json(path: str, data: dict):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(data, f, indent=4, cls=NpEncoder)
-    print(f"[IO] Saved {path}", flush=True)
-
-# ==========================================
-# TABLE PRINTER
-# ==========================================
-
-def print_multi_table(all_results: dict[str, dict[int, float]]):
-    header = f"{'Input Len':<18}|" + "".join(f"  {lbl:>5} |" for lbl in CTX_LABELS) + f"   Avg."
-    sep    = "-" * len(header)
-    
-    print("\n" + "=" * len(header), flush=True)
-    print("RULER Benchmark Results", flush=True)
-    print("=" * len(header), flush=True)
-    print(header, flush=True)
-    print(sep, flush=True)
-    
-    for row_name, scores_by_ctx in all_results.items():
-        vals  = [scores_by_ctx.get(c, float("nan")) for c in CTX_LENGTHS]
-        valid = [v for v in vals if not np.isnan(v)]
-        avg   = float(np.mean(valid)) if valid else float("nan")
-        
-        row_str = f"{row_name:<18}|" + "".join(
-            f"  {v:5.2f} |" if not np.isnan(v) else f"  {'n/a':>5} |"
-            for v in vals
-        ) + f"  {avg:5.2f}"
-        print(row_str, flush=True)
-        
-    print("=" * len(header) + "\n", flush=True)
-
-# ==========================================
 # MAIN EVALUATION
 # ==========================================
 
-def run_ruler(args):
+def run_ruler(args, parent_dir):
     torch.set_grad_enabled(False)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -491,10 +454,7 @@ def run_ruler(args):
 
     print(f"[RULER] Loading model: {MODEL_ID}", flush=True)
     model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID,
-        trust_remote_code=True,
-        torch_dtype=torch.bfloat16,
-        attn_implementation="eager",
+        MODEL_ID, trust_remote_code=True, torch_dtype=torch.bfloat16, attn_implementation="eager",
     ).to(device)
     model.eval()
 
@@ -512,22 +472,20 @@ def run_ruler(args):
             src = inputs if inputs is not None else kw.get('input_ids')
             bsz = src.shape[0] if src is not None else 1
             kw['past_key_values'] = HybridCompressedCache(
-                config=model.config,
-                batch_size=bsz,
-                dtype=model.dtype,
-                exact_window_size=getattr(globVR, 'window_size', 50),
+                config=model.config, batch_size=bsz, dtype=model.dtype,
+                exact_window_size=getattr(globVR, 'window_size', 0),
             )
             kw['use_cache'] = True
             return _orig_generate(inputs, *a, **kw)
 
         model.generate = _patched_generate
 
-    out_dir = os.path.join("snellius_experiments", "llama", args.exp_name, "ruler")
+    # Group output files under the main run folder
+    out_dir = os.path.join(parent_dir, args.exp_name)
     os.makedirs(out_dir, exist_ok=True)
 
     ctx_subset = args.ctx_lens
     tasks      = args.tasks if args.tasks else RULER_TASKS
-
     all_scores: dict[int, dict[str, float]] = {c: {} for c in ctx_subset}
 
     for ctx_len in ctx_subset:
@@ -555,13 +513,9 @@ def run_ruler(args):
             save_json(
                 os.path.join(out_dir, f"{task_name}_{lbl}.json"),
                 {
-                    "task": task_name,
-                    "ctx_len": ctx_len,
-                    "accuracy_pct": acc,
-                    "num_samples": args.num_samples,
-                    "experiment_type": args.experiment_type,
-                    "parameters": glob_settings,
-                    "timestamp": datetime.now().isoformat(),
+                    "task": task_name, "ctx_len": ctx_len, "accuracy_pct": acc,
+                    "num_samples": args.num_samples, "experiment_type": args.experiment_type,
+                    "parameters": glob_settings, "timestamp": datetime.now().isoformat(),
                 }
             )
 
@@ -573,79 +527,66 @@ def run_ruler(args):
         vals = list(all_scores[ctx_len].values())
         ctx_avg[ctx_len] = float(np.mean(vals)) if vals else float("nan")
 
-    row_name = args.row_name or args.experiment_type
     summary = {
-        "row_name": row_name,
-        "experiment_type": args.experiment_type,
-        "parameters": glob_settings,
-        "ctx_lengths": ctx_subset,
+        "row_name": args.row_name, "experiment_type": args.experiment_type,
+        "parameters": glob_settings, "ctx_lengths": ctx_subset,
         "ctx_labels": [CTX_LABELS[CTX_LENGTHS.index(c)] if c in CTX_LENGTHS else str(c) for c in ctx_subset],
         "ctx_averages_pct": {str(c): ctx_avg[c] for c in ctx_subset},
         "overall_avg_pct": float(np.mean(list(ctx_avg.values()))),
         "task_scores_pct": {str(c): all_scores[c] for c in ctx_subset},
-        "num_samples": args.num_samples,
-        "timestamp": datetime.now().isoformat(),
+        "num_samples": args.num_samples, "timestamp": datetime.now().isoformat(),
     }
     save_json(os.path.join(out_dir, "_summary.json"), summary)
 
     return ctx_avg
 
 # ==========================================
-# ENTRY POINT
+# DIRECTORY MANAGER
 # ==========================================
+def get_next_run_dir(base_path="."):
+    existing_dirs = glob.glob(os.path.join(base_path, "ruler_results_*"))
+    nums = []
+    for d in existing_dirs:
+        try:
+            num = int(os.path.basename(d).split('_')[-1])
+            nums.append(num)
+        except ValueError:
+            pass
+    next_num = max(nums) + 1 if nums else 1
+    return os.path.join(base_path, f"ruler_results_{next_num}")
 
 def parse_ctx_lens(s: str) -> list[int]:
     return [int(x.strip()) for x in s.split(",")]
 
+# ==========================================
+# ENTRY POINT
+# ==========================================
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="RULER long-context benchmark for Llama-3.1-8B-Instruct (128k)"
-    )
-
-    parser.add_argument(
-        "--num_samples", type=int, default=50,
-        help="Synthetic samples per (task, context_length) pair",
-    )
-    parser.add_argument(
-        "--ctx_lens", type=parse_ctx_lens,
-        default=CTX_LENGTHS,
-        help="Comma-separated context lengths to evaluate "
-             "(default: 4096,8192,16384,32768,65536,131072)",
-    )
-    parser.add_argument(
-        "--tasks", type=lambda s: s.split(","), default=None,
-        help="Comma-separated subset of RULER tasks (default: all 13)",
-    )
-
-    parser.add_argument('--scale',            default=0.05,  type=float)
-    parser.add_argument('--thresh',           default=0.6,   type=float)
-    parser.add_argument('--delta',            default=1.0,   type=float)
-    parser.add_argument('--row_sim',          default="cos", type=str)
-    parser.add_argument('--chunk_size',       default=512,   type=int)
-    parser.add_argument('--dense_window_size',default=128,   type=int)
-    parser.add_argument('--window_size',      default=50,    type=int)
-    parser.add_argument('--row_thresh',       default=0.5,   type=float)
+    parser = argparse.ArgumentParser(description="RULER long-context benchmark for Llama-3.1-8B-Instruct (128k)")
+    parser.add_argument("--num_samples", type=int, default=50)
+    parser.add_argument("--ctx_lens", type=parse_ctx_lens, default=CTX_LENGTHS)
+    parser.add_argument("--tasks", type=lambda s: s.split(","), default=None)
+    parser.add_argument('--scale', default=0.05, type=float)
+    parser.add_argument('--thresh', default=0.6, type=float)
+    parser.add_argument('--delta', default=1.0, type=float)
+    parser.add_argument('--row_sim', default="cos", type=str)
+    parser.add_argument('--chunk_size', default=512, type=int)
+    parser.add_argument('--dense_window_size', default=0, type=int)
+    parser.add_argument('--window_size', default=50, type=int)
+    parser.add_argument('--row_thresh', default=0.5, type=float)
 
     args = parser.parse_args()
 
-    # ---------------------------------------------------------
-    # DEFINE YOUR RUNS HERE
-    # ---------------------------------------------------------
+    # Define Output Architecture
+    master_out_dir = get_next_run_dir()
+    os.makedirs(master_out_dir, exist_ok=True)
+    print(f"\n[IO] Initialized session folder: {master_out_dir}\n")
+
     runs = [
-        {
-            "row_name": "Full", 
-            "experiment_type": "baseline"
-        },
-        {
-            "row_name": "Row Delta (t=15)", 
-            "experiment_type": "row_delta", 
-            "row_thresh": 15
-        },
-        {
-            "row_name": "Row Delta (t=17)", 
-            "experiment_type": "row_delta", 
-            "row_thresh": 17
-        },
+        {"row_name": "Full", "experiment_type": "baseline"},
+        {"row_name": "Row Delta (t=15)", "experiment_type": "row_delta", "row_thresh": 15},
+        {"row_name": "Row Delta (t=17)", "experiment_type": "row_delta", "row_thresh": 17},
     ]
 
     final_table_data = {}
@@ -661,10 +602,12 @@ if __name__ == "__main__":
         if "row_thresh" in run:
             args.row_thresh = run["row_thresh"]
             
+        # Creates cleaner sub-folder names like "Row_Delta_t15" inside "ruler_results_1"
         safe_name = run["row_name"].replace(" ", "_").replace("=", "").replace("(", "").replace(")", "")
-        args.exp_name = f"ruler_{safe_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        args.exp_name = safe_name
         
-        results = run_ruler(args)
+        results = run_ruler(args, parent_dir=master_out_dir)
         final_table_data[run["row_name"]] = results
 
-    print_multi_table(final_table_data)
+    # Hand off the parent directory to the table generator to save CSV and PNG
+    print_multi_table(final_table_data, master_out_dir)
