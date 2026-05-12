@@ -284,20 +284,24 @@ class LlamaAttention(nn.Module):
 
     def _forward_hybrid_flash(
         self, q, k_dense, v_dense, k_packed, v_packed,
-        packed_timestamps, packed_counts, dense_window_size
+        packed_counts, chunk_offsets, chunk_counts, num_chunks
     ):
-        """Python wrapper for the Two-Phase Hybrid Flash Kernel."""
+        """Python wrapper for the chunk-indexed Hybrid Flash Kernel.
+
+        chunk_size (used during delta eval) must equal BLOCK_N so that each
+        flash-attention key block maps to exactly one delta-compression chunk.
+        """
         batch_size, num_heads, q_len, head_dim = q.shape
         k_len = k_dense.shape[2]
-        num_packed = k_packed.shape[2]
 
-        q = q.contiguous()
-        k_dense = k_dense.contiguous()
-        v_dense = v_dense.contiguous()
-        k_packed = k_packed.contiguous()
-        v_packed = v_packed.contiguous()
-        packed_timestamps = packed_timestamps.contiguous().to(torch.int32)
+        q             = q.contiguous()
+        k_dense       = k_dense.contiguous()
+        v_dense       = v_dense.contiguous()
+        k_packed      = k_packed.contiguous()
+        v_packed      = v_packed.contiguous()
         packed_counts = packed_counts.contiguous().to(torch.float32)
+        chunk_offsets = chunk_offsets.contiguous().to(torch.int32)
+        chunk_counts  = chunk_counts.contiguous().to(torch.int32)
 
         out = torch.empty_like(q)
 
@@ -310,19 +314,19 @@ class LlamaAttention(nn.Module):
         hybrid_compressed_flash_kernel[grid](
             q, k_dense, v_dense,
             k_packed, v_packed,
-            packed_timestamps, packed_counts,
+            packed_counts, chunk_offsets, chunk_counts,
             out,
             q.stride(0), q.stride(1), q.stride(2), q.stride(3),
             k_dense.stride(0), k_dense.stride(1), k_dense.stride(2), k_dense.stride(3),
             v_dense.stride(0), v_dense.stride(1), v_dense.stride(2), v_dense.stride(3),
             k_packed.stride(0), k_packed.stride(1), k_packed.stride(2), k_packed.stride(3),
             v_packed.stride(0), v_packed.stride(1), v_packed.stride(2), v_packed.stride(3),
-            packed_timestamps.stride(0), packed_timestamps.stride(1), packed_timestamps.stride(2),
             packed_counts.stride(0), packed_counts.stride(1), packed_counts.stride(2),
+            chunk_offsets.stride(0), chunk_offsets.stride(1), chunk_offsets.stride(2),
+            chunk_counts.stride(0),  chunk_counts.stride(1),  chunk_counts.stride(2),
             out.stride(0), out.stride(1), out.stride(2), out.stride(3),
             self.scaling,
-            q_len, k_len, num_packed, head_dim, num_heads,
-            dense_window_size,
+            q_len, k_len, num_chunks, head_dim, num_heads,
             BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_D=BLOCK_D,
             num_warps=8,
             num_stages=1,
@@ -482,15 +486,11 @@ class LlamaAttention(nn.Module):
         # =========================================================================
         if is_prefill and getattr(globVR, 'delta_pf_key_on', 0) == 1 and globVR.delta_type == "row":
             
-            fixed_chunk = getattr(globVR, 'chunk_size', 0)
-            if fixed_chunk > 0:
-                chunk_size = min(fixed_chunk, q_len)
-                num_chunks = max(1, (q_len + chunk_size - 1) // chunk_size)
-            else:
-                divide_to = getattr(globVR, 'divide_to', 0)
-                actual_divide_to = 1 if divide_to == 0 else divide_to
-                chunk_size = (q_len + actual_divide_to - 1) // actual_divide_to
-                num_chunks = actual_divide_to
+            # chunk_size must equal BLOCK_N (128) so each flash-attention key
+            # block maps 1:1 to a delta-compression chunk, preventing anchor
+            # bleed across flash blocks.
+            chunk_size = 128  # == BLOCK_N
+            num_chunks = (q_len + chunk_size - 1) // chunk_size
 
             if do_time:
                 start_evt_rd = torch.cuda.Event(enable_timing=True)
@@ -553,6 +553,15 @@ class LlamaAttention(nn.Module):
             ones = torch.ones_like(index_map, dtype=torch.int32)
             packed_counts.scatter_add_(2, index_map.long(), ones)
 
+            # --- CALCULATE CHUNK OFFSETS ---
+            # chunk_offsets[c] = start index in k_packed for chunk c
+            # = exclusive prefix sum of chunk_counts
+            chunk_offsets = torch.cat([
+                torch.zeros(bsz, self.config.num_key_value_heads, 1,
+                            device=key_states.device, dtype=torch.int32),
+                chunk_counts[:, :, :-1].cumsum(dim=-1).to(torch.int32),
+            ], dim=-1)
+
             if do_time:
                 end_evt_rd.record()
                 glob_set.queue_event_pair('time_get_row_delta', start_evt_rd, end_evt_rd)
@@ -571,8 +580,9 @@ class LlamaAttention(nn.Module):
             k_packed_expanded = repeat_kv(k_packed, self.num_key_value_groups)
             v_packed_expanded = repeat_kv(v_packed, self.num_key_value_groups)
 
-            timestamps_expanded = repeat_kv(packed_timestamps.unsqueeze(-1), self.num_key_value_groups).squeeze(-1)
-            counts_expanded = repeat_kv(packed_counts.unsqueeze(-1), self.num_key_value_groups).squeeze(-1)
+            packed_counts_expanded = repeat_kv(packed_counts.unsqueeze(-1), self.num_key_value_groups).squeeze(-1)
+            chunk_offsets_expanded = repeat_kv(chunk_offsets.unsqueeze(-1), self.num_key_value_groups).squeeze(-1)
+            chunk_counts_expanded  = repeat_kv(chunk_counts.unsqueeze(-1),  self.num_key_value_groups).squeeze(-1)
 
             # --- 5. HYBRID FLASH ATTENTION ---
             if do_time:
@@ -586,9 +596,10 @@ class LlamaAttention(nn.Module):
                 value_states_expanded,
                 k_packed_expanded,
                 v_packed_expanded,
-                timestamps_expanded,
-                counts_expanded,
-                getattr(globVR, 'dense_window_size', 128),
+                packed_counts_expanded,
+                chunk_offsets_expanded,
+                chunk_counts_expanded,
+                num_chunks,
             )
             attn_weights = None 
 
