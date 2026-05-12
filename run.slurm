@@ -3,7 +3,7 @@
 #SBATCH -p gpu_h100
 #SBATCH --cpus-per-task=18
 #SBATCH --gpus=1
-#SBATCH --time=0-08:30:00
+#SBATCH --time=0-24:00:00
 #SBATCH --output=setup_%j.out
 #SBATCH --error=setup_%j.err
 

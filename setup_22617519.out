@@ -1,0 +1,841 @@
+Sun May 10 15:13:19 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.58.03              Driver Version: 595.58.03      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100                    On  |   00000000:26:00.0 Off |                    0 |
+| N/A   34C    P0             71W /  700W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+CUDA version: Cuda compilation tools, release 12.1, V12.1.105
+
+[IO] Initialized session folder: ./ruler_results_1
+
+
+
+============================================================
+*** STARTING EXPERIMENT: Full ***
+============================================================
+
+[RULER] Loading tokenizer: meta-llama/Meta-Llama-3.1-8B-Instruct
+[RULER] Loading model: meta-llama/Meta-Llama-3.1-8B-Instruct
+[RULER] Experiment: baseline | Settings: {'delta_pf_key_on': 0, 'delta_mlp': 'Regular', 'flash': True}
+
+============================================================
+[RULER] Context length: 4k (4096 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 9.6s)
+[IO] Saved ./ruler_results_1/Full/niah_single_1_4k.json
+  Task: niah_single_2
+  -> niah_single_2: 100.00% (50 samples, 8.6s)
+[IO] Saved ./ruler_results_1/Full/niah_single_2_4k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 44.0s)
+[IO] Saved ./ruler_results_1/Full/niah_single_3_4k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 100.00% (50 samples, 8.8s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_1_4k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 100.00% (50 samples, 8.8s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_2_4k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 100.00% (50 samples, 8.9s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_3_4k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 96.00% (50 samples, 24.3s)
+[IO] Saved ./ruler_results_1/Full/niah_multivalue_4k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 100.00% (50 samples, 28.6s)
+[IO] Saved ./ruler_results_1/Full/niah_multiquery_4k.json
+  Task: vt
+  -> vt: 100.00% (50 samples, 8.6s)
+[IO] Saved ./ruler_results_1/Full/vt_4k.json
+  Task: cwe
+  -> cwe: 98.00% (50 samples, 83.4s)
+[IO] Saved ./ruler_results_1/Full/cwe_4k.json
+  Task: fwe
+  -> fwe: 100.00% (50 samples, 83.6s)
+[IO] Saved ./ruler_results_1/Full/fwe_4k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 100.00% (50 samples, 47.3s)
+[IO] Saved ./ruler_results_1/Full/qa_hotpot_4k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 44.2s)
+[IO] Saved ./ruler_results_1/Full/qa_squad_4k.json
+
+============================================================
+[RULER] Context length: 8k (8192 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 14.3s)
+[IO] Saved ./ruler_results_1/Full/niah_single_1_8k.json
+  Task: niah_single_2
+  -> niah_single_2: 100.00% (50 samples, 14.3s)
+[IO] Saved ./ruler_results_1/Full/niah_single_2_8k.json
+  Task: niah_single_3
+  -> niah_single_3: 96.00% (50 samples, 49.5s)
+[IO] Saved ./ruler_results_1/Full/niah_single_3_8k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 100.00% (50 samples, 14.3s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_1_8k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 100.00% (50 samples, 14.5s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_2_8k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 100.00% (50 samples, 14.5s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_3_8k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 92.00% (50 samples, 27.0s)
+[IO] Saved ./ruler_results_1/Full/niah_multivalue_8k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 96.00% (50 samples, 34.2s)
+[IO] Saved ./ruler_results_1/Full/niah_multiquery_8k.json
+  Task: vt
+  -> vt: 100.00% (50 samples, 13.8s)
+[IO] Saved ./ruler_results_1/Full/vt_8k.json
+  Task: cwe
+  -> cwe: 98.00% (50 samples, 88.8s)
+[IO] Saved ./ruler_results_1/Full/cwe_8k.json
+  Task: fwe
+  -> fwe: 100.00% (50 samples, 88.3s)
+[IO] Saved ./ruler_results_1/Full/fwe_8k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 100.00% (50 samples, 49.1s)
+[IO] Saved ./ruler_results_1/Full/qa_hotpot_8k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 38.1s)
+[IO] Saved ./ruler_results_1/Full/qa_squad_8k.json
+
+============================================================
+[RULER] Context length: 16k (16384 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 26.0s)
+[IO] Saved ./ruler_results_1/Full/niah_single_1_16k.json
+  Task: niah_single_2
+  -> niah_single_2: 100.00% (50 samples, 26.4s)
+[IO] Saved ./ruler_results_1/Full/niah_single_2_16k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 61.2s)
+[IO] Saved ./ruler_results_1/Full/niah_single_3_16k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 100.00% (50 samples, 26.0s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_1_16k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 100.00% (50 samples, 26.0s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_2_16k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 100.00% (50 samples, 26.0s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_3_16k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 78.00% (50 samples, 37.9s)
+[IO] Saved ./ruler_results_1/Full/niah_multivalue_16k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 100.00% (50 samples, 45.5s)
+[IO] Saved ./ruler_results_1/Full/niah_multiquery_16k.json
+  Task: vt
+  -> vt: 98.00% (50 samples, 25.6s)
+[IO] Saved ./ruler_results_1/Full/vt_16k.json
+  Task: cwe
+  -> cwe: 94.00% (50 samples, 99.7s)
+[IO] Saved ./ruler_results_1/Full/cwe_16k.json
+  Task: fwe
+  -> fwe: 100.00% (50 samples, 99.2s)
+[IO] Saved ./ruler_results_1/Full/fwe_16k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 100.00% (50 samples, 58.6s)
+[IO] Saved ./ruler_results_1/Full/qa_hotpot_16k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 58.8s)
+[IO] Saved ./ruler_results_1/Full/qa_squad_16k.json
+
+============================================================
+[RULER] Context length: 32k (32768 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 53.1s)
+[IO] Saved ./ruler_results_1/Full/niah_single_1_32k.json
+  Task: niah_single_2
+  -> niah_single_2: 100.00% (50 samples, 53.3s)
+[IO] Saved ./ruler_results_1/Full/niah_single_2_32k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 89.0s)
+[IO] Saved ./ruler_results_1/Full/niah_single_3_32k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 100.00% (50 samples, 52.9s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_1_32k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 98.00% (50 samples, 53.4s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_2_32k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 100.00% (50 samples, 53.4s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_3_32k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 84.00% (50 samples, 65.8s)
+[IO] Saved ./ruler_results_1/Full/niah_multivalue_32k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 98.00% (50 samples, 72.9s)
+[IO] Saved ./ruler_results_1/Full/niah_multiquery_32k.json
+  Task: vt
+  -> vt: 100.00% (50 samples, 53.1s)
+[IO] Saved ./ruler_results_1/Full/vt_32k.json
+  Task: cwe
+  -> cwe: 100.00% (50 samples, 127.6s)
+[IO] Saved ./ruler_results_1/Full/cwe_32k.json
+  Task: fwe
+  -> fwe: 100.00% (50 samples, 127.7s)
+[IO] Saved ./ruler_results_1/Full/fwe_32k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 100.00% (50 samples, 83.6s)
+[IO] Saved ./ruler_results_1/Full/qa_hotpot_32k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 75.6s)
+[IO] Saved ./ruler_results_1/Full/qa_squad_32k.json
+
+============================================================
+[RULER] Context length: 64k (65536 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 122.9s)
+[IO] Saved ./ruler_results_1/Full/niah_single_1_64k.json
+  Task: niah_single_2
+  -> niah_single_2: 100.00% (50 samples, 123.0s)
+[IO] Saved ./ruler_results_1/Full/niah_single_2_64k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 173.8s)
+[IO] Saved ./ruler_results_1/Full/niah_single_3_64k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 100.00% (50 samples, 123.1s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_1_64k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 100.00% (50 samples, 123.1s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_2_64k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 100.00% (50 samples, 123.4s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_3_64k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 82.00% (50 samples, 138.9s)
+[IO] Saved ./ruler_results_1/Full/niah_multivalue_64k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 98.00% (50 samples, 148.1s)
+[IO] Saved ./ruler_results_1/Full/niah_multiquery_64k.json
+  Task: vt
+  -> vt: 92.00% (50 samples, 122.9s)
+[IO] Saved ./ruler_results_1/Full/vt_64k.json
+  Task: cwe
+  -> cwe: 100.00% (50 samples, 197.5s)
+[IO] Saved ./ruler_results_1/Full/cwe_64k.json
+  Task: fwe
+  -> fwe: 100.00% (50 samples, 185.3s)
+[IO] Saved ./ruler_results_1/Full/fwe_64k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 98.44% (50 samples, 141.7s)
+[IO] Saved ./ruler_results_1/Full/qa_hotpot_64k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 146.1s)
+[IO] Saved ./ruler_results_1/Full/qa_squad_64k.json
+
+============================================================
+[RULER] Context length: 128k (131072 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 318.7s)
+[IO] Saved ./ruler_results_1/Full/niah_single_1_128k.json
+  Task: niah_single_2
+  -> niah_single_2: 100.00% (50 samples, 317.5s)
+[IO] Saved ./ruler_results_1/Full/niah_single_2_128k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 406.8s)
+[IO] Saved ./ruler_results_1/Full/niah_single_3_128k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 100.00% (50 samples, 316.9s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_1_128k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 98.00% (50 samples, 315.2s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_2_128k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 98.00% (50 samples, 314.4s)
+[IO] Saved ./ruler_results_1/Full/niah_multikey_3_128k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 48.00% (50 samples, 336.2s)
+[IO] Saved ./ruler_results_1/Full/niah_multivalue_128k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 84.00% (50 samples, 354.6s)
+[IO] Saved ./ruler_results_1/Full/niah_multiquery_128k.json
+  Task: vt
+  -> vt: 92.00% (50 samples, 312.3s)
+[IO] Saved ./ruler_results_1/Full/vt_128k.json
+  Task: cwe
+  -> cwe: 100.00% (50 samples, 368.3s)
+[IO] Saved ./ruler_results_1/Full/cwe_128k.json
+  Task: fwe
+  -> fwe: 100.00% (50 samples, 368.0s)
+[IO] Saved ./ruler_results_1/Full/fwe_128k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 100.00% (50 samples, 340.5s)
+[IO] Saved ./ruler_results_1/Full/qa_hotpot_128k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 346.4s)
+[IO] Saved ./ruler_results_1/Full/qa_squad_128k.json
+[IO] Saved ./ruler_results_1/Full/_summary.json
+
+
+============================================================
+*** STARTING EXPERIMENT: Row Delta (t=15) ***
+============================================================
+
+[RULER] Loading tokenizer: meta-llama/Meta-Llama-3.1-8B-Instruct
+[RULER] Loading model: meta-llama/Meta-Llama-3.1-8B-Instruct
+[RULER] Experiment: row_delta | Settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15, 'row_similarity_metric': 'cos', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
+
+============================================================
+[RULER] Context length: 4k (4096 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 10.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_1_4k.json
+  Task: niah_single_2
+  -> niah_single_2: 98.00% (50 samples, 12.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_2_4k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 51.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_3_4k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 92.00% (50 samples, 11.0s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_1_4k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 82.00% (50 samples, 10.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_2_4k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 86.00% (50 samples, 13.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_3_4k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 64.00% (50 samples, 22.0s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multivalue_4k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 98.00% (50 samples, 29.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multiquery_4k.json
+  Task: vt
+  -> vt: 94.00% (50 samples, 9.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/vt_4k.json
+  Task: cwe
+  -> cwe: 96.00% (50 samples, 83.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/cwe_4k.json
+  Task: fwe
+  -> fwe: 100.00% (50 samples, 81.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/fwe_4k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 100.00% (50 samples, 42.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_hotpot_4k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 45.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_squad_4k.json
+
+============================================================
+[RULER] Context length: 8k (8192 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 15.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_1_8k.json
+  Task: niah_single_2
+  -> niah_single_2: 100.00% (50 samples, 16.0s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_2_8k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 56.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_3_8k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 94.00% (50 samples, 17.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_1_8k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 94.00% (50 samples, 16.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_2_8k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 94.00% (50 samples, 18.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_3_8k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 50.00% (50 samples, 25.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multivalue_8k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 86.00% (50 samples, 34.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multiquery_8k.json
+  Task: vt
+  -> vt: 98.00% (50 samples, 14.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/vt_8k.json
+  Task: cwe
+  -> cwe: 100.00% (50 samples, 79.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/cwe_8k.json
+  Task: fwe
+  -> fwe: 100.00% (50 samples, 58.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/fwe_8k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 100.00% (50 samples, 36.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_hotpot_8k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 43.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_squad_8k.json
+
+============================================================
+[RULER] Context length: 16k (16384 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 25.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_1_16k.json
+  Task: niah_single_2
+  -> niah_single_2: 100.00% (50 samples, 25.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_2_16k.json
+  Task: niah_single_3
+  -> niah_single_3: 96.00% (50 samples, 67.0s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_3_16k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 92.00% (50 samples, 26.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_1_16k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 86.00% (50 samples, 31.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_2_16k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 90.00% (50 samples, 27.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_3_16k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 66.00% (50 samples, 38.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multivalue_16k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 90.00% (50 samples, 45.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multiquery_16k.json
+  Task: vt
+  -> vt: 88.00% (50 samples, 25.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/vt_16k.json
+  Task: cwe
+  -> cwe: 100.00% (50 samples, 99.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/cwe_16k.json
+  Task: fwe
+  -> fwe: 98.00% (50 samples, 89.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/fwe_16k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 100.00% (50 samples, 52.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_hotpot_16k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 55.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_squad_16k.json
+
+============================================================
+[RULER] Context length: 32k (32768 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 48.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_1_32k.json
+  Task: niah_single_2
+  -> niah_single_2: 100.00% (50 samples, 48.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_2_32k.json
+  Task: niah_single_3
+  -> niah_single_3: 98.00% (50 samples, 89.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_3_32k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 94.00% (50 samples, 48.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_1_32k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 90.00% (50 samples, 48.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_2_32k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 88.00% (50 samples, 49.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_3_32k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 48.00% (50 samples, 65.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multivalue_32k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 94.00% (50 samples, 68.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multiquery_32k.json
+  Task: vt
+  -> vt: 92.00% (50 samples, 48.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/vt_32k.json
+  Task: cwe
+  -> cwe: 100.00% (50 samples, 116.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/cwe_32k.json
+  Task: fwe
+  -> fwe: 100.00% (50 samples, 92.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/fwe_32k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 98.44% (50 samples, 69.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_hotpot_32k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 72.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_squad_32k.json
+
+============================================================
+[RULER] Context length: 64k (65536 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 100.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_1_64k.json
+  Task: niah_single_2
+  -> niah_single_2: 100.00% (50 samples, 100.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_2_64k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 154.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_3_64k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 100.00% (50 samples, 100.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_1_64k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 98.00% (50 samples, 100.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_2_64k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 94.00% (50 samples, 100.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_3_64k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 50.00% (50 samples, 123.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multivalue_64k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 80.00% (50 samples, 125.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multiquery_64k.json
+  Task: vt
+  -> vt: 86.00% (50 samples, 100.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/vt_64k.json
+  Task: cwe
+  -> cwe: 96.00% (50 samples, 151.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/cwe_64k.json
+  Task: fwe
+  -> fwe: 94.00% (50 samples, 136.0s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/fwe_64k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 100.00% (50 samples, 124.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_hotpot_64k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 125.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_squad_64k.json
+
+============================================================
+[RULER] Context length: 128k (131072 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 227.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_1_128k.json
+  Task: niah_single_2
+  -> niah_single_2: 100.00% (50 samples, 226.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_2_128k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 318.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_single_3_128k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 98.00% (50 samples, 226.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_1_128k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 94.00% (50 samples, 227.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_2_128k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 88.00% (50 samples, 226.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multikey_3_128k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 28.00% (50 samples, 260.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multivalue_128k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 58.00% (50 samples, 267.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/niah_multiquery_128k.json
+  Task: vt
+  -> vt: 80.00% (50 samples, 227.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/vt_128k.json
+  Task: cwe
+  -> cwe: 98.00% (50 samples, 312.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/cwe_128k.json
+  Task: fwe
+  -> fwe: 96.00% (50 samples, 286.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/fwe_128k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 96.89% (50 samples, 263.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_hotpot_128k.json
+  Task: qa_squad
+  -> qa_squad: 95.20% (50 samples, 267.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t15/qa_squad_128k.json
+[IO] Saved ./ruler_results_1/Row_Delta_t15/_summary.json
+
+
+============================================================
+*** STARTING EXPERIMENT: Row Delta (t=17) ***
+============================================================
+
+[RULER] Loading tokenizer: meta-llama/Meta-Llama-3.1-8B-Instruct
+[RULER] Loading model: meta-llama/Meta-Llama-3.1-8B-Instruct
+[RULER] Experiment: row_delta | Settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 17, 'row_similarity_metric': 'cos', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
+
+============================================================
+[RULER] Context length: 4k (4096 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 11.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_1_4k.json
+  Task: niah_single_2
+  -> niah_single_2: 92.00% (50 samples, 17.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_2_4k.json
+  Task: niah_single_3
+  -> niah_single_3: 96.00% (50 samples, 49.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_3_4k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 74.00% (50 samples, 21.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_1_4k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 84.00% (50 samples, 20.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_2_4k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 78.00% (50 samples, 20.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_3_4k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 48.00% (50 samples, 33.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multivalue_4k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 76.00% (50 samples, 33.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multiquery_4k.json
+  Task: vt
+  -> vt: 100.00% (50 samples, 9.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/vt_4k.json
+  Task: cwe
+  -> cwe: 98.00% (50 samples, 84.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/cwe_4k.json
+  Task: fwe
+  -> fwe: 88.00% (50 samples, 84.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/fwe_4k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 98.00% (50 samples, 32.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_hotpot_4k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 37.0s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_squad_4k.json
+
+============================================================
+[RULER] Context length: 8k (8192 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 15.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_1_8k.json
+  Task: niah_single_2
+  -> niah_single_2: 90.00% (50 samples, 18.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_2_8k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 58.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_3_8k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 86.00% (50 samples, 17.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_1_8k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 86.00% (50 samples, 17.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_2_8k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 76.00% (50 samples, 17.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_3_8k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 28.00% (50 samples, 37.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multivalue_8k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 26.00% (50 samples, 37.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multiquery_8k.json
+  Task: vt
+  -> vt: 70.00% (50 samples, 15.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/vt_8k.json
+  Task: cwe
+  -> cwe: 80.00% (50 samples, 89.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/cwe_8k.json
+  Task: fwe
+  -> fwe: 96.00% (50 samples, 90.0s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/fwe_8k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 96.11% (50 samples, 44.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_hotpot_8k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 41.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_squad_8k.json
+
+============================================================
+[RULER] Context length: 16k (16384 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 98.00% (50 samples, 26.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_1_16k.json
+  Task: niah_single_2
+  -> niah_single_2: 92.00% (50 samples, 28.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_2_16k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 74.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_3_16k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 72.00% (50 samples, 29.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_1_16k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 68.00% (50 samples, 30.0s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_2_16k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 76.00% (50 samples, 32.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_3_16k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 32.00% (50 samples, 52.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multivalue_16k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 40.00% (50 samples, 60.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multiquery_16k.json
+  Task: vt
+  -> vt: 60.00% (50 samples, 25.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/vt_16k.json
+  Task: cwe
+  -> cwe: 96.00% (50 samples, 100.6s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/cwe_16k.json
+  Task: fwe
+  -> fwe: 92.00% (50 samples, 100.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/fwe_16k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 96.44% (50 samples, 56.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_hotpot_16k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 52.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_squad_16k.json
+
+============================================================
+[RULER] Context length: 32k (32768 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 49.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_1_32k.json
+  Task: niah_single_2
+  -> niah_single_2: 96.00% (50 samples, 48.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_2_32k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 93.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_3_32k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 80.00% (50 samples, 50.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_1_32k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 78.00% (50 samples, 49.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_2_32k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 72.00% (50 samples, 49.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_3_32k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 34.00% (50 samples, 70.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multivalue_32k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 20.00% (50 samples, 77.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multiquery_32k.json
+  Task: vt
+  -> vt: 66.00% (50 samples, 49.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/vt_32k.json
+  Task: cwe
+  -> cwe: 96.00% (50 samples, 124.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/cwe_32k.json
+  Task: fwe
+  -> fwe: 98.00% (50 samples, 122.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/fwe_32k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 92.22% (50 samples, 71.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_hotpot_32k.json
+  Task: qa_squad
+  -> qa_squad: 100.00% (50 samples, 68.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_squad_32k.json
+
+============================================================
+[RULER] Context length: 64k (65536 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 99.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_1_64k.json
+  Task: niah_single_2
+  -> niah_single_2: 96.00% (50 samples, 100.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_2_64k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 155.0s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_3_64k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 84.00% (50 samples, 101.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_1_64k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 72.00% (50 samples, 100.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_2_64k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 68.00% (50 samples, 99.9s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_3_64k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 32.00% (50 samples, 115.2s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multivalue_64k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 10.00% (50 samples, 125.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multiquery_64k.json
+  Task: vt
+  -> vt: 36.00% (50 samples, 99.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/vt_64k.json
+  Task: cwe
+  -> cwe: 98.00% (50 samples, 184.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/cwe_64k.json
+  Task: fwe
+  -> fwe: 90.00% (50 samples, 170.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/fwe_64k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 100.00% (50 samples, 124.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_hotpot_64k.json
+  Task: qa_squad
+  -> qa_squad: 94.80% (50 samples, 121.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_squad_64k.json
+
+============================================================
+[RULER] Context length: 128k (131072 tokens)
+============================================================
+  Task: niah_single_1
+  -> niah_single_1: 100.00% (50 samples, 218.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_1_128k.json
+  Task: niah_single_2
+  -> niah_single_2: 98.00% (50 samples, 218.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_2_128k.json
+  Task: niah_single_3
+  -> niah_single_3: 100.00% (50 samples, 310.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_single_3_128k.json
+  Task: niah_multikey_1
+  -> niah_multikey_1: 86.00% (50 samples, 219.1s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_1_128k.json
+  Task: niah_multikey_2
+  -> niah_multikey_2: 74.00% (50 samples, 218.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_2_128k.json
+  Task: niah_multikey_3
+  -> niah_multikey_3: 58.00% (50 samples, 218.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multikey_3_128k.json
+  Task: niah_multivalue
+  -> niah_multivalue: 22.00% (50 samples, 247.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multivalue_128k.json
+  Task: niah_multiquery
+  -> niah_multiquery: 20.00% (50 samples, 265.5s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/niah_multiquery_128k.json
+  Task: vt
+  -> vt: 32.00% (50 samples, 217.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/vt_128k.json
+  Task: cwe
+  -> cwe: 98.00% (50 samples, 337.8s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/cwe_128k.json
+  Task: fwe
+  -> fwe: 100.00% (50 samples, 331.7s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/fwe_128k.json
+  Task: qa_hotpot
+  -> qa_hotpot: 96.89% (50 samples, 256.3s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_hotpot_128k.json
+  Task: qa_squad
+  -> qa_squad: 96.94% (50 samples, 256.4s)
+[IO] Saved ./ruler_results_1/Row_Delta_t17/qa_squad_128k.json
+[IO] Saved ./ruler_results_1/Row_Delta_t17/_summary.json
+
+================================================================================
+RULER Benchmark Results
+================================================================================
+Input Len         |     4k |     8k |    16k |    32k |    64k |   128k |   Avg.
+--------------------------------------------------------------------------------
+Full              |  99.54 |  98.62 |  97.69 |  98.46 |  97.73 |  93.85 |  97.65
+Row Delta (t=15)  |  93.08 |  93.54 |  92.77 |  92.50 |  92.15 |  87.08 |  91.85
+Row Delta (t=17)  |  87.08 |  79.55 |  78.65 |  79.40 |  75.45 |  75.53 |  79.27
+================================================================================
+
+[IO] Final table saved to: ./ruler_results_1/final_table.csv
+[IO] Final table image saved to: ./ruler_results_1/final_table.png

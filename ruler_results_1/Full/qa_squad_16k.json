@@ -1,0 +1,13 @@
+{
+    "task": "qa_squad",
+    "ctx_len": 16384,
+    "accuracy_pct": 100.0,
+    "num_samples": 50,
+    "experiment_type": "baseline",
+    "parameters": {
+        "delta_pf_key_on": 0,
+        "delta_mlp": "Regular",
+        "flash": true
+    },
+    "timestamp": "2026-05-10T15:39:10.858716"
+}
