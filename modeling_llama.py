@@ -645,6 +645,82 @@ class LlamaAttention(nn.Module):
                 end_evt_flash.record()
                 glob_set.queue_event_pair('time_triton_flash_attention', start_evt_flash, end_evt_flash)
 
+            # decode_only_delta path: regular prefill attention, but pack K/V into HybridCompressedCache
+            # so that the fused hybrid decode kernel can use it during generation.
+            if getattr(globVR, 'delta_decode', False) and past_key_value is not None and hasattr(past_key_value, 'initialize_from_prefill'):
+                _fixed_chunk = getattr(globVR, 'chunk_size', 0)
+                if _fixed_chunk > 0:
+                    _chunk_size = min(_fixed_chunk, q_len)
+                    _num_chunks = max(1, (q_len + _chunk_size - 1) // _chunk_size)
+                else:
+                    _divide_to = getattr(globVR, 'divide_to', 0)
+                    _actual_divide_to = 1 if _divide_to == 0 else _divide_to
+                    _chunk_size = (q_len + _actual_divide_to - 1) // _actual_divide_to
+                    _num_chunks = _actual_divide_to
+
+                _BLOCK_D_EVAL = triton.next_power_of_2(self.head_dim)
+                _keep_mask = torch.zeros((bsz, self.config.num_key_value_heads, q_len), dtype=torch.int32, device=key_states.device)
+                _chunk_counts = torch.zeros((bsz, self.config.num_key_value_heads, _num_chunks), dtype=torch.int32, device=key_states.device)
+                _grid_eval = (bsz * self.config.num_key_value_heads, _num_chunks)
+                _similarity_metric = getattr(globVR, 'row_similarity_metric', 'euclidean')
+                _use_cosine = (_similarity_metric == 'cosine')
+                _raw_threshold = getattr(globVR, 'row_delta_threshold', 0.0)
+                _threshold_val = _raw_threshold if _use_cosine else _raw_threshold ** 2
+
+                chunked_eval_kernel[_grid_eval](
+                    key_states, _keep_mask, _chunk_counts,
+                    _threshold_val,
+                    key_states.stride(0), key_states.stride(1), key_states.stride(2), key_states.stride(3),
+                    _keep_mask.stride(0), _keep_mask.stride(1), _keep_mask.stride(2),
+                    _chunk_counts.stride(0), _chunk_counts.stride(1), _chunk_counts.stride(2),
+                    q_len, self.head_dim, _chunk_size, num_heads=self.config.num_key_value_heads,
+                    BLOCK_D=_BLOCK_D_EVAL,
+                    USE_COSINE=_use_cosine,
+                )
+
+                _index_map = (torch.cumsum(_keep_mask, dim=-1) - 1).to(torch.int32)
+                _active_counts = _chunk_counts.sum(dim=-1)
+                _max_packed_len = _active_counts.max().item()
+
+                _k_packed = torch.zeros((bsz, self.config.num_key_value_heads, _max_packed_len, self.head_dim), device=key_states.device, dtype=key_states.dtype)
+                _v_packed = torch.zeros_like(_k_packed)
+                _packed_timestamps = torch.zeros((bsz, self.config.num_key_value_heads, _max_packed_len), device=key_states.device, dtype=torch.int32)
+
+                _BLOCK_S = 64
+                _BLOCK_D_SCATTER = triton.next_power_of_2(self.head_dim)
+                _grid_scatter = (bsz * self.config.num_key_value_heads, triton.cdiv(q_len, _BLOCK_S))
+
+                parallel_scatter_pack_kv_kernel[_grid_scatter](
+                    key_states, value_states,
+                    _k_packed, _v_packed, _packed_timestamps,
+                    _keep_mask, _index_map,
+                    key_states.stride(0), key_states.stride(1), key_states.stride(2), key_states.stride(3),
+                    value_states.stride(0), value_states.stride(1), value_states.stride(2), value_states.stride(3),
+                    _k_packed.stride(0), _k_packed.stride(1), _k_packed.stride(2), _k_packed.stride(3),
+                    _v_packed.stride(0), _v_packed.stride(1), _v_packed.stride(2), _v_packed.stride(3),
+                    _packed_timestamps.stride(0), _packed_timestamps.stride(1), _packed_timestamps.stride(2),
+                    _keep_mask.stride(0), _keep_mask.stride(1), _keep_mask.stride(2),
+                    _index_map.stride(0), _index_map.stride(1), _index_map.stride(2),
+                    q_len, self.head_dim, self.config.num_key_value_heads,
+                    BLOCK_S=_BLOCK_S, BLOCK_D=_BLOCK_D_SCATTER
+                )
+
+                _packed_counts = torch.zeros((bsz, self.config.num_key_value_heads, _max_packed_len), device=key_states.device, dtype=torch.int32)
+                _ones = torch.ones_like(_index_map, dtype=torch.int32)
+                _packed_counts.scatter_add_(2, _index_map.long(), _ones)
+
+                _tail_len = min(q_len, past_key_value.exact_window_size)
+                past_key_value.initialize_from_prefill(
+                    layer_idx=self.layer_idx,
+                    k_packed=_k_packed,
+                    v_packed=_v_packed,
+                    counts=_packed_counts,
+                    timestamps=_packed_timestamps,
+                    k_exact=key_states[:, :, -_tail_len:, :],
+                    v_exact=value_states[:, :, -_tail_len:, :],
+                    original_q_len=q_len
+                )
+
 
         # =========================================================================
         # --- PATH 3: STANDARD DECODING / HYBRID DUAL-MATMUL ---

@@ -144,9 +144,34 @@ EXPERIMENT_DEFINITIONS = {
         "injector": lambda args: {
             "delta_decode": False,              # Turns on decoding path in forward()
             "delta_pf_key_on": False,              # Assuming prefill delta is off for isolated testing
-            "flash": True,         
+            "flash": True,
         }
-    }
+    },
+
+    # Regular prefill attention + delta-compressed KV cache for decoding only
+    "decode_only_delta": {
+        "grid": {
+            "window_size": [100],
+            "row_thresh": [15],
+            "row_sim": ["euclidean"],
+        },
+        "arg_builder": lambda p: [
+            "--window_size", str(p["window_size"]),
+            "--row_thresh", str(p["row_thresh"]),
+            "--row_sim", str(p["row_sim"]),
+        ],
+        "injector": lambda args: {
+            "delta_decode": True,
+            "window_size": args.window_size,
+            "row_delta_threshold": args.row_thresh,
+            "row_similarity_metric": args.row_sim,
+            "delta_pf_key_on": 0,
+            "flash": True,
+            "delta_type": "row",
+            "divide_to": 0,
+            "chunk_size": 512,
+        }
+    },
 }
 
 # ==========================================
@@ -355,7 +380,7 @@ def run_worker_process(args, experiment_dir):
     
     model_id = "microsoft/bitnet-b1.58-2B-4T" if args.bitnet else "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
-    max_len = 8000 if (args.long_bench or args.all_bench or args.experiment_type == "delta_decoding") else 4096
+    max_len = 8000 if (args.long_bench or args.all_bench or args.experiment_type in ("delta_decoding", "decode_only_delta")) else 4096
 
     print("Experiment Globals:", glob_settings)
     model_args = f"pretrained={model_id},trust_remote_code=True,dtype=bfloat16,attn_implementation=eager"
@@ -389,7 +414,7 @@ def run_worker_process(args, experiment_dir):
     ]
 
     # Force gov_report for delta decoding unless explicitly overridden
-    if args.experiment_type == "delta_decoding" or args.experiment_type == "baseline_decoding":
+    if args.experiment_type in ("delta_decoding", "baseline_decoding", "decode_only_delta"):
         tasks = ["longbench_gov_report", "longbench_multinews"]
         print(f"[Worker] 'decoding' triggered. Forcing task: {tasks}", flush=True)
     elif args.all_bench:
