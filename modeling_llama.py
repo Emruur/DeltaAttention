@@ -464,15 +464,11 @@ class LlamaAttention(nn.Module):
             # Print at specific intervals (e.g., every 10 or 100 steps)
             if total_len > 0 and total_len % log_interval == 0:
                 exact_len = min(past_key_value.exact_seq_lens[0], past_key_value.exact_window_size)
-                packed_len = past_key_value.max_packed_len[0]
-                
-                # Math: (Tokens) * (Layers) * (Heads) * (Head_Dim) * (2 bytes for FP16/BF16) * (2 for K and V)
-                bytes_per_token = self.config.num_hidden_layers * self.config.num_key_value_heads * self.head_dim * 2 * 2
-                
-                active_mb = ((exact_len + packed_len) * bytes_per_token) / (1024**2)
-                uncompressed_mb = (total_len * bytes_per_token) / (1024**2)
-                savings = (1 - (active_mb / uncompressed_mb)) * 100 if uncompressed_mb > 0 else 0
-                
+                # Average packed tokens per head (max_packed_len is the worst-case head and understates compression)
+                avg_packed_len = past_key_value.packed_lengths[0].float().mean().item()
+
+                savings = (1 - (exact_len + avg_packed_len) / total_len) * 100 if total_len > 0 else 0
+
                 if not hasattr(globVR, 'kv_compression_samples'):
                     globVR.kv_compression_samples = []
                 globVR.kv_compression_samples.append(savings)
@@ -560,9 +556,11 @@ class LlamaAttention(nn.Module):
             # --- METADATA & SPARSITY TRACKING ---
             key_delta_all = k_packed
             glob_set.store_delta(getattr(globVR, 'delta_key', ''), self.layer_idx, key_delta_all, getattr(globVR, 'collect_delta_pf_key', 0))
-            blk_size = round(q_len * getattr(globVR, 'scale', 0.0))
-            new_scale = blk_size / q_len
-            glob_set.compute_sparsity_scale(key_delta_all, new_scale, keep_mask=keep_mask.to(torch.bool), active_counts=active_counts)
+            # Sparsity = fraction of tokens dropped, computed purely from keep_mask.
+            kept_tokens  = active_counts.sum().item()
+            total_tokens = keep_mask.shape[0] * keep_mask.shape[1] * keep_mask.shape[2]
+            layer_spars  = 1.0 - kept_tokens / total_tokens if total_tokens > 0 else 0.0
+            globVR.spars = layer_spars if globVR.spars == 0.0 else (globVR.spars + layer_spars) / 2
 
             # --- 4. GQA EXPANSION ---
             key_states_expanded = repeat_kv(key_states, self.num_key_value_groups)
