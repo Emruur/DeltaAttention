@@ -38,7 +38,16 @@ import yaml
 from pathlib import Path
 from tqdm import tqdm
 from collections import defaultdict
-from nemo.collections.asr.parts.utils.manifest_utils import read_manifest, write_manifest
+def read_manifest(path):
+    import json
+    with open(path, 'r', encoding='utf-8') as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+def write_manifest(path, data):
+    import json
+    with open(path, 'w', encoding='utf-8') as f:
+        for item in data:
+            f.write(json.dumps(item) + '\n')
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--data_dir", type=str, required=True, help='path to the prediction jsonl files')

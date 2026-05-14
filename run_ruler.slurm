@@ -18,6 +18,8 @@ echo "CUDA version: $(nvcc --version | grep release)"
 
 source /home/qchen/DeltaLLM/venv_delta/bin/activate
 
+pip install -q wonderwords tenacity
+
 export HF_HOME="/gpfs/home2/qchen/hf_cache"
 export HUGGINGFACE_HUB_CACHE=$HF_HOME
 export TRANSFORMERS_CACHE=$HF_HOME
