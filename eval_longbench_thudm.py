@@ -144,32 +144,15 @@ def qa_f1_score(prediction, ground_truth, **kwargs):
     gt_tokens = normalize_answer(ground_truth).split()
     return f1_score(pred_tokens, gt_tokens)
 
-def lcs_length(x, y):
-    m, n = len(x), len(y)
-    dp = [[0] * (n + 1) for _ in range(2)]
-    for i in range(1, m + 1):
-        for j in range(1, n + 1):
-            if x[i - 1] == y[j - 1]:
-                dp[i % 2][j] = dp[(i - 1) % 2][j - 1] + 1
-            else:
-                dp[i % 2][j] = max(dp[(i - 1) % 2][j], dp[i % 2][j - 1])
-    return dp[m % 2][n]
-
-def _rouge_tokenize(text):
-    text = re.sub(r'[^a-z0-9\s]', ' ', text.lower())
-    return text.split()
+from rouge import Rouge as RougeScorer
 
 def rouge_l_score(prediction, ground_truth, **kwargs):
-    pred_tokens = _rouge_tokenize(prediction)
-    gt_tokens = _rouge_tokenize(ground_truth)
-    if not pred_tokens or not gt_tokens:
+    rouge = RougeScorer()
+    try:
+        scores = rouge.get_scores([prediction], [ground_truth], avg=True)
+    except:
         return 0.0
-    lcs = lcs_length(pred_tokens, gt_tokens)
-    precision = lcs / len(pred_tokens)
-    recall = lcs / len(gt_tokens)
-    if precision + recall == 0:
-        return 0.0
-    return (2 * precision * recall) / (precision + recall)
+    return scores["rouge-l"]["f"]
 
 def classification_score(prediction, ground_truth, **kwargs):
     all_classes = kwargs.get("all_classes", [])
