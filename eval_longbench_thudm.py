@@ -96,13 +96,11 @@ EXPERIMENT_DEFINITIONS = {
             "row_thresh": [13, 10],
             "window_size": [100],
             "row_sim": ["euclidean"],
-            "flash": [True, False],
         },
         "arg_builder": lambda p: [
             "--row_thresh",  str(p["row_thresh"]),
             "--window_size", str(p["window_size"]),
             "--row_sim",     str(p["row_sim"]),
-            "--flash",       str(p["flash"]),
         ],
         "injector": lambda args: {
             "delta_decode": True,
@@ -110,7 +108,7 @@ EXPERIMENT_DEFINITIONS = {
             "row_delta_threshold": args.row_thresh,
             "row_similarity_metric": args.row_sim,
             "delta_pf_key_on": 0,
-            "flash": args.flash,
+            "flash": False,
             "delta_type": "row",
             "divide_to": 0,
             "chunk_size": 512,
