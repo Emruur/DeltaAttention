@@ -670,7 +670,7 @@ def init_qa_pools():
 
     if not _SQUAD_SAMPLES:
         print("[RULER] Loading SQuAD...", flush=True)
-        ds = load_dataset("rajpurkar/squad", split="validation",
+        ds = load_dataset("squad", split="validation",
                           trust_remote_code=True)
         for item in ds.shuffle(seed=42).select(range(min(_QA_POOL_SIZE, len(ds)))):
             answers = item["answers"]["text"]
