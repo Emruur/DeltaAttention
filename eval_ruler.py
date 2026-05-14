@@ -164,32 +164,308 @@ def print_multi_table(all_results: dict[str, dict[int, float]], out_dir: str):
 
 _HAYSTACK_TOKENS: list[int] = []  # populated once in run_ruler()
 
-_PG_ESSAYS_URL = (
-    "https://raw.githubusercontent.com/hsiehjackson/RULER/main/scripts/data/json/PaulGrahamEssays.json"
-)
 _PG_ESSAYS_CACHE = Path("ruler_cache/PaulGrahamEssays.json")
+
+# Exact URL list from hsiehjackson/RULER scripts/data/synthetic/json/PaulGrahamEssays_URLs.txt
+_PG_ESSAYS_SOURCE_URLS = [
+    "http://www.paulgraham.com/13sentences.html",
+    "http://www.paulgraham.com/5founders.html",
+    "http://www.paulgraham.com/6631327.html",
+    "http://www.paulgraham.com/95.html",
+    "http://www.paulgraham.com/ace.html",
+    "http://www.paulgraham.com/airbnb.html",
+    "http://www.paulgraham.com/airbnbs.html",
+    "http://www.paulgraham.com/alien.html",
+    "http://www.paulgraham.com/altair.html",
+    "http://www.paulgraham.com/ambitious.html",
+    "http://www.paulgraham.com/america.html",
+    "http://www.paulgraham.com/angelinvesting.html",
+    "http://www.paulgraham.com/artistsship.html",
+    "http://www.paulgraham.com/badeconomy.html",
+    "http://www.paulgraham.com/better.html",
+    "http://www.paulgraham.com/bronze.html",
+    "http://www.paulgraham.com/bubble.html",
+    "http://www.paulgraham.com/charisma.html",
+    "http://www.paulgraham.com/cities.html",
+    "http://www.paulgraham.com/college.html",
+    "http://www.paulgraham.com/colleges.html",
+    "http://www.paulgraham.com/conformism.html",
+    "http://www.paulgraham.com/control.html",
+    "http://www.paulgraham.com/convergence.html",
+    "http://www.paulgraham.com/convince.html",
+    "http://www.paulgraham.com/cred.html",
+    "http://www.paulgraham.com/credentials.html",
+    "http://www.paulgraham.com/determination.html",
+    "http://www.paulgraham.com/die.html",
+    "http://www.paulgraham.com/disagree.html",
+    "http://www.paulgraham.com/disc.html",
+    "http://www.paulgraham.com/discover.html",
+    "http://www.paulgraham.com/distraction.html",
+    "http://www.paulgraham.com/divergence.html",
+    "http://www.paulgraham.com/donate.html",
+    "http://www.paulgraham.com/ds.html",
+    "http://www.paulgraham.com/early.html",
+    "http://www.paulgraham.com/earnest.html",
+    "http://www.paulgraham.com/equity.html",
+    "http://www.paulgraham.com/essay.html",
+    "http://www.paulgraham.com/ffb.html",
+    "http://www.paulgraham.com/fh.html",
+    "http://www.paulgraham.com/fix.html",
+    "http://www.paulgraham.com/fn.html",
+    "http://www.paulgraham.com/foundersatwork.html",
+    "http://www.paulgraham.com/fp.html",
+    "http://www.paulgraham.com/fr.html",
+    "http://www.paulgraham.com/fundraising.html",
+    "http://www.paulgraham.com/future.html",
+    "http://www.paulgraham.com/genius.html",
+    "http://www.paulgraham.com/getideas.html",
+    "http://www.paulgraham.com/good.html",
+    "http://www.paulgraham.com/goodart.html",
+    "http://www.paulgraham.com/googles.html",
+    "http://www.paulgraham.com/greatwork.html",
+    "http://www.paulgraham.com/growth.html",
+    "http://www.paulgraham.com/guidetoinvestors.html",
+    "http://www.paulgraham.com/hackernews.html",
+    "http://www.paulgraham.com/head.html",
+    "http://www.paulgraham.com/herd.html",
+    "http://www.paulgraham.com/heresy.html",
+    "http://www.paulgraham.com/heroes.html",
+    "http://www.paulgraham.com/highres.html",
+    "http://www.paulgraham.com/hiresfund.html",
+    "http://www.paulgraham.com/hiring.html",
+    "http://www.paulgraham.com/hp.html",
+    "http://www.paulgraham.com/hs.html",
+    "http://www.paulgraham.com/hundred.html",
+    "http://www.paulgraham.com/hw.html",
+    "http://www.paulgraham.com/hwh.html",
+    "http://www.paulgraham.com/icad.html",
+    "http://www.paulgraham.com/ideas.html",
+    "http://www.paulgraham.com/identity.html",
+    "http://www.paulgraham.com/ineq.html",
+    "http://www.paulgraham.com/inequality.html",
+    "http://www.paulgraham.com/investors.html",
+    "http://www.paulgraham.com/invtrend.html",
+    "http://www.paulgraham.com/javacover.html",
+    "http://www.paulgraham.com/jessica.html",
+    "http://www.paulgraham.com/judgement.html",
+    "http://www.paulgraham.com/kate.html",
+    "http://www.paulgraham.com/kids.html",
+    "http://www.paulgraham.com/ladder.html",
+    "http://www.paulgraham.com/lesson.html",
+    "http://www.paulgraham.com/lies.html",
+    "http://www.paulgraham.com/lwba.html",
+    "http://www.paulgraham.com/mac.html",
+    "http://www.paulgraham.com/makersschedule.html",
+    "http://www.paulgraham.com/marginal.html",
+    "http://www.paulgraham.com/maybe.html",
+    "http://www.paulgraham.com/mean.html",
+    "http://www.paulgraham.com/microsoft.html",
+    "http://www.paulgraham.com/mit.html",
+    "http://www.paulgraham.com/name.html",
+    "http://www.paulgraham.com/nerds.html",
+    "http://www.paulgraham.com/newthings.html",
+    "http://www.paulgraham.com/noob.html",
+    "http://www.paulgraham.com/noop.html",
+    "http://www.paulgraham.com/notnot.html",
+    "http://www.paulgraham.com/nov.html",
+    "http://www.paulgraham.com/nthings.html",
+    "http://www.paulgraham.com/opensource.html",
+    "http://www.paulgraham.com/organic.html",
+    "http://www.paulgraham.com/orth.html",
+    "http://www.paulgraham.com/own.html",
+    "http://www.paulgraham.com/patentpledge.html",
+    "http://www.paulgraham.com/pgh.html",
+    "http://www.paulgraham.com/pinch.html",
+    "http://www.paulgraham.com/polls.html",
+    "http://www.paulgraham.com/power.html",
+    "http://www.paulgraham.com/prcmc.html",
+    "http://www.paulgraham.com/procrastination.html",
+    "http://www.paulgraham.com/progbot.html",
+    "http://www.paulgraham.com/prop62.html",
+    "http://www.paulgraham.com/property.html",
+    "http://www.paulgraham.com/publishing.html",
+    "http://www.paulgraham.com/pypar.html",
+    "http://www.paulgraham.com/ramenprofitable.html",
+    "http://www.paulgraham.com/randomness.html",
+    "http://www.paulgraham.com/re.html",
+    "http://www.paulgraham.com/read.html",
+    "http://www.paulgraham.com/real.html",
+    "http://www.paulgraham.com/really.html",
+    "http://www.paulgraham.com/relres.html",
+    "http://www.paulgraham.com/revolution.html",
+    "http://www.paulgraham.com/richnow.html",
+    "http://www.paulgraham.com/road.html",
+    "http://www.paulgraham.com/ronco.html",
+    "http://www.paulgraham.com/safe.html",
+    "http://www.paulgraham.com/say.html",
+    "http://www.paulgraham.com/schlep.html",
+    "http://www.paulgraham.com/seesv.html",
+    "http://www.paulgraham.com/segway.html",
+    "http://www.paulgraham.com/selfindulgence.html",
+    "http://www.paulgraham.com/sfp.html",
+    "http://www.paulgraham.com/simply.html",
+    "http://www.paulgraham.com/smart.html",
+    "http://www.paulgraham.com/softwarepatents.html",
+    "http://www.paulgraham.com/spam.html",
+    "http://www.paulgraham.com/speak.html",
+    "http://www.paulgraham.com/start.html",
+    "http://www.paulgraham.com/startupfunding.html",
+    "http://www.paulgraham.com/startuphubs.html",
+    "http://www.paulgraham.com/startupideas.html",
+    "http://www.paulgraham.com/startupmistakes.html",
+    "http://www.paulgraham.com/stuff.html",
+    "http://www.paulgraham.com/superlinear.html",
+    "http://www.paulgraham.com/swan.html",
+    "http://www.paulgraham.com/tablets.html",
+    "http://www.paulgraham.com/talk.html",
+    "http://www.paulgraham.com/taste.html",
+    "http://www.paulgraham.com/think.html",
+    "http://www.paulgraham.com/top.html",
+    "http://www.paulgraham.com/trolls.html",
+    "http://www.paulgraham.com/twitter.html",
+    "http://www.paulgraham.com/usa.html",
+    "http://www.paulgraham.com/users.html",
+    "http://www.paulgraham.com/venturecapital.html",
+    "http://www.paulgraham.com/wealth.html",
+    "http://www.paulgraham.com/webstartups.html",
+    "http://www.paulgraham.com/whyyc.html",
+    "http://www.paulgraham.com/word.html",
+    "http://www.paulgraham.com/words.html",
+    "http://www.paulgraham.com/work.html",
+    "http://www.paulgraham.com/writing44.html",
+    "http://www.paulgraham.com/wtax.html",
+    "http://www.paulgraham.com/yahoo.html",
+    "http://www.paulgraham.com/ycombinator.html",
+    "http://www.paulgraham.com/ycstart.html",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/addiction.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/aord.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/apple.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/avg.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/before.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/bias.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/boss.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/copy.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/corpdev.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/desres.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/diff.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/ecw.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/founders.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/foundervisa.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/gap.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/gba.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/gh.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/goodtaste.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/hubs.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/iflisp.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/island.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/know.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/langdes.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/laundry.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/love.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/mod.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/newideas.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/nft.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/philosophy.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/popular.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/pow.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/rootsoflisp.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/rss.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/siliconvalley.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/startuplessons.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/submarine.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/sun.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/superangels.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/todo.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/unions.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/useful.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/vb.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/vcsqueeze.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/vw.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/want.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/web20.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/weird.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/wisdom.txt",
+    "https://github.com/gkamradt/LLMTest_NeedleInAHaystack/raw/main/needlehaystack/PaulGrahamEssays/worked.txt",
+]
+
+
+def _pg_html_to_text(content: bytes) -> str:
+    """Extract essay text from a paulgraham.com HTML page.
+
+    Mirrors the RULER download script: find the <font> tag and pull its text.
+    Tries bs4 first; falls back to stdlib html.parser.
+    """
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content.decode("unicode_escape", errors="replace"), "html.parser")
+        tag = soup.find("font")
+        return tag.get_text(separator=" ") if tag else ""
+    except ImportError:
+        pass
+    # stdlib fallback
+    from html.parser import HTMLParser
+
+    class _FontExtractor(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self._depth = 0
+            self._parts = []
+        def handle_starttag(self, tag, attrs):
+            if tag == "font":
+                self._depth += 1
+        def handle_endtag(self, tag):
+            if tag == "font" and self._depth:
+                self._depth -= 1
+        def handle_data(self, data):
+            if self._depth:
+                self._parts.append(data)
+        def get_text(self):
+            return "".join(self._parts)
+
+    ex = _FontExtractor()
+    ex.feed(content.decode("unicode_escape", errors="replace"))
+    return ex.get_text()
 
 
 def _load_paul_graham_essays() -> str:
-    """Download (and cache) the official RULER Paul Graham essay corpus."""
+    """Download (and cache) the official RULER Paul Graham essay corpus.
+
+    Replicates the RULER download_paulgraham_essay.py script exactly:
+    downloads from paulgraham.com (HTML) and gkamradt/LLMTest_NeedleInAHaystack (plain text),
+    then caches the result as ruler_cache/PaulGrahamEssays.json.
+    """
     if _PG_ESSAYS_CACHE.exists():
         with open(_PG_ESSAYS_CACHE) as f:
             data = json.load(f)
-    else:
-        print(f"[RULER] Downloading Paul Graham essays from {_PG_ESSAYS_URL}...", flush=True)
-        _PG_ESSAYS_CACHE.parent.mkdir(parents=True, exist_ok=True)
-        with urllib.request.urlopen(_PG_ESSAYS_URL, timeout=60) as r:
-            data = json.loads(r.read().decode())
-        with open(_PG_ESSAYS_CACHE, "w") as f:
-            json.dump(data, f)
-        print("[RULER] Essays cached.", flush=True)
+        if isinstance(data, list):
+            return "\n\n".join(d["text"] if isinstance(d, dict) else d for d in data)
+        return "\n\n".join(data.values())
 
-    # The JSON is a list of {"title":..., "text":...} objects
-    if isinstance(data, list):
-        texts = [d["text"] if isinstance(d, dict) else d for d in data]
-    else:
-        texts = list(data.values())
-    return "\n\n".join(texts)
+    print("[RULER] Building Paul Graham essay corpus from original RULER sources...", flush=True)
+    _PG_ESSAYS_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    parts: list[str] = []
+    ok = fail = 0
+    for url in _PG_ESSAYS_SOURCE_URLS:
+        try:
+            with urllib.request.urlopen(url, timeout=30) as r:
+                raw = r.read()
+            if url.endswith(".html"):
+                text = _pg_html_to_text(raw)
+            else:
+                text = raw.decode("utf-8", errors="replace")
+            if text.strip():
+                parts.append(text)
+            ok += 1
+        except Exception as e:
+            fail += 1
+            print(f"[RULER]   skip {url.split('/')[-1]}: {e}", flush=True)
+
+    print(f"[RULER] Downloaded {ok} essays ({fail} failed). Caching...", flush=True)
+    combined = "\n\n".join(parts)
+    with open(_PG_ESSAYS_CACHE, "w") as f:
+        json.dump({"text": combined}, f)
+    print("[RULER] Essays cached.", flush=True)
+    return combined
 
 
 def init_haystack(tokenizer):
