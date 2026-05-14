@@ -621,27 +621,37 @@ def make_vt(ctx_len, tokenizer, chain_len=4):
 
     return {"prompt": tokenizer.decode(filler) + tokenizer.decode(q_tok), "answer": names[-1]}
 
-def make_frequency_task(ctx_len, tokenizer, mode="cwe"):
-    target = random.choice(["alpha", "bravo", "delta", "echo", "foxtrot"])
-    decoys = random.sample(["gamma", "hotel", "india", "juliet", "kilo"], 4)
-    word_list = [target] * 10 + [d for d in decoys for _ in range(2)]
-    random.shuffle(word_list)
-    passage = " ".join(word_list)
+_FREQ_WORD_POOL = ["alpha", "bravo", "delta", "echo", "foxtrot",
+                   "gamma", "hotel", "india", "juliet", "kilo"]
 
-    q_label = "most frequent" if mode == "cwe" else "single most repeated"
+def make_frequency_task(ctx_len, tokenizer, mode="cwe"):
+    target = random.choice(_FREQ_WORD_POOL[:5])
+    decoys = random.sample([w for w in _FREQ_WORD_POOL if w != target], 4)
+
+    # target appears 10x, each decoy appears 2x — scattered throughout the full context
+    target_count = 10
+    decoy_count = 2
+    words = [target] * target_count + [d for d in decoys for _ in range(decoy_count)]
+    random.shuffle(words)
+
+    word_set = ", ".join(sorted(set(_FREQ_WORD_POOL)))
     q_tok = tokenizer.encode(
-        f"\n\nQuestion: Looking ONLY at the words inside the [PASSAGE] tags, "
-        f"which word appears {q_label}? Ignore all words outside the tags.\nAnswer:", 
+        f"\n\nQuestion: Among the words [{word_set}], which one appears most frequently "
+        f"in the document above? Answer with the single word only.\nAnswer:",
         add_special_tokens=False
     )
-    
-    p_tok = tokenizer.encode(f" [PASSAGE] {passage} [/PASSAGE] ", add_special_tokens=False)
-    filler = make_filler_tokens(max(10, ctx_len - len(q_tok) - len(p_tok) - 50), tokenizer)
-    
-    idx = int(len(filler) * random.uniform(0.1, 0.9)) 
-    filler = filler[:idx] + p_tok + filler[idx:]
-    
-    return {"prompt": tokenizer.decode(filler) + tokenizer.decode(q_tok), "answer": target}
+
+    # Build filler and scatter all word tokens throughout it
+    filler = make_filler_tokens(max(100, ctx_len - len(q_tok) - len(words) * 4 - 50), tokenizer)
+    positions = sorted(random.sample(range(len(filler)), min(len(words), len(filler))))
+    for pos, word in zip(reversed(positions), reversed(words)):
+        word_tok = tokenizer.encode(f" {word} ", add_special_tokens=False)
+        filler = filler[:pos] + word_tok + filler[pos:]
+
+    return {
+        "prompt": tokens_to_text(filler, tokenizer) + tokens_to_text(q_tok, tokenizer),
+        "answer": target,
+    }
 
 # ==========================================
 # QA POOLS  (real HotpotQA + SQuAD — official RULER QA sources)
@@ -661,9 +671,9 @@ def init_qa_pools():
         ds = load_dataset("hotpot_qa", "distractor", split="validation",
                           trust_remote_code=True)
         for item in ds.shuffle(seed=42).select(range(min(_QA_POOL_SIZE, len(ds)))):
-            # Use the first supporting-fact sentence as the passage
-            sents = item["context"]["sentences"]
-            passage = sents[0][0] if sents and sents[0] else ""
+            # Concatenate ALL sentences from ALL supporting documents
+            all_sents = [s for sent_list in item["context"]["sentences"] for s in sent_list]
+            passage = " ".join(all_sents)
             if passage and item["question"] and item["answer"]:
                 _HOTPOT_SAMPLES.append((passage, item["question"], item["answer"]))
         print(f"[RULER] HotpotQA pool: {len(_HOTPOT_SAMPLES)} samples", flush=True)
