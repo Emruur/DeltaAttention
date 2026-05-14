@@ -88,7 +88,7 @@ EXPERIMENT_DEFINITIONS = {
             "delta_decode": False,
             "delta_pf_key_on": 0,
             "delta_mlp": "Regular",
-            "flash": True,
+            "flash": False,
         }
     },
     "decode_only_delta": {
@@ -155,9 +155,13 @@ def lcs_length(x, y):
                 dp[i % 2][j] = max(dp[(i - 1) % 2][j], dp[i % 2][j - 1])
     return dp[m % 2][n]
 
+def _rouge_tokenize(text):
+    text = re.sub(r'[^a-z0-9\s]', ' ', text.lower())
+    return text.split()
+
 def rouge_l_score(prediction, ground_truth, **kwargs):
-    pred_tokens = prediction.lower().split()
-    gt_tokens = ground_truth.lower().split()
+    pred_tokens = _rouge_tokenize(prediction)
+    gt_tokens = _rouge_tokenize(ground_truth)
     if not pred_tokens or not gt_tokens:
         return 0.0
     lcs = lcs_length(pred_tokens, gt_tokens)
@@ -342,6 +346,7 @@ def run_worker_process(args, experiment_dir):
         MODEL_ID,
         torch_dtype=torch.bfloat16,
         trust_remote_code=True,
+        attn_implementation="sdpa",
     ).to("cuda").eval()
 
     # Inject experiment globals
