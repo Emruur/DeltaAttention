@@ -94,7 +94,7 @@ parser.add_argument("--batch_size", type=int, default=1)
 
 args = parser.parse_args()
 args.stop_words = list(filter(None, args.stop_words.split(',')))
-if args.server_type == 'hf' or args.server_type == 'gemini':
+if args.server_type in ('hf', 'gemini', 'delta'):
     args.threads = 1
 
 
