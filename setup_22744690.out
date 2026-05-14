@@ -1,0 +1,85 @@
+Thu May 14 10:57:29 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.58.03              Driver Version: 595.58.03      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100                    On  |   00000000:C6:00.0 Off |                    0 |
+| N/A   32C    P0             66W /  700W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+CUDA version: Cuda compilation tools, release 12.1, V12.1.105
+[Master] Experiment:  decode_only_delta
+[Master] Grid params: ['row_thresh', 'window_size', 'row_sim']
+[Master] Combos:      2
+[Master] Output:      experiment_decode_only_delta_2
+[Master] Tasks:       ['longbench_gov_report', 'longbench_multi_news', 'longbench_narrativeqa', 'longbench_qasper', 'longbench_multifieldqa_en', 'longbench_trec', 'longbench_2wikimqa', 'longbench_triviaqa', 'longbench_passage_retrieval_en']
+
+=== Step 1/2: {'row_thresh': 13, 'window_size': 100, 'row_sim': 'euclidean'} ===
+[Worker] Experiment settings: {'delta_decode': True, 'window_size': 100, 'row_delta_threshold': 13.0, 'row_similarity_metric': 'euclidean', 'delta_pf_key_on': 0, 'flash': True, 'delta_type': 'row', 'divide_to': 0, 'chunk_size': 512}
+[Worker] Loading model: meta-llama/Llama-2-7b-chat-hf...
+[Worker] Applying decode_only_delta settings...
+[Worker] Patching model.generate() for HybridCompressedCache...
+[Config] Created new directory: experiments/longbench/experiment_decode_only_delta_2/config_1
+--- Running Task: longbench_gov_report ---
+    - Task 'longbench_gov_report' completed in 2626.18s.
+Task: longbench_gov_report | Acc: 0.2031 | Time: 2626.18s
+{
+    "task_name": "longbench_gov_report",
+    "timestamp": "2026-05-14T11:43:12.839316",
+    "shot": 0,
+    "sparsity": 0.0,
+    "mlp_spars": 0.0,
+    "avg_kv_compression_pct": 83.09222990730379,
+    "benchmark_stats": {
+        "num_passages": 200,
+        "seq_len_avg": 3567.1,
+        "seq_len_min": 2459,
+        "seq_len_max": 3584,
+        "seq_len_std": 103.91862200779994
+    },
+    "accuracy": 0.20311729034507586,
+    "timings": {
+        "total_avg_ms": 2.6392279452085496,
+        "latency_breakdown_ms": {
+            "time_triton_flash_attention": 0.9103026118036359,
+            "time_prefill_forward_total": 2.6392279452085496,
+            "time_delta_decode_cache_update": 0.08977546702961407,
+            "time_fused_kernel_only": 0.08155010366508819,
+            "time_delta_decode_attn_calc": 0.1297917701086454,
+            "time_delta_decode_inner_total": 0.14617964564217545,
+            "time_decode_forward_total": 0.5892754985954518
+        }
+    },
+    "metrics": {
+        "alias": "longbench_gov_report",
+        "rouge_score,none": 0.20311729034507586,
+        "rouge_score_stderr,none": 0.006047181270987257
+    },
+    "total_benchmark_time_s": 2626.1824853420258,
+    "parameters": {
+        "delta_decode": true,
+        "window_size": 100,
+        "row_delta_threshold": 13.0,
+        "row_similarity_metric": "euclidean",
+        "delta_pf_key_on": 0,
+        "flash": true,
+        "delta_type": "row",
+        "divide_to": 0,
+        "chunk_size": 512
+    },
+    "experiment_type": "decode_only_delta",
+    "model_id": "meta-llama/Llama-2-7b-chat-hf"
+}
+[IO] Saved result to longbench_gov_report.json
+--- Running Task: longbench_multi_news ---

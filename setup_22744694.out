@@ -1,0 +1,78 @@
+Thu May 14 10:58:26 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.58.03              Driver Version: 595.58.03      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100                    On  |   00000000:26:00.0 Off |                    0 |
+| N/A   33C    P0             69W /  700W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+CUDA version: Cuda compilation tools, release 12.1, V12.1.105
+[Master] Experiment:  baseline
+[Master] Grid params: []
+[Master] Combos:      1
+[Master] Output:      experiment_baseline_1
+[Master] Tasks:       ['longbench_gov_report', 'longbench_multi_news', 'longbench_narrativeqa', 'longbench_qasper', 'longbench_multifieldqa_en', 'longbench_trec', 'longbench_2wikimqa', 'longbench_triviaqa', 'longbench_passage_retrieval_en']
+
+=== Step 1/1: {} ===
+[Worker] Experiment settings: {'delta_decode': False, 'delta_pf_key_on': 0, 'delta_mlp': 'Regular', 'flash': True}
+[Worker] Loading model: meta-llama/Llama-2-7b-chat-hf...
+[Worker] Applying baseline settings...
+[Config] Using forced directory: experiments/longbench/experiment_baseline_1/config_baseline
+--- Running Task: longbench_gov_report ---
+    - Task 'longbench_gov_report' completed in 2746.85s.
+Task: longbench_gov_report | Acc: 0.2802 | Time: 2746.85s
+{
+    "task_name": "longbench_gov_report",
+    "timestamp": "2026-05-14T11:45:23.216444",
+    "shot": 0,
+    "sparsity": 0.0,
+    "mlp_spars": 0.0,
+    "avg_kv_compression_pct": 0.0,
+    "benchmark_stats": {
+        "num_passages": 200,
+        "seq_len_avg": 3567.1,
+        "seq_len_min": 2459,
+        "seq_len_max": 3584,
+        "seq_len_std": 103.91862200779994
+    },
+    "accuracy": 0.28020610572517995,
+    "timings": {
+        "total_avg_ms": 1.854127626400441,
+        "latency_breakdown_ms": {
+            "time_triton_flash_attention": 0.9034423729078844,
+            "time_prefill_forward_total": 1.854127626400441,
+            "time_baseline_decode_cache_update": 0.06237161882807834,
+            "time_baseline_decode_attn_calc": 0.17330101238544543,
+            "time_baseline_decode_inner_total": 0.18843896262475376,
+            "time_decode_forward_total": 0.5842436271827838
+        }
+    },
+    "metrics": {
+        "alias": "longbench_gov_report",
+        "rouge_score,none": 0.28020610572517995,
+        "rouge_score_stderr,none": 0.004826157841486065
+    },
+    "total_benchmark_time_s": 2746.8465628623962,
+    "parameters": {
+        "delta_decode": false,
+        "delta_pf_key_on": 0,
+        "delta_mlp": "Regular",
+        "flash": true
+    },
+    "experiment_type": "baseline",
+    "model_id": "meta-llama/Llama-2-7b-chat-hf"
+}
+[IO] Saved result to longbench_gov_report.json
+--- Running Task: longbench_multi_news ---
