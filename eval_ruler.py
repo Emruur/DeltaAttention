@@ -912,7 +912,14 @@ def parse_ctx_lens(s: str) -> list[int]:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="RULER long-context benchmark for Llama-3.1-8B-Instruct (128k)")
-    parser.add_argument("--num_samples", type=int, default=50)
+    parser.add_argument("--experiment_type", type=str, required=True,
+                        choices=list(EXPERIMENT_DEFINITIONS.keys()),
+                        help="Which experiment to run: baseline or row_delta")
+    parser.add_argument("--exp_name", type=str, default=None,
+                        help="Output subfolder name (default: auto-generated)")
+    parser.add_argument("--row_name", type=str, default=None,
+                        help="Label used in summary table (default: experiment_type)")
+    parser.add_argument("--num_samples", type=int, default=100)
     parser.add_argument("--ctx_lens", type=parse_ctx_lens, default=CTX_LENGTHS)
     parser.add_argument("--tasks", type=lambda s: s.split(","), default=None)
     parser.add_argument('--scale', default=0.05, type=float)
@@ -926,36 +933,20 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Define Output Architecture
+    if args.row_name is None:
+        args.row_name = args.experiment_type
+
     master_out_dir = get_next_run_dir()
     os.makedirs(master_out_dir, exist_ok=True)
     print(f"\n[IO] Initialized session folder: {master_out_dir}\n")
 
-    runs = [
-        {"row_name": "Full", "experiment_type": "baseline"},
-        {"row_name": "Row Delta (t=15)", "experiment_type": "row_delta", "row_thresh": 15},
-        {"row_name": "Row Delta (t=17)", "experiment_type": "row_delta", "row_thresh": 17},
-    ]
+    if args.exp_name is None:
+        safe = args.row_name.replace(" ", "_").replace("=", "").replace("(", "").replace(")", "")
+        args.exp_name = safe
 
-    final_table_data = {}
+    print(f"\n{'='*60}")
+    print(f"*** STARTING EXPERIMENT: {args.row_name} ***")
+    print(f"{'='*60}\n")
 
-    for run in runs:
-        print(f"\n\n{'='*60}")
-        print(f"*** STARTING EXPERIMENT: {run['row_name']} ***")
-        print(f"{'='*60}\n")
-        
-        args.experiment_type = run["experiment_type"]
-        args.row_name = run["row_name"]
-        
-        if "row_thresh" in run:
-            args.row_thresh = run["row_thresh"]
-            
-        # Creates cleaner sub-folder names like "Row_Delta_t15" inside "ruler_results_1"
-        safe_name = run["row_name"].replace(" ", "_").replace("=", "").replace("(", "").replace(")", "")
-        args.exp_name = safe_name
-        
-        results = run_ruler(args, parent_dir=master_out_dir)
-        final_table_data[run["row_name"]] = results
-
-    # Hand off the parent directory to the table generator to save CSV and PNG
-    print_multi_table(final_table_data, master_out_dir)
+    results = run_ruler(args, parent_dir=master_out_dir)
+    print_multi_table({args.row_name: results}, master_out_dir)
