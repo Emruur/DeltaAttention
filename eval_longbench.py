@@ -55,7 +55,7 @@ MAX_LENGTH = 4096  # Llama-2-7B native context window
 # 9-task LongBench subset matching the KVMerger / H2O comparison table
 LONGBENCH_TASKS = [
     "longbench_gov_report",
-    "longbench_multinews",
+    "longbench_multi_news",
     "longbench_narrativeqa",
     "longbench_qasper",
     "longbench_multifieldqa_en",
