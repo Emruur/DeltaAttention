@@ -88,7 +88,7 @@ EXPERIMENT_DEFINITIONS = {
             "delta_decode": False,
             "delta_pf_key_on": 0,
             "delta_mlp": "Regular",
-            "flash": False,
+            "flash": True,
         }
     },
     "decode_only_delta": {
@@ -108,7 +108,7 @@ EXPERIMENT_DEFINITIONS = {
             "row_delta_threshold": args.row_thresh,
             "row_similarity_metric": args.row_sim,
             "delta_pf_key_on": 0,
-            "flash": False,
+            "flash": True,
             "delta_type": "row",
             "divide_to": 0,
             "chunk_size": 512,
@@ -329,7 +329,7 @@ def run_worker_process(args, experiment_dir):
         MODEL_ID,
         torch_dtype=torch.bfloat16,
         trust_remote_code=True,
-        attn_implementation="sdpa",
+        attn_implementation="eager",
     ).to("cuda").eval()
 
     # Inject experiment globals
