@@ -147,7 +147,6 @@ class DeltaLlamaModel:
             trust_remote_code=True,
             device_map="auto",
             torch_dtype=torch.bfloat16,
-            attn_implementation="eager",
         )
         self.model.eval()
 
