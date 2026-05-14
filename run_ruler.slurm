@@ -27,13 +27,15 @@ export HF_TOKEN="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"
 export HF_DATASETS_TRUST_REMOTE_CODE=1
 export PYTORCH_ALLOC_CONF="expandable_segments:True"
 
+# Usage: sbatch run_ruler.slurm <model>
+# Models: delta-baseline, delta-row-t15, delta-row-t17
+MODEL=${1:-delta-baseline}
+
 # RULER scripts must be run from RULER/scripts/
 cd RULER/scripts
 
-for MODEL in delta-baseline delta-row-t15 delta-row-t17; do
-    echo ""
-    echo "========================================"
-    echo "  Running RULER for model: $MODEL"
-    echo "========================================"
-    bash run.sh $MODEL synthetic
-done
+echo ""
+echo "========================================"
+echo "  Running RULER for model: $MODEL"
+echo "========================================"
+bash run.sh $MODEL synthetic
