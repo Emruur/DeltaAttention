@@ -157,9 +157,10 @@ class DeltaLlamaModel:
         return self.process_batch([prompt], **kwargs)[0]
 
     def process_batch(self, prompts: List[str], **kwargs) -> List[dict]:
+        device = next(self.model.parameters()).device
         inputs = self.tokenizer(
             prompts, return_tensors="pt", padding=True, truncation=True, max_length=131072
-        ).to(self.model.device)
+        ).to(device)
 
         with torch.no_grad():
             generated_ids = self.model.generate(**inputs, **self.generation_kwargs)
