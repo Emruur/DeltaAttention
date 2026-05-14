@@ -17,13 +17,16 @@ import time
 import string
 import uuid
 import glob
+import urllib.request
 from collections import Counter
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import torch
+from datasets import load_dataset
 from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM
 
 import globVR
@@ -156,20 +159,59 @@ def print_multi_table(all_results: dict[str, dict[int, float]], out_dir: str):
     print(f"[IO] Final table image saved to: {png_path}", flush=True)
 
 # ==========================================
-# IMPROVED NOISE FILLER (Random Words)
+# HAYSTACK CORPUS  (Paul Graham Essays — official RULER filler)
 # ==========================================
 
-_FILLER_WORDS = [
-    "apple", "bicycle", "mountain", "river", "computer", "ocean", "forest", 
-    "planet", "bridge", "library", "window", "garden", "whisper", "shadow"
-]
+_HAYSTACK_TOKENS: list[int] = []  # populated once in run_ruler()
+
+_PG_ESSAYS_URL = (
+    "https://raw.githubusercontent.com/hsiehjackson/RULER/main/scripts/data/json/PaulGrahamEssays.json"
+)
+_PG_ESSAYS_CACHE = Path("ruler_cache/PaulGrahamEssays.json")
+
+
+def _load_paul_graham_essays() -> str:
+    """Download (and cache) the official RULER Paul Graham essay corpus."""
+    if _PG_ESSAYS_CACHE.exists():
+        with open(_PG_ESSAYS_CACHE) as f:
+            data = json.load(f)
+    else:
+        print(f"[RULER] Downloading Paul Graham essays from {_PG_ESSAYS_URL}...", flush=True)
+        _PG_ESSAYS_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        with urllib.request.urlopen(_PG_ESSAYS_URL, timeout=60) as r:
+            data = json.loads(r.read().decode())
+        with open(_PG_ESSAYS_CACHE, "w") as f:
+            json.dump(data, f)
+        print("[RULER] Essays cached.", flush=True)
+
+    # The JSON is a list of {"title":..., "text":...} objects
+    if isinstance(data, list):
+        texts = [d["text"] if isinstance(d, dict) else d for d in data]
+    else:
+        texts = list(data.values())
+    return "\n\n".join(texts)
+
+
+def init_haystack(tokenizer):
+    """Tokenize the Paul Graham essay corpus once; stored in _HAYSTACK_TOKENS."""
+    global _HAYSTACK_TOKENS
+    if _HAYSTACK_TOKENS:
+        return
+    text = _load_paul_graham_essays()
+    _HAYSTACK_TOKENS = tokenizer.encode(text, add_special_tokens=False)
+    print(f"[RULER] Haystack ready: {len(_HAYSTACK_TOKENS):,} tokens "
+          f"(Paul Graham Essays)", flush=True)
+
 
 def make_filler_tokens(n_tokens: int, tokenizer) -> list[int]:
-    tokens = []
-    while len(tokens) < n_tokens:
-        word = random.choice(_FILLER_WORDS) + " "
-        tokens.extend(tokenizer.encode(word, add_special_tokens=False))
-    return tokens[:n_tokens]
+    """Sample a contiguous slice from the essay corpus."""
+    if len(_HAYSTACK_TOKENS) >= n_tokens:
+        start = random.randint(0, len(_HAYSTACK_TOKENS) - n_tokens)
+        return list(_HAYSTACK_TOKENS[start: start + n_tokens])
+    # Corpus too short (shouldn't happen): tile and trim
+    tiled = (_HAYSTACK_TOKENS * (n_tokens // len(_HAYSTACK_TOKENS) + 1))[:n_tokens]
+    return list(tiled)
+
 
 def tokens_to_text(token_ids: list[int], tokenizer) -> str:
     return tokenizer.decode(token_ids, skip_special_tokens=True)
@@ -325,25 +367,41 @@ def make_frequency_task(ctx_len, tokenizer, mode="cwe"):
     
     return {"prompt": tokenizer.decode(filler) + tokenizer.decode(q_tok), "answer": target}
 
-_HOTPOT_SAMPLES = [
-    ("Marie Curie was born in Warsaw in 1867 and later moved to Paris.", "In what city was Marie Curie born?", "Warsaw"),
-    ("The Eiffel Tower was completed in 1889 and stands 330 metres tall.", "How tall is the Eiffel Tower?", "330 metres"),
-    ("Einstein published special relativity in 1905 and general relativity in 1915.", "When did Einstein publish general relativity?", "1915"),
-    ("Python was created by Guido van Rossum and first released in 1991.", "Who created Python?", "Guido van Rossum"),
-    ("The Amazon River is the largest river by discharge and flows through Brazil.", "Through which country does the Amazon River flow?", "Brazil"),
-    ("Shakespeare was born in Stratford-upon-Avon in 1564.", "Where was Shakespeare born?", "Stratford-upon-Avon"),
-    ("The Great Wall of China was built over many centuries starting around 7th century BC.", "When did construction of the Great Wall begin?", "7th century BC"),
-    ("Penicillin was discovered by Alexander Fleming in 1928.", "Who discovered penicillin?", "Alexander Fleming"),
-]
+# ==========================================
+# QA POOLS  (real HotpotQA + SQuAD — official RULER QA sources)
+# ==========================================
 
-_SQUAD_SAMPLES = [
-    ("The Pacific Ocean is the largest and deepest of Earth's oceanic divisions.", "Which ocean is the largest?", "Pacific Ocean"),
-    ("The speed of light in vacuum is approximately 299,792 kilometres per second.", "What is the speed of light?", "299,792 kilometres per second"),
-    ("Mount Everest is Earth's highest mountain above sea level at 8,849 metres.", "What is the height of Mount Everest?", "8,849 metres"),
-    ("The human body has 206 bones in adulthood.", "How many bones does the human body have?", "206"),
-    ("Leonardo da Vinci painted the Mona Lisa between 1503 and 1519.", "Who painted the Mona Lisa?", "Leonardo da Vinci"),
-    ("The chemical formula for water is H2O.", "What is the chemical formula for water?", "H2O"),
-]
+_HOTPOT_SAMPLES: list[tuple[str, str, str]] = []
+_SQUAD_SAMPLES:  list[tuple[str, str, str]] = []
+_QA_POOL_SIZE = 500  # samples to cache from each dataset
+
+
+def init_qa_pools():
+    """Load QA samples from HotpotQA and SQuAD (done once in run_ruler)."""
+    global _HOTPOT_SAMPLES, _SQUAD_SAMPLES
+
+    if not _HOTPOT_SAMPLES:
+        print("[RULER] Loading HotpotQA...", flush=True)
+        ds = load_dataset("hotpot_qa", "distractor", split="validation",
+                          trust_remote_code=True)
+        for item in ds.shuffle(seed=42).select(range(min(_QA_POOL_SIZE, len(ds)))):
+            # Use the first supporting-fact sentence as the passage
+            sents = item["context"]["sentences"]
+            passage = sents[0][0] if sents and sents[0] else ""
+            if passage and item["question"] and item["answer"]:
+                _HOTPOT_SAMPLES.append((passage, item["question"], item["answer"]))
+        print(f"[RULER] HotpotQA pool: {len(_HOTPOT_SAMPLES)} samples", flush=True)
+
+    if not _SQUAD_SAMPLES:
+        print("[RULER] Loading SQuAD...", flush=True)
+        ds = load_dataset("rajpurkar/squad", split="validation",
+                          trust_remote_code=True)
+        for item in ds.shuffle(seed=42).select(range(min(_QA_POOL_SIZE, len(ds)))):
+            answers = item["answers"]["text"]
+            if item["context"] and item["question"] and answers:
+                _SQUAD_SAMPLES.append((item["context"], item["question"], answers[0]))
+        print(f"[RULER] SQuAD pool: {len(_SQUAD_SAMPLES)} samples", flush=True)
+
 
 def make_qa(ctx_len, tokenizer, dataset="hotpot"):
     pool = _HOTPOT_SAMPLES if dataset == "hotpot" else _SQUAD_SAMPLES
@@ -451,6 +509,10 @@ def run_ruler(args, parent_dir):
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+
+    # Load official RULER data sources once before evaluating any run
+    init_haystack(tokenizer)
+    init_qa_pools()
 
     print(f"[RULER] Loading model: {MODEL_ID}", flush=True)
     model = AutoModelForCausalLM.from_pretrained(
