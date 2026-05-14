@@ -367,7 +367,7 @@ def run_worker_process(args, experiment_dir):
 
         print(f"--- Running Task: {dataset} ---", flush=True)
 
-        data = load_dataset('THUDM/LongBench', dataset, split='test')
+        data = load_dataset('THUDM/LongBench', dataset, split='test', revision='f72191f')
         max_new_tokens = DATASET2MAXLEN[dataset]
 
         scores = []
