@@ -1,8 +1,0 @@
-{
-    "delta_type": "row",
-    "scale": 0.05,
-    "delta_mlp": "Regular",
-    "row_delta_threshold": 29.0,
-    "row_similarity_metric": "euclidean",
-    "divide_to": 64
-}

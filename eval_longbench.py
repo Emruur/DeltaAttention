@@ -385,7 +385,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    base_storage_path = os.path.join("snellius_experiments", "longbench")
+    base_storage_path = os.path.join("experiments", "longbench")
     os.makedirs(base_storage_path, exist_ok=True)
 
     if args.mode == 'master':
