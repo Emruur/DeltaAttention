@@ -1,36 +1,19 @@
 {
     "task_name": "longbench_multifieldqa_en",
-    "timestamp": "2026-05-14T13:35:39.356744",
+    "timestamp": "2026-05-15T00:12:41.482460",
     "shot": 0,
     "sparsity": 0.0,
     "mlp_spars": 0.0,
-    "avg_kv_compression_pct": 81.75078695547225,
+    "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
         "num_passages": 150,
-        "seq_len_avg": 3797.4266666666667,
-        "seq_len_min": 1440,
-        "seq_len_max": 4032,
-        "seq_len_std": 565.6495775851179
+        "seq_len_avg": 3850.84,
+        "seq_len_min": 1434,
+        "seq_len_max": 4104,
+        "seq_len_std": 590.5345609981971
     },
-    "accuracy": 0.19644937808910318,
-    "timings": {
-        "total_avg_ms": 2.6462420684844257,
-        "latency_breakdown_ms": {
-            "time_triton_flash_attention": 0.9090054135148724,
-            "time_prefill_forward_total": 2.6462420684844257,
-            "time_delta_decode_cache_update": 0.10668709581482341,
-            "time_fused_kernel_only": 0.07583262759959708,
-            "time_delta_decode_attn_calc": 0.1264721160219701,
-            "time_delta_decode_inner_total": 0.14466222435226803,
-            "time_decode_forward_total": 0.608753202978387
-        }
-    },
-    "metrics": {
-        "alias": "longbench_multifieldqa_en",
-        "qa_f1_score,none": 0.19644937808910318,
-        "qa_f1_score_stderr,none": 0.02117347665192417
-    },
-    "total_benchmark_time_s": 148.12221479415894,
+    "accuracy": 0.09884824902011277,
+    "total_benchmark_time_s": 92.6174705028534,
     "parameters": {
         "delta_decode": true,
         "window_size": 100,

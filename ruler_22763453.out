@@ -1,0 +1,1508 @@
+Thu May 14 22:47:45 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.58.03              Driver Version: 595.58.03      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100                    On  |   00000000:06:00.0 Off |                    0 |
+| N/A   33C    P0             66W /  700W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+CUDA version: Cuda compilation tools, release 12.1, V12.1.105
+
+========================================
+  Running RULER for model: delta-baseline
+========================================
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name niah_single_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack noise --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/niah_single_1/validation.jsonl
+Used time: 0.8 minutes
+Predict niah_single_1 
+from benchmark_root/delta-baseline/synthetic/131072/data/niah_single_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/niah_single_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 0.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name niah_single_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/niah_single_2/validation.jsonl
+Used time: 1.2 minutes
+Predict niah_single_2 
+from benchmark_root/delta-baseline/synthetic/131072/data/niah_single_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/niah_single_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 0.2 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name niah_single_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/niah_single_3/validation.jsonl
+Used time: 1.3 minutes
+Predict niah_single_3 
+from benchmark_root/delta-baseline/synthetic/131072/data/niah_single_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/niah_single_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 0.2 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name niah_multikey_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 4 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/niah_multikey_1/validation.jsonl
+Used time: 1.4 minutes
+Predict niah_multikey_1 
+from benchmark_root/delta-baseline/synthetic/131072/data/niah_multikey_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/niah_multikey_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 33.3 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name niah_multikey_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/niah_multikey_2/validation.jsonl
+Used time: 1.0 minutes
+Predict niah_multikey_2 
+from benchmark_root/delta-baseline/synthetic/131072/data/niah_multikey_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/niah_multikey_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 35.9 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name niah_multikey_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k uuids --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/niah_multikey_3/validation.jsonl
+Used time: 0.7 minutes
+Predict niah_multikey_3 
+from benchmark_root/delta-baseline/synthetic/131072/data/niah_multikey_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/niah_multikey_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 45.6 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name niah_multivalue             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 4 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multivalue with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/niah_multivalue/validation.jsonl
+Used time: 1.6 minutes
+Predict niah_multivalue 
+from benchmark_root/delta-baseline/synthetic/131072/data/niah_multivalue/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/niah_multivalue.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 48.9 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name niah_multiquery             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multiquery with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/niah_multiquery/validation.jsonl
+Used time: 1.2 minutes
+Predict niah_multiquery 
+from benchmark_root/delta-baseline/synthetic/131072/data/niah_multiquery/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/niah_multiquery.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 46.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/variable_tracking.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name vt             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 30             --num_samples 100             --random_seed 42             --type_haystack noise --num_chains 1 --num_hops 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Memorize and track the chain(s) of variable assignment hidden in the following text.
+
+{context}
+Question: Find all variables that are assigned the value {query} in the text above.<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the chain(s) of variable assignment in the text above, {num_v} variables are assigned the value {query}, they are: "             
+Output:
+
+Prepare vt with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/vt/validation.jsonl
+Used time: 0.5 minutes
+Predict vt 
+from benchmark_root/delta-baseline/synthetic/131072/data/vt/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/vt.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 36.1 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/common_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name cwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 120             --num_samples 100             --random_seed 42             --freq_cw 30 --freq_ucw 3 --num_cw 10                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Below is a numbered list of words. In these words, some appear more often than others. Memorize the ones that appear most often.
+{context}
+Question: What are the 10 most common words in the above list?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: The top 10 words that appear most often in the list are:"             
+Output:
+
+Prepare cwe with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/cwe/validation.jsonl
+Used time: 0.7 minutes
+Predict cwe 
+from benchmark_root/delta-baseline/synthetic/131072/data/cwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/cwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 57.9 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/freq_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name fwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 50             --num_samples 100             --random_seed 42             --alpha 2.0                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Read the following coded text and track the frequency of each coded word. Find the three most frequently appeared coded words. {context}
+Question: Do not provide any explanation. Please ignore the dots '....'. What are the three most frequently appeared words in the above coded text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the coded text above, the three most frequently appeared words are:"             
+Output:
+
+Prepare fwe with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/fwe/validation.jsonl
+Used time: 0.7 minutes
+Predict fwe 
+from benchmark_root/delta-baseline/synthetic/131072/data/fwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/fwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 31.6 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name qa_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset squad                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/qa_1/validation.jsonl
+Used time: 0.8 minutes
+Predict qa_1 
+from benchmark_root/delta-baseline/synthetic/131072/data/qa_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/qa_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 33.1 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/131072/data             --save_name qa_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 131072             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset hotpotqa                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/131072/data/qa_2/validation.jsonl
+Used time: 1.1 minutes
+Predict qa_2 
+from benchmark_root/delta-baseline/synthetic/131072/data/qa_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/131072/pred/qa_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 32.6 minutes
+Total tasks: ['niah_single_1', 'niah_single_2', 'niah_single_3', 'niah_multikey_1', 'niah_multikey_2', 'niah_multikey_3', 'niah_multivalue', 'niah_multiquery', 'vt', 'cwe', 'fwe', 'qa_1', 'qa_2']
+Evaluate task niah_single_1...
+Evaluate task niah_single_2...
+Evaluate task niah_single_3...
+Evaluate task niah_multikey_1...
+Evaluate task niah_multikey_2...
+Evaluate task niah_multikey_3...
+Evaluate task niah_multivalue...
+Evaluate task niah_multiquery...
+Evaluate task vt...
+Evaluate task cwe...
+Evaluate task fwe...
+Evaluate task qa_1...
+Evaluate task qa_2...
+
+=============================================
+
+      0              1              2   ...     11     12     13
+0  Tasks  niah_single_1  niah_single_2  ...    fwe   qa_1   qa_2
+1  Score           99.6           96.2  ...   69.0   78.0   38.0
+2  Nulls          0/500          0/500  ...  0/100  0/100  0/100
+
+[3 rows x 14 columns]
+
+Saved eval results to benchmark_root/delta-baseline/synthetic/131072/pred/summary.csv
+
+Saved submission results to benchmark_root/delta-baseline/synthetic/131072/pred/submission.csv
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name niah_single_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack noise --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/niah_single_1/validation.jsonl
+Used time: 0.5 minutes
+Predict niah_single_1 
+from benchmark_root/delta-baseline/synthetic/65536/data/niah_single_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/niah_single_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 12.7 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name niah_single_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/niah_single_2/validation.jsonl
+Used time: 0.7 minutes
+Predict niah_single_2 
+from benchmark_root/delta-baseline/synthetic/65536/data/niah_single_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/niah_single_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 10.9 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name niah_single_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/niah_single_3/validation.jsonl
+Used time: 0.7 minutes
+Predict niah_single_3 
+from benchmark_root/delta-baseline/synthetic/65536/data/niah_single_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/niah_single_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 13.4 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name niah_multikey_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 4 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/niah_multikey_1/validation.jsonl
+Used time: 0.8 minutes
+Predict niah_multikey_1 
+from benchmark_root/delta-baseline/synthetic/65536/data/niah_multikey_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/niah_multikey_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 10.9 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name niah_multikey_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/niah_multikey_2/validation.jsonl
+Used time: 0.5 minutes
+Predict niah_multikey_2 
+from benchmark_root/delta-baseline/synthetic/65536/data/niah_multikey_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/niah_multikey_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 11.2 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name niah_multikey_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k uuids --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/niah_multikey_3/validation.jsonl
+Used time: 0.5 minutes
+Predict niah_multikey_3 
+from benchmark_root/delta-baseline/synthetic/65536/data/niah_multikey_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/niah_multikey_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 16.1 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name niah_multivalue             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 4 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multivalue with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/niah_multivalue/validation.jsonl
+Used time: 0.7 minutes
+Predict niah_multivalue 
+from benchmark_root/delta-baseline/synthetic/65536/data/niah_multivalue/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/niah_multivalue.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 15.4 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name niah_multiquery             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multiquery with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/niah_multiquery/validation.jsonl
+Used time: 0.7 minutes
+Predict niah_multiquery 
+from benchmark_root/delta-baseline/synthetic/65536/data/niah_multiquery/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/niah_multiquery.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 17.2 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/variable_tracking.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name vt             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 30             --num_samples 100             --random_seed 42             --type_haystack noise --num_chains 1 --num_hops 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Memorize and track the chain(s) of variable assignment hidden in the following text.
+
+{context}
+Question: Find all variables that are assigned the value {query} in the text above.<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the chain(s) of variable assignment in the text above, {num_v} variables are assigned the value {query}, they are: "             
+Output:
+
+Prepare vt with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/vt/validation.jsonl
+Used time: 0.3 minutes
+Predict vt 
+from benchmark_root/delta-baseline/synthetic/65536/data/vt/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/vt.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 13.7 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/common_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name cwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 120             --num_samples 100             --random_seed 42             --freq_cw 30 --freq_ucw 3 --num_cw 10                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Below is a numbered list of words. In these words, some appear more often than others. Memorize the ones that appear most often.
+{context}
+Question: What are the 10 most common words in the above list?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: The top 10 words that appear most often in the list are:"             
+Output:
+
+Prepare cwe with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/cwe/validation.jsonl
+Used time: 0.4 minutes
+Predict cwe 
+from benchmark_root/delta-baseline/synthetic/65536/data/cwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/cwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 16.8 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/freq_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name fwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 50             --num_samples 100             --random_seed 42             --alpha 2.0                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Read the following coded text and track the frequency of each coded word. Find the three most frequently appeared coded words. {context}
+Question: Do not provide any explanation. Please ignore the dots '....'. What are the three most frequently appeared words in the above coded text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the coded text above, the three most frequently appeared words are:"             
+Output:
+
+Prepare fwe with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/fwe/validation.jsonl
+Used time: 0.6 minutes
+Predict fwe 
+from benchmark_root/delta-baseline/synthetic/65536/data/fwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/fwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 11.4 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name qa_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset squad                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/qa_1/validation.jsonl
+Used time: 0.4 minutes
+Predict qa_1 
+from benchmark_root/delta-baseline/synthetic/65536/data/qa_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/qa_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 10.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/65536/data             --save_name qa_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 65536             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset hotpotqa                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/65536/data/qa_2/validation.jsonl
+Used time: 0.5 minutes
+Predict qa_2 
+from benchmark_root/delta-baseline/synthetic/65536/data/qa_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/65536/pred/qa_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 10.4 minutes
+Total tasks: ['niah_single_1', 'niah_single_2', 'niah_single_3', 'niah_multikey_1', 'niah_multikey_2', 'niah_multikey_3', 'niah_multivalue', 'niah_multiquery', 'vt', 'cwe', 'fwe', 'qa_1', 'qa_2']
+Evaluate task niah_single_1...
+Evaluate task niah_single_2...
+Evaluate task niah_single_3...
+Evaluate task niah_multikey_1...
+Evaluate task niah_multikey_2...
+Evaluate task niah_multikey_3...
+Evaluate task niah_multivalue...
+Evaluate task niah_multiquery...
+Evaluate task vt...
+Evaluate task cwe...
+Evaluate task fwe...
+Evaluate task qa_1...
+Evaluate task qa_2...
+
+=============================================
+
+      0              1              2   ...     11     12     13
+0  Tasks  niah_single_1  niah_single_2  ...    fwe   qa_1   qa_2
+1  Score           84.0           95.0  ...  83.33   80.0   45.0
+2  Nulls          0/100          0/100  ...  0/100  0/100  0/100
+
+[3 rows x 14 columns]
+
+Saved eval results to benchmark_root/delta-baseline/synthetic/65536/pred/summary.csv
+
+Saved submission results to benchmark_root/delta-baseline/synthetic/65536/pred/submission.csv
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name niah_single_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack noise --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/niah_single_1/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_single_1 
+from benchmark_root/delta-baseline/synthetic/32768/data/niah_single_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/niah_single_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 5.0 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name niah_single_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/niah_single_2/validation.jsonl
+Used time: 0.4 minutes
+Predict niah_single_2 
+from benchmark_root/delta-baseline/synthetic/32768/data/niah_single_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/niah_single_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 4.1 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name niah_single_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/niah_single_3/validation.jsonl
+Used time: 0.4 minutes
+Predict niah_single_3 
+from benchmark_root/delta-baseline/synthetic/32768/data/niah_single_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/niah_single_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 5.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name niah_multikey_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 4 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/niah_multikey_1/validation.jsonl
+Used time: 0.4 minutes
+Predict niah_multikey_1 
+from benchmark_root/delta-baseline/synthetic/32768/data/niah_multikey_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/niah_multikey_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 4.1 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name niah_multikey_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/niah_multikey_2/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_multikey_2 
+from benchmark_root/delta-baseline/synthetic/32768/data/niah_multikey_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/niah_multikey_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 4.2 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name niah_multikey_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k uuids --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/niah_multikey_3/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_multikey_3 
+from benchmark_root/delta-baseline/synthetic/32768/data/niah_multikey_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/niah_multikey_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 6.7 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name niah_multivalue             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 4 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multivalue with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/niah_multivalue/validation.jsonl
+Used time: 0.4 minutes
+Predict niah_multivalue 
+from benchmark_root/delta-baseline/synthetic/32768/data/niah_multivalue/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/niah_multivalue.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 6.8 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name niah_multiquery             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multiquery with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/niah_multiquery/validation.jsonl
+Used time: 0.5 minutes
+Predict niah_multiquery 
+from benchmark_root/delta-baseline/synthetic/32768/data/niah_multiquery/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/niah_multiquery.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 7.7 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/variable_tracking.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name vt             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 30             --num_samples 100             --random_seed 42             --type_haystack noise --num_chains 1 --num_hops 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Memorize and track the chain(s) of variable assignment hidden in the following text.
+
+{context}
+Question: Find all variables that are assigned the value {query} in the text above.<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the chain(s) of variable assignment in the text above, {num_v} variables are assigned the value {query}, they are: "             
+Output:
+
+Prepare vt with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/vt/validation.jsonl
+Used time: 0.2 minutes
+Predict vt 
+from benchmark_root/delta-baseline/synthetic/32768/data/vt/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/vt.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 5.7 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/common_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name cwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 120             --num_samples 100             --random_seed 42             --freq_cw 30 --freq_ucw 3 --num_cw 10                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Below is a numbered list of words. In these words, some appear more often than others. Memorize the ones that appear most often.
+{context}
+Question: What are the 10 most common words in the above list?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: The top 10 words that appear most often in the list are:"             
+Output:
+
+Prepare cwe with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/cwe/validation.jsonl
+Used time: 0.2 minutes
+Predict cwe 
+from benchmark_root/delta-baseline/synthetic/32768/data/cwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/cwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 7.6 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/freq_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name fwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 50             --num_samples 100             --random_seed 42             --alpha 2.0                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Read the following coded text and track the frequency of each coded word. Find the three most frequently appeared coded words. {context}
+Question: Do not provide any explanation. Please ignore the dots '....'. What are the three most frequently appeared words in the above coded text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the coded text above, the three most frequently appeared words are:"             
+Output:
+
+Prepare fwe with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/fwe/validation.jsonl
+Used time: 0.3 minutes
+Predict fwe 
+from benchmark_root/delta-baseline/synthetic/32768/data/fwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/fwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 5.0 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name qa_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset squad                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/qa_1/validation.jsonl
+Used time: 0.3 minutes
+Predict qa_1 
+from benchmark_root/delta-baseline/synthetic/32768/data/qa_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/qa_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 3.9 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/32768/data             --save_name qa_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 32768             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset hotpotqa                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/32768/data/qa_2/validation.jsonl
+Used time: 0.4 minutes
+Predict qa_2 
+from benchmark_root/delta-baseline/synthetic/32768/data/qa_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/32768/pred/qa_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 3.9 minutes
+Total tasks: ['niah_single_1', 'niah_single_2', 'niah_single_3', 'niah_multikey_1', 'niah_multikey_2', 'niah_multikey_3', 'niah_multivalue', 'niah_multiquery', 'vt', 'cwe', 'fwe', 'qa_1', 'qa_2']
+Evaluate task niah_single_1...
+Evaluate task niah_single_2...
+Evaluate task niah_single_3...
+Evaluate task niah_multikey_1...
+Evaluate task niah_multikey_2...
+Evaluate task niah_multikey_3...
+Evaluate task niah_multivalue...
+Evaluate task niah_multiquery...
+Evaluate task vt...
+Evaluate task cwe...
+Evaluate task fwe...
+Evaluate task qa_1...
+Evaluate task qa_2...
+
+=============================================
+
+      0              1              2   ...     11     12     13
+0  Tasks  niah_single_1  niah_single_2  ...    fwe   qa_1   qa_2
+1  Score           91.0           95.0  ...  81.33   83.0   47.0
+2  Nulls          0/100          0/100  ...  0/100  0/100  0/100
+
+[3 rows x 14 columns]
+
+Saved eval results to benchmark_root/delta-baseline/synthetic/32768/pred/summary.csv
+
+Saved submission results to benchmark_root/delta-baseline/synthetic/32768/pred/submission.csv
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name niah_single_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack noise --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/niah_single_1/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_single_1 
+from benchmark_root/delta-baseline/synthetic/16384/data/niah_single_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/niah_single_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 3.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name niah_single_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/niah_single_2/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_single_2 
+from benchmark_root/delta-baseline/synthetic/16384/data/niah_single_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/niah_single_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.4 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name niah_single_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/niah_single_3/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_single_3 
+from benchmark_root/delta-baseline/synthetic/16384/data/niah_single_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/niah_single_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 3.2 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name niah_multikey_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 4 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/niah_multikey_1/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_multikey_1 
+from benchmark_root/delta-baseline/synthetic/16384/data/niah_multikey_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/niah_multikey_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.1 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name niah_multikey_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/niah_multikey_2/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_multikey_2 
+from benchmark_root/delta-baseline/synthetic/16384/data/niah_multikey_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/niah_multikey_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.2 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name niah_multikey_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k uuids --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/niah_multikey_3/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_multikey_3 
+from benchmark_root/delta-baseline/synthetic/16384/data/niah_multikey_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/niah_multikey_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 4.3 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name niah_multivalue             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 4 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multivalue with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/niah_multivalue/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_multivalue 
+from benchmark_root/delta-baseline/synthetic/16384/data/niah_multivalue/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/niah_multivalue.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 4.0 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name niah_multiquery             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multiquery with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/niah_multiquery/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_multiquery 
+from benchmark_root/delta-baseline/synthetic/16384/data/niah_multiquery/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/niah_multiquery.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 4.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/variable_tracking.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name vt             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 30             --num_samples 100             --random_seed 42             --type_haystack noise --num_chains 1 --num_hops 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Memorize and track the chain(s) of variable assignment hidden in the following text.
+
+{context}
+Question: Find all variables that are assigned the value {query} in the text above.<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the chain(s) of variable assignment in the text above, {num_v} variables are assigned the value {query}, they are: "             
+Output:
+
+Prepare vt with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/vt/validation.jsonl
+Used time: 0.1 minutes
+Predict vt 
+from benchmark_root/delta-baseline/synthetic/16384/data/vt/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/vt.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 3.0 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/common_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name cwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 120             --num_samples 100             --random_seed 42             --freq_cw 30 --freq_ucw 3 --num_cw 10                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Below is a numbered list of words. In these words, some appear more often than others. Memorize the ones that appear most often.
+{context}
+Question: What are the 10 most common words in the above list?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: The top 10 words that appear most often in the list are:"             
+Output:
+
+Prepare cwe with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/cwe/validation.jsonl
+Used time: 0.2 minutes
+Predict cwe 
+from benchmark_root/delta-baseline/synthetic/16384/data/cwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/cwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 4.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/freq_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name fwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 50             --num_samples 100             --random_seed 42             --alpha 2.0                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Read the following coded text and track the frequency of each coded word. Find the three most frequently appeared coded words. {context}
+Question: Do not provide any explanation. Please ignore the dots '....'. What are the three most frequently appeared words in the above coded text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the coded text above, the three most frequently appeared words are:"             
+Output:
+
+Prepare fwe with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/fwe/validation.jsonl
+Used time: 0.1 minutes
+Predict fwe 
+from benchmark_root/delta-baseline/synthetic/16384/data/fwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/fwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name qa_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset squad                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/qa_1/validation.jsonl
+Used time: 0.2 minutes
+Predict qa_1 
+from benchmark_root/delta-baseline/synthetic/16384/data/qa_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/qa_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 1.7 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/16384/data             --save_name qa_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 16384             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset hotpotqa                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/16384/data/qa_2/validation.jsonl
+Used time: 0.2 minutes
+Predict qa_2 
+from benchmark_root/delta-baseline/synthetic/16384/data/qa_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/16384/pred/qa_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 1.6 minutes
+Total tasks: ['niah_single_1', 'niah_single_2', 'niah_single_3', 'niah_multikey_1', 'niah_multikey_2', 'niah_multikey_3', 'niah_multivalue', 'niah_multiquery', 'vt', 'cwe', 'fwe', 'qa_1', 'qa_2']
+Evaluate task niah_single_1...
+Evaluate task niah_single_2...
+Evaluate task niah_single_3...
+Evaluate task niah_multikey_1...
+Evaluate task niah_multikey_2...
+Evaluate task niah_multikey_3...
+Evaluate task niah_multivalue...
+Evaluate task niah_multiquery...
+Evaluate task vt...
+Evaluate task cwe...
+Evaluate task fwe...
+Evaluate task qa_1...
+Evaluate task qa_2...
+
+=============================================
+
+      0              1              2   ...     11     12     13
+0  Tasks  niah_single_1  niah_single_2  ...    fwe   qa_1   qa_2
+1  Score           60.0           97.0  ...  95.33   85.0   51.0
+2  Nulls          0/100          0/100  ...  0/100  0/100  0/100
+
+[3 rows x 14 columns]
+
+Saved eval results to benchmark_root/delta-baseline/synthetic/16384/pred/summary.csv
+
+Saved submission results to benchmark_root/delta-baseline/synthetic/16384/pred/submission.csv
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name niah_single_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack noise --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/niah_single_1/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_single_1 
+from benchmark_root/delta-baseline/synthetic/8192/data/niah_single_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/niah_single_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 1.9 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name niah_single_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/niah_single_2/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_single_2 
+from benchmark_root/delta-baseline/synthetic/8192/data/niah_single_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/niah_single_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 1.7 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name niah_single_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/niah_single_3/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_single_3 
+from benchmark_root/delta-baseline/synthetic/8192/data/niah_single_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/niah_single_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name niah_multikey_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 4 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/niah_multikey_1/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_multikey_1 
+from benchmark_root/delta-baseline/synthetic/8192/data/niah_multikey_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/niah_multikey_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 1.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name niah_multikey_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/niah_multikey_2/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_multikey_2 
+from benchmark_root/delta-baseline/synthetic/8192/data/niah_multikey_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/niah_multikey_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 1.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name niah_multikey_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k uuids --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/niah_multikey_3/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_multikey_3 
+from benchmark_root/delta-baseline/synthetic/8192/data/niah_multikey_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/niah_multikey_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 3.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name niah_multivalue             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 4 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multivalue with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/niah_multivalue/validation.jsonl
+Used time: 0.3 minutes
+Predict niah_multivalue 
+from benchmark_root/delta-baseline/synthetic/8192/data/niah_multivalue/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/niah_multivalue.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.9 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name niah_multiquery             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multiquery with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/niah_multiquery/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_multiquery 
+from benchmark_root/delta-baseline/synthetic/8192/data/niah_multiquery/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/niah_multiquery.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 3.7 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/variable_tracking.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name vt             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 30             --num_samples 100             --random_seed 42             --type_haystack noise --num_chains 1 --num_hops 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Memorize and track the chain(s) of variable assignment hidden in the following text.
+
+{context}
+Question: Find all variables that are assigned the value {query} in the text above.<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the chain(s) of variable assignment in the text above, {num_v} variables are assigned the value {query}, they are: "             
+Output:
+
+Prepare vt with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/vt/validation.jsonl
+Used time: 0.1 minutes
+Predict vt 
+from benchmark_root/delta-baseline/synthetic/8192/data/vt/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/vt.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.3 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/common_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name cwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 120             --num_samples 100             --random_seed 42             --freq_cw 30 --freq_ucw 3 --num_cw 10                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Below is a numbered list of words. In these words, some appear more often than others. Memorize the ones that appear most often.
+{context}
+Question: What are the 10 most common words in the above list?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: The top 10 words that appear most often in the list are:"             
+Output:
+
+Prepare cwe with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/cwe/validation.jsonl
+Used time: 0.1 minutes
+Predict cwe 
+from benchmark_root/delta-baseline/synthetic/8192/data/cwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/cwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 3.8 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/freq_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name fwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 50             --num_samples 100             --random_seed 42             --alpha 2.0                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Read the following coded text and track the frequency of each coded word. Find the three most frequently appeared coded words. {context}
+Question: Do not provide any explanation. Please ignore the dots '....'. What are the three most frequently appeared words in the above coded text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the coded text above, the three most frequently appeared words are:"             
+Output:
+
+Prepare fwe with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/fwe/validation.jsonl
+Used time: 0.1 minutes
+Predict fwe 
+from benchmark_root/delta-baseline/synthetic/8192/data/fwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/fwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.1 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name qa_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset squad                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/qa_1/validation.jsonl
+Used time: 0.1 minutes
+Predict qa_1 
+from benchmark_root/delta-baseline/synthetic/8192/data/qa_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/qa_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 1.0 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/8192/data             --save_name qa_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 8192             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset hotpotqa                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/8192/data/qa_2/validation.jsonl
+Used time: 0.2 minutes
+Predict qa_2 
+from benchmark_root/delta-baseline/synthetic/8192/data/qa_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/8192/pred/qa_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 0.9 minutes
+Total tasks: ['niah_single_1', 'niah_single_2', 'niah_single_3', 'niah_multikey_1', 'niah_multikey_2', 'niah_multikey_3', 'niah_multivalue', 'niah_multiquery', 'vt', 'cwe', 'fwe', 'qa_1', 'qa_2']
+Evaluate task niah_single_1...
+Evaluate task niah_single_2...
+Evaluate task niah_single_3...
+Evaluate task niah_multikey_1...
+Evaluate task niah_multikey_2...
+Evaluate task niah_multikey_3...
+Evaluate task niah_multivalue...
+Evaluate task niah_multiquery...
+Evaluate task vt...
+Evaluate task cwe...
+Evaluate task fwe...
+Evaluate task qa_1...
+Evaluate task qa_2...
+
+=============================================
+
+      0              1              2   ...     11     12     13
+0  Tasks  niah_single_1  niah_single_2  ...    fwe   qa_1   qa_2
+1  Score           92.0           99.0  ...  89.33   84.0   55.0
+2  Nulls          0/100          0/100  ...  0/100  0/100  0/100
+
+[3 rows x 14 columns]
+
+Saved eval results to benchmark_root/delta-baseline/synthetic/8192/pred/summary.csv
+
+Saved submission results to benchmark_root/delta-baseline/synthetic/8192/pred/submission.csv
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name niah_single_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack noise --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/niah_single_1/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_single_1 
+from benchmark_root/delta-baseline/synthetic/4096/data/niah_single_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/niah_single_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 1.4 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name niah_single_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/niah_single_2/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_single_2 
+from benchmark_root/delta-baseline/synthetic/4096/data/niah_single_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/niah_single_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 1.4 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name niah_single_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_single_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/niah_single_3/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_single_3 
+from benchmark_root/delta-baseline/synthetic/4096/data/niah_single_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/niah_single_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.3 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name niah_multikey_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 4 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/niah_multikey_1/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_multikey_1 
+from benchmark_root/delta-baseline/synthetic/4096/data/niah_multikey_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/niah_multikey_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 1.3 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name niah_multikey_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/niah_multikey_2/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_multikey_2 
+from benchmark_root/delta-baseline/synthetic/4096/data/niah_multikey_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/niah_multikey_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 1.1 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name niah_multikey_3             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack needle --type_needle_k uuids --type_needle_v uuids --num_needle_k 1 --num_needle_v 1 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multikey_3 with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/niah_multikey_3/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_multikey_3 
+from benchmark_root/delta-baseline/synthetic/4096/data/niah_multikey_3/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/niah_multikey_3.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 3.2 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name niah_multivalue             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 4 --num_needle_q 1                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multivalue with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/niah_multivalue/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_multivalue 
+from benchmark_root/delta-baseline/synthetic/4096/data/niah_multivalue/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/niah_multivalue.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.6 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/niah.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name niah_multiquery             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 128             --num_samples 100             --random_seed 42             --type_haystack essay --type_needle_k words --type_needle_v numbers --num_needle_k 1 --num_needle_v 1 --num_needle_q 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Some special magic {type_needle_v} are hidden within the following text. Make sure to memorize it. I will quiz you about the {type_needle_v} afterwards.
+{context}
+What are all the special magic {type_needle_v} for {query} mentioned in the provided text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ The special magic {type_needle_v} for {query} mentioned in the provided text are"             
+Output:
+
+Prepare niah_multiquery with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/niah_multiquery/validation.jsonl
+Used time: 0.2 minutes
+Predict niah_multiquery 
+from benchmark_root/delta-baseline/synthetic/4096/data/niah_multiquery/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/niah_multiquery.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 3.4 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/variable_tracking.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name vt             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 30             --num_samples 100             --random_seed 42             --type_haystack noise --num_chains 1 --num_hops 4                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Memorize and track the chain(s) of variable assignment hidden in the following text.
+
+{context}
+Question: Find all variables that are assigned the value {query} in the text above.<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the chain(s) of variable assignment in the text above, {num_v} variables are assigned the value {query}, they are: "             
+Output:
+
+Prepare vt with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/vt/validation.jsonl
+Used time: 0.1 minutes
+Predict vt 
+from benchmark_root/delta-baseline/synthetic/4096/data/vt/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/vt.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.0 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/common_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name cwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 120             --num_samples 100             --random_seed 42             --freq_cw 30 --freq_ucw 3 --num_cw 10                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Below is a numbered list of words. In these words, some appear more often than others. Memorize the ones that appear most often.
+{context}
+Question: What are the 10 most common words in the above list?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: The top 10 words that appear most often in the list are:"             
+Output:
+
+Prepare cwe with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/cwe/validation.jsonl
+Used time: 0.1 minutes
+Predict cwe 
+from benchmark_root/delta-baseline/synthetic/4096/data/cwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/cwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 3.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/freq_words_extraction.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name fwe             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 50             --num_samples 100             --random_seed 42             --alpha 2.0                                       --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Read the following coded text and track the frequency of each coded word. Find the three most frequently appeared coded words. {context}
+Question: Do not provide any explanation. Please ignore the dots '....'. What are the three most frequently appeared words in the above coded text?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer: According to the coded text above, the three most frequently appeared words are:"             
+Output:
+
+Prepare fwe with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/fwe/validation.jsonl
+Used time: 0.1 minutes
+Predict fwe 
+from benchmark_root/delta-baseline/synthetic/4096/data/fwe/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/fwe.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 2.5 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name qa_1             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset squad                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_1 with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/qa_1/validation.jsonl
+Used time: 0.1 minutes
+Predict qa_1 
+from benchmark_root/delta-baseline/synthetic/4096/data/qa_1/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/qa_1.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 0.7 minutes
+python /gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/RULER/scripts/data/synthetic/qa.py             --save_dir  benchmark_root/delta-baseline/synthetic/4096/data             --save_name qa_2             --subset validation             --tokenizer_path meta-llama/Meta-Llama-3.1-8B-Instruct             --tokenizer_type hf             --max_seq_length 4096             --tokens_to_generate 32             --num_samples 100             --random_seed 42             --dataset hotpotqa                          --pre_samples 0             --template "<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+The following are given documents.
+
+{context}
+
+Answer the question based on the given documents. Only give me the answer and do not output any other words.
+
+Question: {query}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+ Answer:"             
+Output:
+
+Prepare qa_2 with lines: 100 to benchmark_root/delta-baseline/synthetic/4096/data/qa_2/validation.jsonl
+Used time: 0.2 minutes
+Predict qa_2 
+from benchmark_root/delta-baseline/synthetic/4096/data/qa_2/validation.jsonl
+to benchmark_root/delta-baseline/synthetic/4096/pred/qa_2.jsonl
+[DeltaLlama] experiment=baseline
+Used time: 0.6 minutes
+Total tasks: ['niah_single_1', 'niah_single_2', 'niah_single_3', 'niah_multikey_1', 'niah_multikey_2', 'niah_multikey_3', 'niah_multivalue', 'niah_multiquery', 'vt', 'cwe', 'fwe', 'qa_1', 'qa_2']
+Evaluate task niah_single_1...
+Evaluate task niah_single_2...
+Evaluate task niah_single_3...
+Evaluate task niah_multikey_1...
+Evaluate task niah_multikey_2...
+Evaluate task niah_multikey_3...
+Evaluate task niah_multivalue...
+Evaluate task niah_multiquery...
+Evaluate task vt...
+Evaluate task cwe...
+Evaluate task fwe...
+Evaluate task qa_1...
+Evaluate task qa_2...
+
+=============================================
+
+      0              1              2   ...     11     12     13
+0  Tasks  niah_single_1  niah_single_2  ...    fwe   qa_1   qa_2
+1  Score           99.0          100.0  ...  83.67   90.0   57.0
+2  Nulls          0/100          0/100  ...  0/100  0/100  0/100
+
+[3 rows x 14 columns]
+
+Saved eval results to benchmark_root/delta-baseline/synthetic/4096/pred/summary.csv
+
+Saved submission results to benchmark_root/delta-baseline/synthetic/4096/pred/submission.csv
+Total time spent on call_api: 44438 seconds

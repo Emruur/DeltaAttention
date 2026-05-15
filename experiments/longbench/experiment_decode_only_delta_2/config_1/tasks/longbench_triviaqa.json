@@ -1,36 +1,19 @@
 {
     "task_name": "longbench_triviaqa",
-    "timestamp": "2026-05-14T13:42:51.404687",
+    "timestamp": "2026-05-15T00:24:47.541059",
     "shot": 0,
     "sparsity": 0.0,
     "mlp_spars": 0.0,
-    "avg_kv_compression_pct": 81.0266246211566,
+    "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
         "num_passages": 200,
-        "seq_len_avg": 3973.735,
-        "seq_len_min": 1689,
-        "seq_len_max": 4064,
-        "seq_len_std": 336.38341929262805
+        "seq_len_avg": 4001.43,
+        "seq_len_min": 1680,
+        "seq_len_max": 4099,
+        "seq_len_std": 346.32215508107475
     },
-    "accuracy": 0.3291124190137347,
-    "timings": {
-        "total_avg_ms": 2.776434185989201,
-        "latency_breakdown_ms": {
-            "time_triton_flash_attention": 1.0027415087353437,
-            "time_prefill_forward_total": 2.776434185989201,
-            "time_delta_decode_cache_update": 0.10578667188527129,
-            "time_fused_kernel_only": 0.07265408437330831,
-            "time_delta_decode_attn_calc": 0.12134374420743675,
-            "time_delta_decode_inner_total": 0.1378955273960547,
-            "time_decode_forward_total": 0.5960777991988526
-        }
-    },
-    "metrics": {
-        "alias": "longbench_triviaqa",
-        "qa_f1_score,none": 0.3291124190137347,
-        "qa_f1_score_stderr,none": 0.029834025559826092
-    },
-    "total_benchmark_time_s": 110.36878776550293,
+    "accuracy": 0.5401190476190476,
+    "total_benchmark_time_s": 199.2163417339325,
     "parameters": {
         "delta_decode": true,
         "window_size": 100,

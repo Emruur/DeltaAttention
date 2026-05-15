@@ -1,36 +1,19 @@
 {
     "task_name": "longbench_qasper",
-    "timestamp": "2026-05-14T13:33:09.065994",
+    "timestamp": "2026-05-15T00:10:52.810408",
     "shot": 0,
     "sparsity": 0.0,
     "mlp_spars": 0.0,
-    "avg_kv_compression_pct": 79.30553485554378,
+    "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
         "num_passages": 200,
-        "seq_len_avg": 3788.895,
-        "seq_len_min": 2330,
-        "seq_len_max": 3968,
-        "seq_len_std": 380.67210821782044
+        "seq_len_avg": 3885.645,
+        "seq_len_min": 2324,
+        "seq_len_max": 4104,
+        "seq_len_std": 430.71731910268016
     },
-    "accuracy": 0.18429916131792365,
-    "timings": {
-        "total_avg_ms": 2.6359510400518773,
-        "latency_breakdown_ms": {
-            "time_triton_flash_attention": 0.8927162698004395,
-            "time_prefill_forward_total": 2.6359510400518773,
-            "time_delta_decode_cache_update": 0.10893624960968597,
-            "time_fused_kernel_only": 0.07363866436042815,
-            "time_delta_decode_attn_calc": 0.12453935560426538,
-            "time_delta_decode_inner_total": 0.1434861337319676,
-            "time_decode_forward_total": 0.6116787574922561
-        }
-    },
-    "metrics": {
-        "alias": "longbench_qasper",
-        "qa_f1_score,none": 0.18429916131792365,
-        "qa_f1_score_stderr,none": 0.020702762897877525
-    },
-    "total_benchmark_time_s": 194.78672552108765,
+    "accuracy": 0.09578435075415903,
+    "total_benchmark_time_s": 175.5090720653534,
     "parameters": {
         "delta_decode": true,
         "window_size": 100,

@@ -1,36 +1,19 @@
 {
     "task_name": "longbench_multi_news",
-    "timestamp": "2026-05-14T13:26:32.976111",
+    "timestamp": "2026-05-14T23:59:30.592015",
     "shot": 0,
     "sparsity": 0.0,
     "mlp_spars": 0.0,
-    "avg_kv_compression_pct": 84.34799162699912,
+    "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
         "num_passages": 200,
-        "seq_len_avg": 2465.23,
-        "seq_len_min": 195,
-        "seq_len_max": 3584,
-        "seq_len_std": 974.202662232043
+        "seq_len_avg": 2584.53,
+        "seq_len_min": 190,
+        "seq_len_max": 4103,
+        "seq_len_std": 1128.9340455048737
     },
-    "accuracy": 0.19963188455824082,
-    "timings": {
-        "total_avg_ms": 2.2018994658812883,
-        "latency_breakdown_ms": {
-            "time_triton_flash_attention": 0.5756444301572629,
-            "time_prefill_forward_total": 2.2018994658812883,
-            "time_delta_decode_cache_update": 0.24495415676401966,
-            "time_fused_kernel_only": 0.21090453195592318,
-            "time_delta_decode_attn_calc": 0.5429940039825506,
-            "time_delta_decode_inner_total": 0.802837879406378,
-            "time_decode_forward_total": 1.8504284836599505
-        }
-    },
-    "metrics": {
-        "alias": "longbench_multi_news",
-        "rouge_score,none": 0.19963188455824082,
-        "rouge_score_stderr,none": 0.005703521501607587
-    },
-    "total_benchmark_time_s": 6151.762901067734,
+    "accuracy": 0.1697957744714625,
+    "total_benchmark_time_s": 2831.40066242218,
     "parameters": {
         "delta_decode": true,
         "window_size": 100,

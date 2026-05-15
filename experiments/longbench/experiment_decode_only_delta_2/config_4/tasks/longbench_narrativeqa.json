@@ -1,0 +1,30 @@
+{
+    "task_name": "longbench_narrativeqa",
+    "timestamp": "2026-05-15T06:33:32.727073",
+    "shot": 0,
+    "sparsity": 0.0,
+    "mlp_spars": 0.0,
+    "avg_kv_compression_pct": 0.0,
+    "benchmark_stats": {
+        "num_passages": 200,
+        "seq_len_avg": 4102.09,
+        "seq_len_min": 4101,
+        "seq_len_max": 4104,
+        "seq_len_std": 0.46032597145935616
+    },
+    "accuracy": 0.06473754643906719,
+    "total_benchmark_time_s": 390.6629092693329,
+    "parameters": {
+        "delta_decode": true,
+        "window_size": 100,
+        "row_delta_threshold": 10.0,
+        "row_similarity_metric": "euclidean",
+        "delta_pf_key_on": 0,
+        "flash": true,
+        "delta_type": "row",
+        "divide_to": 0,
+        "chunk_size": 512
+    },
+    "experiment_type": "decode_only_delta",
+    "model_id": "meta-llama/Llama-2-7b-chat-hf"
+}

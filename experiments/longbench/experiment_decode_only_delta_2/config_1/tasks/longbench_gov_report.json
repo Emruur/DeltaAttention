@@ -1,36 +1,19 @@
 {
     "task_name": "longbench_gov_report",
-    "timestamp": "2026-05-14T11:43:12.839316",
+    "timestamp": "2026-05-14T23:12:10.839807",
     "shot": 0,
     "sparsity": 0.0,
     "mlp_spars": 0.0,
-    "avg_kv_compression_pct": 83.09222990730379,
+    "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
         "num_passages": 200,
-        "seq_len_avg": 3567.1,
-        "seq_len_min": 2459,
-        "seq_len_max": 3584,
-        "seq_len_std": 103.91862200779994
+        "seq_len_avg": 4056.805,
+        "seq_len_min": 2455,
+        "seq_len_max": 4104,
+        "seq_len_std": 201.5964954432492
     },
-    "accuracy": 0.20311729034507586,
-    "timings": {
-        "total_avg_ms": 2.6392279452085496,
-        "latency_breakdown_ms": {
-            "time_triton_flash_attention": 0.9103026118036359,
-            "time_prefill_forward_total": 2.6392279452085496,
-            "time_delta_decode_cache_update": 0.08977546702961407,
-            "time_fused_kernel_only": 0.08155010366508819,
-            "time_delta_decode_attn_calc": 0.1297917701086454,
-            "time_delta_decode_inner_total": 0.14617964564217545,
-            "time_decode_forward_total": 0.5892754985954518
-        }
-    },
-    "metrics": {
-        "alias": "longbench_gov_report",
-        "rouge_score,none": 0.20311729034507586,
-        "rouge_score_stderr,none": 0.006047181270987257
-    },
-    "total_benchmark_time_s": 2626.1824853420258,
+    "accuracy": 0.03925417259524812,
+    "total_benchmark_time_s": 2944.448925971985,
     "parameters": {
         "delta_decode": true,
         "window_size": 100,

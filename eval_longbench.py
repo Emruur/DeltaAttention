@@ -81,7 +81,7 @@ EXPERIMENT_DEFINITIONS = {
     # This is the "Sole Decode Optimization" use case from the eval plan.
     "decode_only_delta": {
         "grid": {
-            "row_thresh": [13,10],
+            "row_thresh": [13,12,11,10],
             "window_size": [100],
             "row_sim": ["euclidean"],
         },
