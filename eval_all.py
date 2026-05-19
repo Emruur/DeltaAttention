@@ -48,7 +48,7 @@ json.JSONEncoder.default = safe_json_default
 AutoConfig.register("llama", LlamaConfig, exist_ok=True)
 AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 
-LIMIT= None
+LIMIT = None  # overridden by --limit arg
 
 
 # ==========================================
@@ -388,9 +388,9 @@ def run_worker_process(args, experiment_dir):
         model_args = f"pretrained={model_id},trust_remote_code=True,dtype=bfloat16,attn_implementation=eager,max_length={max_len}"
 
     eval_config = {
-        "shot": args.shot, 
-        "limit": LIMIT, 
-        "batch_size": 1, 
+        "shot": args.shot,
+        "limit": args.limit if args.limit is not None else LIMIT,
+        "batch_size": 1,
         "model_args": model_args
     }
 
@@ -426,6 +426,9 @@ def run_worker_process(args, experiment_dir):
     elif args.short_bench:
         tasks = SHORT_TASKS
         print(f"[Worker] '--short_bench' triggered. Running {len(tasks)} short tasks.", flush=True)
+    elif args.limit is not None:
+        tasks = LONGBENCH_TASKS
+        print(f"[Worker] --limit set, defaulting to LongBench tasks ({len(tasks)} tasks).", flush=True)
     else:
         if args.shot == 0: tasks = ["arc_easy", "arc_challenge", "openbookqa", "boolq", "hellaswag", "piqa", "winogrande"]
         elif args.shot == 5: tasks = ["triviaqa"]
@@ -546,11 +549,13 @@ if __name__ == "__main__":
 
     # PREFILL DENSE WINDOW
     parser.add_argument('--dense_window_size', default=128, type=int)
-    
+    parser.add_argument('--limit', default=None, type=int, help="Max samples per task (None = full eval)")
+
     args = parser.parse_args()
 
     model_arch = "bitnet" if args.bitnet else "llama"
-    base_storage_path = os.path.join("snellius_experiments", model_arch)
+    base_root = "proxyExperiment" if args.limit is not None else "snellius_experiments"
+    base_storage_path = os.path.join(base_root, model_arch)
 
     os.makedirs(base_storage_path, exist_ok=True)
 
@@ -586,10 +591,12 @@ if __name__ == "__main__":
             
             if args.bitnet: cmd.append("--bitnet")
             if args.llama: cmd.append("--llama")
-                
+
             if args.short_bench: cmd.append("--short_bench")
             if args.long_bench: cmd.append("--long_bench")
             if args.all_bench: cmd.append("--all_bench")
+
+            if args.limit is not None: cmd.extend(["--limit", str(args.limit)])
             
             if "arg_builder" in exp_def:
                 cmd.extend(exp_def["arg_builder"](current_params))
