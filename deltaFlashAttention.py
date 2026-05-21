@@ -55,12 +55,19 @@ def hybrid_compressed_flash_kernel(
     k_dense_base = K_dense + batch_idx * stride_kdb + head_idx * stride_kdh
     v_dense_base = V_dense + batch_idx * stride_vdb + head_idx * stride_vdh
 
-    last_safe_physical_timestamp = -1
+    # The boundary between Phase 1 (compressed) and Phase 2 (exact dense).
+    # Phase 2 covers exactly [target_boundary, query_pos].
+    target_boundary = start_m - denseWindowSize
 
     # ===========================================================
     # PHASE 1: COMPRESSED HISTORY LOOP
     # ===========================================================
-    last_safe_physical_timestamp = -1
+    # For each packed anchor, we clip its count to only the portion of the
+    # original sequence that falls before target_boundary.
+    # Since sum(packed_counts) == seq_len, target_boundary - timestamp gives
+    # exactly how many original tokens this anchor covers before the boundary.
+    # This prevents Phase 2 from ballooning when compression is aggressive
+    # and packed timestamps are sparse.
     start_n = 0
 
     while start_n < num_packed_keys:
@@ -68,9 +75,16 @@ def hybrid_compressed_flash_kernel(
         packed_mask = offs_n < num_packed_keys
 
         timestamps = tl.load(pt_base + offs_n * stride_ptn, mask=packed_mask, other=seq_len_k + 1)
-        max_timestamp_in_block = tl.max(timestamps)
+        counts = tl.load(pc_base + offs_n * stride_pcn, mask=packed_mask, other=0.0)
 
-        if max_timestamp_in_block >= start_m - denseWindowSize:
+        # Clip each anchor's count to only the tokens it represents before the boundary.
+        # Anchors at or past target_boundary get effective_count = 0.
+        effective_counts = tl.minimum(counts, tl.maximum(0.0, target_boundary - timestamps.to(tl.float32)))
+        effective_counts = tl.where(packed_mask, effective_counts, 0.0)
+
+        # Packed timestamps are sorted; once a block has no contribution, neither
+        # will any subsequent block.
+        if tl.sum(effective_counts) <= 0.0:
             start_n = num_packed_keys
         else:
             # --- SAFE PACKED MATH ---
@@ -78,13 +92,13 @@ def hybrid_compressed_flash_kernel(
             k_pack = tl.load(k_ptrs, mask=(packed_mask[None, :]) & (offs_d[:, None] < head_dim), other=0.0)
 
             qk = tl.dot(q, k_pack) * sm_scale
-            qk = tl.where(packed_mask[None, :], qk, float("-inf"))
+            # Exclude zero-effective-count anchors from softmax numerics.
+            qk = tl.where((effective_counts[None, :] > 0.0) & packed_mask[None, :], qk, float("-inf"))
 
             m_ij = tl.maximum(m_i, tl.max(qk, 1))
             p = tl.math.exp(qk - m_ij[:, None])
 
-            counts = tl.load(pc_base + offs_n * stride_pcn, mask=packed_mask, other=0.0)
-            p_weighted = p * counts[None, :]
+            p_weighted = p * effective_counts[None, :]
 
             l_ij = tl.sum(p_weighted, 1)
             alpha = tl.math.exp(m_i - m_ij)
@@ -98,16 +112,14 @@ def hybrid_compressed_flash_kernel(
             acc += tl.dot(p_weighted.to(v_pack.dtype), v_pack)
             m_i = m_ij
 
-            last_safe_physical_timestamp = max_timestamp_in_block
-
             start_n += BLOCK_N
 
     # ===========================================================
     # PHASE 2: EXACT DENSE LOCAL WINDOW
     # ===========================================================
-    dense_start_n = ((last_safe_physical_timestamp + 1) // BLOCK_N) * BLOCK_N
-    dense_start_n = tl.maximum(0, dense_start_n)
-
+    # Always starts at exactly target_boundary in the original sequence,
+    # covering exactly denseWindowSize tokens regardless of packing sparsity.
+    dense_start_n = tl.maximum(0, start_m - denseWindowSize)
     dense_hi = tl.minimum(seq_len_k, start_m + BLOCK_M)
 
     for start_n in range(dense_start_n, dense_hi, BLOCK_N):

@@ -72,7 +72,7 @@ EXPERIMENT_DEFINITIONS = {
             "delta": [15],
             "row_sim": ["euclidian"],
             "chunk_size": [512],
-            "dense_window_size": [0],
+            "dense_window_size": [256],
         },
         "arg_builder": lambda p: [
             "--scale",             str(p["scale"]),
@@ -548,7 +548,7 @@ if __name__ == "__main__":
     parser.add_argument('--row_thresh', default=0.5, type=float)
 
     # PREFILL DENSE WINDOW
-    parser.add_argument('--dense_window_size', default=128, type=int)
+    parser.add_argument('--dense_window_size', default=256, type=int)
     parser.add_argument('--limit', default=None, type=int, help="Max samples per task (None = full eval)")
 
     args = parser.parse_args()
