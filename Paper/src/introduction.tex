@@ -1,0 +1,35 @@
+\section{Introduction}
+
+Before the Transformer era, language models were built on recurrent neural networks (RNNs) and their variants such as LSTMs and GRUs.
+These models were used in small-scale conversational assistants like Siri and Alexa, but their usefulness was limited.
+RNNs encode context into a fixed-size hidden state, which means they forget information as sequences grow longer and the hidden state get diluted.
+More importantly, they process text sequentially token by token, making it impossible to parallelize training across the sequence.
+This sequential bottleneck kept these models small.
+
+The groundbreaking paper \textit{Attention Is All You Need}~\citep{vaswani2017attention} changed the field.
+Transformers process all tokens in a sequence simultaneously, making it possible to train on massive datasets using GPU parallelism.
+Scaled to billions of parameters on web data,  GPT-3~\citep{brown2020gpt3} could do in-context learning, translation, coding, and reasoning without any task-specific training.
+The scale of the data and model allowed a certain amount of generalization that earlier architectures could not achieve.
+
+The mechanism behind this is the attention module.
+Each token attends to every other token in the sequence simultaneously, allowing the model to capture long-range dependencies. However, computing attention for a sequence of length $n$ requires $O(n^2)$ time and memory, since every token pair must be considered. This quadratic scaling kept context windows short.
+GPT-3, for instance, was limited to 2048 tokens.
+
+FlashAttention~\citep{dao2022flashattention} addressed the memory side of this by computing attention in tiles in on-chip SRAM rather than materializing the full attention matrix in HBM, bringing memory use down to linear.
+On handling token position, the original Transformer used absolute positional encodings — positions were essentially hardcoded, so models simply broke on sequences longer than they were trained on. RoPE~\citep{su2024rope} encodes position relative to other tokens rather than absolutely, which generalizes much better to longer sequences, and extensions such as YaRN~\citep{peng2023yarn} and LongRoPE~\citep{ding2024longrope} pushed this further. Together, these advances enabled the jump to context windows of 100k tokens and beyond.
+
+Long context allowed a world of practical applications for LLMs. Coding agents can now take in entire codebases and reason about them. Long documents --- legal contracts, research papers, financial reports --- can be analyzed in a single pass. Retrieval-Augmented Generation (RAG) feeds retrieved documents directly into the model context, allowing LLMs to answer questions grounded in external knowledge that was not part of their training data. These applications share a common bottleneck.
+LLM inference consists of two stages: the prefill stage, which processes the entire input prompt in a single forward pass, and the decoding stage, which generates output tokens one by one.
+As context length grows, the quadratic time complexity of attention makes prefill increasingly expensive.
+Memory was the original wall; FlashAttention removed it but did not address the time complexity --- computing attention on long contexts is slow.
+
+A large body of work aims to accelarate attention for long context tasks by exploiting the empirical sparsity of the attention matrix: most tokens only attend strongly to a small local window and a few distant positions, so many token pair interactions do not need to be computed at all.
+Early work used fixed sparse patterns~\citep{child2019generating}; more recent methods determine the pattern dynamically based on the input~\citep{jiang2024minference, lai2025flexprefill, xu2025xattention}.
+All of these methods target sparsity in the attention matrix itself.
+
+In this thesis we propose \textbf{DeltaAttention}, a prefill acceleration method that exploits a different source of sparsity: rather than skipping blocks of the attention matrix, it compresses the key matrix $K$ directly before the $QK$ multiplication.
+Our main contributions are:
+\begin{itemize}
+    \item A method to accelerate prefill by compressing $K$ along the sequence dimension before the $QK$ multiplication, reducing the FLOPs required proportionally to the compression ratio.
+    \item Custom Triton kernels that realize this speedup in practice, demonstrating wall-clock acceleration and not just a theoretical reduction in FLOPs.
+\end{itemize}

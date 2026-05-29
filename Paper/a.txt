@@ -1,0 +1,9 @@
+[Image #4] heres what it looks like. For delta flash attention. Here we have seq dim 16 and block size 2. hidden dim  
+  is still 1. we are at the 3th query block (so queries 5 and 6 ). First iteration we load packed key block 1 which     
+  covers the keys 1,2,3,4 in the original sequence (reach is below 6 so we good)(indicate the tile this step coputes in 
+   the original matrix. original matrix is 16*16 and in this fird titeration we computed rows 5,6 cols 1,2,3,4.. Okay   
+  in the second iteration we load the second key block which covers 5,6,7. Not,ce that its above reach. so the tile on  
+  the actual matrix should clearly show that its over the reach. We thus break out the packed phase 1. Now itertion 3   
+  loads from the original K keys 5,6 and computes the tile (rows 5,6 cols 5,6) than the process is over as we dont      
+  continue further. I want a section Delta Flash Attention demsonstration having 3 diagrams for these 3 steps and the   
+  explanation for it as i described

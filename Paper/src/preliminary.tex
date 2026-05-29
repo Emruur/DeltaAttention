@@ -1,0 +1,133 @@
+\section{Preliminaries}
+
+\subsection{Transformer Overview}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{../assets/transformer_overview.jpeg}
+    \caption{Overview of a Transformer language model. Text is tokenized, each token is looked up in the embedding table, and the resulting vectors pass through $N$ layers, each consisting of an attention module and an MLP. The final embedding of the last token is projected to logits over the vocabulary, a token is sampled, and the process repeats.}
+    \label{fig:transformer_overview}
+\end{figure}
+
+A Transformer language model processes text as follows (Figure~\ref{fig:transformer_overview}).
+Text is first split into tokens, and each token is mapped to a vector by looking it up in a learned embedding table.
+This gives a sequence of vectors of shape $n \times d$, where $n$ is the sequence length and $d$ is the embedding dimension.
+
+These vectors are then passed through a chain of $N$ identical layers.
+Each layer consists of two modules: an attention module followed by an MLP, each with a residual connection.
+Through these layers, the embedding of each token is updated to incorporate information from the rest of the sequence.
+
+After the final layer, the embedding of the last token is projected back to the vocabulary size by an unembedding matrix, producing a logit for each vocabulary entry.
+A softmax turns these logits into a probability distribution, and the next token is sampled from it.
+This token is appended to the sequence, and the whole forward pass is run again to generate the token after that.
+Generation continues until an end-of-sequence token is produced.
+
+\subsection{Attention Block}
+
+This section explains the inner workings of the attention block shown in Figure~\ref{fig:transformer_overview}.
+
+
+
+\subsubsection{Self-Attention}
+\label{sec:self_attention}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\textwidth]{../assets/Self_Attention.png}
+    \caption{Self-attention mechanism. The input is projected to queries $Q$, keys $K$, and values $V$. The dot product $QK^\top$ gives attention scores, which are normalized by softmax to produce attention weights. The output is a weighted sum of the value vectors.}
+    \label{fig:self_attention}
+\end{figure}
+
+Self-attention is the operation inside each head (Figure~\ref{fig:self_attention}).
+The input hidden state matrix of shape $n \times d$ is projected to three matrices, queries $Q$, keys $K$, and values $V$, each of shape $n \times l$, using learned projection matrices.
+
+The attention scores are computed as:
+\begin{equation}
+    \text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{l}}\right) V
+\end{equation}
+
+The $QK^\top$ product gives an $n \times n$ matrix where entry $(a, b)$ is the dot product of token $a$'s query vector with token $b$'s key vector.
+Intuitively, the query of a token encodes what it is looking for, and the key of a token encodes what it has to offer.
+Their dot product measures how relevant token $b$ is to token $a$.
+Dividing by $\sqrt{l}$ keeps the dot products from growing too large before the softmax.
+
+Applying softmax row-wise turns each row into a probability distribution, the attention weights, which say how much each token attends to every other token.
+
+The attention weights are then multiplied with the value matrix $V$ to produce the attention output: each token's output is a weighted sum of all value vectors, where the weights come from its row of the attention matrix.
+Intuitively, the value vector of a token encodes the information it contributes to other tokens, and the attention weight determines how much of that contribution is picked up.
+
+\subsubsection{Multi-Head Attention}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{../assets/mha.jpeg}
+    \caption{Multi-head attention. The input matrix of shape $n \times d$ is projected by $h$ independent heads, each mapping the full input to a smaller subspace of width $l = d/h$ to produce per-head queries, keys, and values of shape $n \times l$. Each head runs self-attention independently. The outputs are concatenated along the embedding dimension to recover the original $n \times d$ shape.}
+    \label{fig:mha}
+\end{figure}
+
+The attention module inside each Transformer layer is a multi-head attention (MHA) block (Figure~\ref{fig:mha}).
+Rather than running a single attention computation over the full embedding dimension, MHA runs $h$ attention computations (heads) in parallel, each operating in a smaller subspace of width $l = d / h$.
+The input to the block is the hidden state matrix of shape $n \times d$, where $n$ is the sequence length and $d$ is the embedding dimension.
+Each head has its own learned projection matrices that map the full $d$-dimensional input down to $l$ dimensions, producing per-head queries, keys, and values of shape $n \times l$.
+Each head sees the full sequence and the full embedding, but through its own projection, different heads facilitate different attention patterns and capture different types of token interactions.
+The output of each head has the same shape $n \times l$, and the $h$ outputs are concatenated along the embedding dimension to give a final output of shape $n \times d$, matching the input.
+
+
+\subsection{FlashAttention}
+
+Materializing the full $n \times n$ attention scores matrix has two critical problems.
+
+The first is memory capacity. The matrix grows quadratically with sequence length: at 10k tokens it is roughly 200 MB per head, at 100k tokens it is around 20 GB per head, and at 1 million tokens it exceeds 2 TB per head. MHA runs $h$ heads in parallel, so these numbers scale by $h$, a model like Llama 3 8B uses 32 heads. An H100 has 80 GB of HBM, so at long sequences the scores matrices alone exhaust GPU memory by a large factor.
+
+The second problem is memory bandwidth. Even when the matrix fits, standard attention is bottlenecked by repeated data movement between HBM and the small on-chip SRAM. Computing attention requires multiple passes over the scores: write scores to HBM, read them back for softmax, write the result, read it again for the matmul with $V$. Each of these round trips is slow, and they dominate the runtime at long sequences.
+
+FlashAttention~\cite{dao2022flashattention} solves both problems by computing attention in tiles that fit in SRAM. Within each tile, the score computation, softmax, and matmul with $V$ are fused into a single pass, so intermediate results are newer written to HBM. This requires an incremental softmax update to accumulate the correct result across tiles without materializing the full scores matrix. The peak memory footprint drops from $O(n^2)$ to $O(n)$, and the intermediate HBM read/writes are eliminated.
+
+\subsubsection{FlashAttention Algorithm}
+\label{sec:flashattention_algorithm}
+
+$Q$, $K$, and $V$ are divided into fixed-size blocks along the sequence dimension (typically 64 or 128 tokens per block). The outer loop iterates over $Q$ blocks; for each $Q$ block, an inner loop iterates over all $K$ and $V$ blocks in sequence.
+
+For each ($Q$ block, $K$/$V$ block) pair, three steps happen in SRAM:
+
+\begin{itemize}
+    \item The $Q$ block and $K$ block are multiplied to produce an attention scores tile of shape $B_q \times B_k$, where $B_q$ is the query block size and $B_k$ is the key block size.
+    \item Online softmax is applied to the scores tile. Standard softmax requires the full row to normalize, but online softmax maintains a running maximum and a running sum that are corrected as each new tile arrives, producing numerically identical results without having the full row in memory.
+    \item The attention weights tile is multiplied with the $V$ block to get a partial attention output of shape $B_q \times d$. This is added to a running output accumulator for the current $Q$ block, which collects the contributions from all $K$/$V$ blocks seen so far.
+\end{itemize}
+
+Once all $K$/$V$ blocks have been processed, the running accumulator holds the sum of all partial contributions. It is rescaled by the final softmax normalizer from the online softmax and written back to HBM as the attention output for this $Q$ block.
+
+FlashAttention~1 parallelizes this computation over the batch and head dimensions. FlashAttention~2~\cite{dao2023flashattention2} additionally parallelizes over $Q$ blocks: each kernel instance handles one $Q$ block independently, iterating over all $K$ and $V$ blocks on its own. Since there are no dependencies between $Q$ blocks, this is feasible and enables significantly more parallelism.
+
+\subsubsection{FlashAttention Demonstration}
+
+Figure~\ref{fig:flashattn_snapshot} shows a FlashAttention~2 program computing the second query block ($Q_2$), with block size~2, sequence length~8, and head dimension~1. Other programs handle the remaining $Q$ blocks in parallel. The gray upper-triangular blocks of $S$ mark KV blocks skipped entirely: every token in those blocks lies in the future of the corresponding query block.
+
+In iteration~1 (left), $Q_2$ and $K_1$ are loaded into SRAM and multiplied to produce scores tile $S_{21}$. After online softmax, $S_{21}$ is multiplied with $V_1$ and accumulated into $O_2$.
+
+In iteration~2 (right), the $K$ and $V$ blocks advance to block~2. $Q_2$ and $K_2$ produce tile $S_{22}$, which is multiplied with $V_2$ and again accumulated into $O_2$. The program stops here: blocks $K_3$ and beyond lie entirely in the future relative to $Q_2$, so they are skipped due to causality.
+
+After all $K$/$V$ blocks have been processed, $O_2$ holds the correct attention output for the tokens in $Q_2$, rescaled by the final softmax normalizer.
+
+\input{diagrams/flash_attention_demonstration}
+
+\subsection{Local Attention Window}
+\label{sec:local_attention_window}
+
+Attention in LLMs is empirically sparse: tokens strongly attend to their neighbors and a few distant tokens. \citet{xiao2023streamingllm} identified two regions that receive strong attention. The first is a narrow band along the diagonal, the \textbf{critical diagonal}, meaning tokens attend mostly to their neighbors. The second is the first few tokens of the sequence, the attention sink.
+
+Figure~\ref{fig:exact_window} shows this for two layers of LLaMA 3.2. Both layers show the same structure: high attention weights on the  diagonal and on the initial token.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.65\textwidth]{../assets/exact_window}
+    \caption{Heatmap of attention scores in two layers of LLaMA 3.2 during prefill. Figure reproduced from \citet{qi2024deltallm}.}
+    \label{fig:exact_window}
+\end{figure}
+
+This observation motivates computing the attention exactly for tokens in the critical diagonal in prefill acceleration methods. \citet{jiang2024minference} have their A-shape attention pattern. \citet{qi2024deltallm} maintain an exact window for the most recent tokens while compressing the rest via delta key vectors. DeltaAttention follows the same principle: the critical diagonal is processed with the full uncompressed keys and values.
+
+
+
+

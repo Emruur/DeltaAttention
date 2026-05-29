@@ -1,0 +1,55 @@
+\section{Related Work}
+
+\paragraph{Attention complexity and FlashAttention.}
+Self-attention scales quadratically in both time and memory with sequence length, which made long-context inference impractical for early Transformer models.
+FlashAttention~\citep{dao2022flashattention} addressed the memory side by computing attention in tiles in on-chip SRAM, avoiding materializing the full attention matrix in HBM.
+This brought memory use down to linear and cut HBM traffic substantially, making attention practical for sequences up to tens of thousands of tokens.
+However, FlashAttention is exact---every attention score is still computed---so the quadratic time complexity remains.
+As sequences grow attention computation becomes the dominant runtime cost and approximate methods become necessary.
+
+\paragraph{Sparse attention for prefill.}
+A natural way to reduce the time cost is to exploit the fact that attention matrices are empirically sparse: most tokens attend strongly to only a small fraction of others.
+\citet{child2019generating} were among the first to demonstrate this, observing that trained Transformer attention matrices concentrate on local windows and a few distant positions.
+They proposed fixed sparse patterns---local windows combined with strided or fixed summary positions---to approximate full attention with fewer FLOPs.
+The limitation is that a fixed pattern cannot adapt to the content of a given input.
+
+This motivated a shift to dynamic sparse attention, where the sparsity pattern is determined on the fly.
+\citet{jiang2024minference} found that LLM attention heads exhibit consistent structural patterns across different inputs---A-shape, Vertical-Slash, and Block-Sparse---and assigned each head its dominant pattern offline, building sparse indices at inference time accordingly.
+SpargeAttn~\citep{zhang2025spargeattn} is a parallel work that takes a more general approach designed to work across diverse model types beyond language models.
+It selects a representative per block and uses representative-level attention scores to predict which block pairs are near-zero and can be skipped entirely, without assuming any fixed pattern.
+FlexPrefill~\citep{lai2025flexprefill} and XAttention~\citep{xu2025xattention} are more recent works that push the state of the art further.
+FlexPrefill adapts both the sparsity pattern and compute budget dynamically per head using Jensen-Shannon divergence to classify the pattern type at runtime.
+XAttention uses the sum of antidiagonal values within each attention block as a lightweight proxy for block importance, achieving aggressive pruning at minimal overhead.
+
+All of these methods target sparsity in the attention matrix at the block level.
+Skipping entire blocks maps cleanly onto FlashAttention's block-based execution: if a block is not selected, its tile is simply never computed.
+
+As a parallel line, \citet{qi2024deltallm}, a concurrent work from our group at LIACS, targets a different kind of sparsity.
+While the methods above exploit the empirical sparsity of the attention map, they observe that adjacent key vectors are similar, so encoding each key as a delta from the previous one yields a sparse delta key matrix.
+They then propose a method to compute attention directly using this delta key matrix, reducing the overall computation.
+However, the delta is applied element-wise, giving unstructured sparsity scattered throughout the delta matrix---a pattern that GPU hardware cannot exploit efficiently, requiring custom hardware to accelerate.
+
+\paragraph{KV cache compression for decoding.}
+A separate line of work targets the memory bottleneck of autoregressive decoding.
+Decoding is memory-bound: at every generation step the full KV cache must be loaded from HBM, so the KV cache dominates both memory capacity and memory bandwidth.
+As context length grows, the cache can exceed GPU memory entirely, but even when it fits, a smaller cache directly translates to faster decoding by reducing the amount of data loaded per step.
+\citet{zhang2023h2o} made the foundational observation that a small set of ``heavy hitter'' tokens receives the majority of attention mass, and proposed dynamically retaining only those tokens while evicting the rest.
+\citet{li2024snapkv} refined this with a query-aware eviction policy: each attention head observes which tokens are attended to within an observation window at the end of the prompt, and retains only those positions for subsequent decoding.
+\citet{zhang2024cam} pointed out that evicting tokens causes irreversible information loss, and proposed merging evicted tokens into their neighbors rather than discarding them.
+\citet{wang2024kvmerger} arrived at merging from a different angle: they observed that adjacent token embeddings in the key matrix exhibit high cosine similarity within a sequence, and that this pattern is consistent across datasets and layers.
+This motivates merging consecutive similar key tokens into a single representative, compressing the cache without throwing away information.
+
+InfLLM~\citep{xiao2024infllm} spans both prefill and decoding.
+It offloads the KV cache to CPU memory and selectively loads blocks to the GPU based on predicted attention relevance, using a block-representative scheme to decide which blocks a given query is likely to attend to.
+Since CPU RAM is far more abundant than GPU VRAM, this effectively extends the usable context window without requiring the full cache on device at once.
+
+\paragraph{DeltaAttention.}
+DeltaAttention is a prefill acceleration method.
+Its starting point is the same observation as \citet{qi2024deltallm}: taking deltas between adjacent key vectors reveals sparsity in K.
+We asked whether that sparsity could be made \emph{structured}.
+Applying the delta at the token level rather than element-wise means that entire rows of K with small delta magnitude can be dropped.
+This produces structured sparsity along the sequence dimension: K can be physically compressed before the QK multiplication, reducing FLOPs in proportion to the number of pruned rows.
+
+After arriving at this formulation, we noticed it converges with the core observation behind KVMerger~\citep{wang2024kvmerger}: adjacent key token embeddings are similar.
+KVMerger uses this to compress the KV cache for decoding; we use the same insight to compress K at prefill.
+DeltaAttention is, to our knowledge, the first work to apply this insight as a prefill optimization with structured, GPU-friendly sparsity.

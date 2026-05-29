@@ -1,0 +1,211 @@
+\begin{figure}[h]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tikzpicture}
+  % cell=0.38cm; Q,K,V,O: 8x1; S: 8x8
+  % Iter 1: Q=0, K=1.0, qkmul=2.05, S=2.7, V=6.3, smul=7.15, O=7.65
+  % Iter 2: same + xoff=9.7
+  \colorlet{bblue}{blue!40}
+  \colorlet{borange}{orange!70}
+  \colorlet{bpurple}{purple!55}
+  \colorlet{bgray}{gray!15}
+  \colorlet{bmask}{gray!45}
+
+  %%% ITERATION 1 %%%
+
+  % Q (8x1), x=0; Q2=rows 2-3
+  \foreach \r in {0,...,7} {
+    \fill[bgray] (0,{-\r*0.38}) rectangle (0.38,{-\r*0.38-0.38});
+    \draw        (0,{-\r*0.38}) rectangle (0.38,{-\r*0.38-0.38});
+  }
+  \foreach \r in {2,3} {
+    \fill[bblue] (0,{-\r*0.38}) rectangle (0.38,{-\r*0.38-0.38});
+    \draw        (0,{-\r*0.38}) rectangle (0.38,{-\r*0.38-0.38});
+  }
+  \node[above,font=\small\bfseries] at (0.19,0) {Q};
+  \draw[thick] (-0.10,-0.76)--(-0.20,-0.76)--(-0.20,-1.52)--(-0.10,-1.52);
+  \node[left,font=\scriptsize] at (-0.20,-1.14) {$Q_2$};
+
+  % K (8x1), x=1.0; K1=rows 0-1
+  \foreach \r in {0,...,7} {
+    \fill[bgray]   (1.0,{-\r*0.38}) rectangle (1.38,{-\r*0.38-0.38});
+    \draw          (1.0,{-\r*0.38}) rectangle (1.38,{-\r*0.38-0.38});
+  }
+  \foreach \r in {0,1} {
+    \fill[borange] (1.0,{-\r*0.38}) rectangle (1.38,{-\r*0.38-0.38});
+    \draw          (1.0,{-\r*0.38}) rectangle (1.38,{-\r*0.38-0.38});
+  }
+  \node[above,font=\small\bfseries] at (1.19,0) {K};
+  \draw[thick] (0.90,0)--(0.80,0)--(0.80,-0.76)--(0.90,-0.76);
+  \node[left,font=\scriptsize] at (0.80,-0.38) {$K_1$};
+  \draw[-{Stealth}] (1.19,-3.14)--(1.19,-3.60);
+  \node[below,font=\scriptsize] at (1.19,-3.60) {iterates};
+
+  \node[draw,circle,inner sep=1pt,font=\small] (qkmul) at (2.05,-0.76) {$\otimes$};
+
+  % S (8x8), x=2.7; S21=rows 2-3, cols 0-1
+  \foreach \r in {0,...,7} { \foreach \c in {0,...,7} {
+    \fill[bgray] ({2.7+\c*0.38},{-\r*0.38}) rectangle ({2.7+\c*0.38+0.38},{-\r*0.38-0.38});
+    \draw        ({2.7+\c*0.38},{-\r*0.38}) rectangle ({2.7+\c*0.38+0.38},{-\r*0.38-0.38});
+  }}
+  % causal mask: upper-triangular blocks (block-col > block-row), block size 2
+  \foreach \br in {0,...,3} { \foreach \bc in {0,...,3} {
+    \pgfmathparse{int(\bc>\br)}
+    \ifnum\pgfmathresult=1
+      \foreach \ri in {0,1} { \foreach \ci in {0,1} {
+        \pgfmathtruncatemacro\rr{\br*2+\ri}
+        \pgfmathtruncatemacro\cc{\bc*2+\ci}
+        \fill[bmask] ({2.7+\cc*0.38},{-\rr*0.38}) rectangle ({2.7+\cc*0.38+0.38},{-\rr*0.38-0.38});
+        \draw        ({2.7+\cc*0.38},{-\rr*0.38}) rectangle ({2.7+\cc*0.38+0.38},{-\rr*0.38-0.38});
+      }}
+    \fi
+  }}
+  \foreach \r in {2,3} { \foreach \c in {0,1} {
+    \fill[bpurple] ({2.7+\c*0.38},{-\r*0.38}) rectangle ({2.7+\c*0.38+0.38},{-\r*0.38-0.38});
+    \draw          ({2.7+\c*0.38},{-\r*0.38}) rectangle ({2.7+\c*0.38+0.38},{-\r*0.38-0.38});
+  }}
+  \node[above,font=\small\bfseries] at (4.22,0) {S};
+  \node[white,font=\scriptsize,align=center] at (3.08,-1.14) {$S_{21}$\\\tiny softmax};
+
+  % V (8x1), x=6.3; V1=rows 0-1
+  \foreach \r in {0,...,7} {
+    \fill[bgray]   (6.3,{-\r*0.38}) rectangle (6.68,{-\r*0.38-0.38});
+    \draw          (6.3,{-\r*0.38}) rectangle (6.68,{-\r*0.38-0.38});
+  }
+  \foreach \r in {0,1} {
+    \fill[borange] (6.3,{-\r*0.38}) rectangle (6.68,{-\r*0.38-0.38});
+    \draw          (6.3,{-\r*0.38}) rectangle (6.68,{-\r*0.38-0.38});
+  }
+  \node[above,font=\small\bfseries] at (6.49,0) {V};
+  \draw[thick] (6.20,0)--(6.10,0)--(6.10,-0.76)--(6.20,-0.76);
+  \node[left,font=\scriptsize] at (6.10,-0.38) {$V_1$};
+  \draw[-{Stealth}] (6.49,-3.14)--(6.49,-3.60);
+  \node[below,font=\scriptsize] at (6.49,-3.60) {iterates};
+
+  \node[draw,circle,inner sep=1pt,font=\small] (smul) at (7.15,-1.14) {$\otimes$};
+
+  % O (8x1), x=7.65; O2=rows 2-3
+  \foreach \r in {0,...,7} {
+    \fill[bgray]  (7.65,{-\r*0.38}) rectangle (8.03,{-\r*0.38-0.38});
+    \draw         (7.65,{-\r*0.38}) rectangle (8.03,{-\r*0.38-0.38});
+  }
+  \foreach \r in {2,3} {
+    \fill[bblue]  (7.65,{-\r*0.38}) rectangle (8.03,{-\r*0.38-0.38});
+    \draw         (7.65,{-\r*0.38}) rectangle (8.03,{-\r*0.38-0.38});
+  }
+  \node[above,font=\small\bfseries] at (7.84,0) {O};
+  \node[white,font=\scriptsize] at (7.84,-1.14) {$O_2$};
+  \node[right,font=\scriptsize] at (8.03,-1.14) {$+=$};
+
+  % Arrows iter 1
+  \draw[-{Stealth}] (0.38,-1.14) to[out=0,in=220] (qkmul);
+  \draw[-{Stealth}] (1.38,-0.38) to[out=0,in=70]  (qkmul);
+  \draw[-{Stealth}] (qkmul) to[out=0,in=150] (2.7,-1.14);
+  \draw[-{Stealth}] (3.46,-1.14)--(smul);
+  \draw[-{Stealth}] (6.68,-0.38) to[out=0,in=90] (smul);
+  \draw[-{Stealth}] (smul)--(7.65,-1.14);
+
+  \node[above,font=\small\bfseries] at (4.0,0.55) {Iteration 1: $K$/$V$-block 1};
+
+  %%% ITERATION 2 (xoff=9.7) %%%
+
+  % Q (8x1), x=9.7; Q2=rows 2-3
+  \foreach \r in {0,...,7} {
+    \fill[bgray] (9.7,{-\r*0.38}) rectangle (10.08,{-\r*0.38-0.38});
+    \draw        (9.7,{-\r*0.38}) rectangle (10.08,{-\r*0.38-0.38});
+  }
+  \foreach \r in {2,3} {
+    \fill[bblue] (9.7,{-\r*0.38}) rectangle (10.08,{-\r*0.38-0.38});
+    \draw        (9.7,{-\r*0.38}) rectangle (10.08,{-\r*0.38-0.38});
+  }
+  \node[above,font=\small\bfseries] at (9.89,0) {Q};
+  \draw[thick] (9.60,-0.76)--(9.50,-0.76)--(9.50,-1.52)--(9.60,-1.52);
+  \node[left,font=\scriptsize] at (9.50,-1.14) {$Q_2$};
+
+  % K (8x1), x=10.7; K2=rows 2-3
+  \foreach \r in {0,...,7} {
+    \fill[bgray]   (10.7,{-\r*0.38}) rectangle (11.08,{-\r*0.38-0.38});
+    \draw          (10.7,{-\r*0.38}) rectangle (11.08,{-\r*0.38-0.38});
+  }
+  \foreach \r in {2,3} {
+    \fill[borange] (10.7,{-\r*0.38}) rectangle (11.08,{-\r*0.38-0.38});
+    \draw          (10.7,{-\r*0.38}) rectangle (11.08,{-\r*0.38-0.38});
+  }
+  \node[above,font=\small\bfseries] at (10.89,0) {K};
+  \draw[thick] (10.60,-0.76)--(10.50,-0.76)--(10.50,-1.52)--(10.60,-1.52);
+  \node[left,font=\scriptsize] at (10.50,-1.14) {$K_2$};
+  \draw[-{Stealth}] (10.89,-3.14)--(10.89,-3.60);
+  \node[below,font=\scriptsize] at (10.89,-3.60) {iterates};
+
+  \node[draw,circle,inner sep=1pt,font=\small] (qkmulB) at (11.75,-1.14) {$\otimes$};
+
+  % S (8x8), x=12.4; S22=rows 2-3, cols 2-3
+  \foreach \r in {0,...,7} { \foreach \c in {0,...,7} {
+    \fill[bgray] ({12.4+\c*0.38},{-\r*0.38}) rectangle ({12.4+\c*0.38+0.38},{-\r*0.38-0.38});
+    \draw        ({12.4+\c*0.38},{-\r*0.38}) rectangle ({12.4+\c*0.38+0.38},{-\r*0.38-0.38});
+  }}
+  % causal mask: upper-triangular blocks (block-col > block-row), block size 2
+  \foreach \br in {0,...,3} { \foreach \bc in {0,...,3} {
+    \pgfmathparse{int(\bc>\br)}
+    \ifnum\pgfmathresult=1
+      \foreach \ri in {0,1} { \foreach \ci in {0,1} {
+        \pgfmathtruncatemacro\rr{\br*2+\ri}
+        \pgfmathtruncatemacro\cc{\bc*2+\ci}
+        \fill[bmask] ({12.4+\cc*0.38},{-\rr*0.38}) rectangle ({12.4+\cc*0.38+0.38},{-\rr*0.38-0.38});
+        \draw        ({12.4+\cc*0.38},{-\rr*0.38}) rectangle ({12.4+\cc*0.38+0.38},{-\rr*0.38-0.38});
+      }}
+    \fi
+  }}
+  % active tile: S22 is a diagonal block (bc==br==1), so all 4 cells are processed
+  \foreach \r in {2,3} { \foreach \c in {2,3} {
+    \fill[bpurple] ({12.4+\c*0.38},{-\r*0.38}) rectangle ({12.4+\c*0.38+0.38},{-\r*0.38-0.38});
+    \draw          ({12.4+\c*0.38},{-\r*0.38}) rectangle ({12.4+\c*0.38+0.38},{-\r*0.38-0.38});
+  }}
+  \node[above,font=\small\bfseries] at (13.92,0) {S};
+  \node[white,font=\scriptsize,align=center] at (13.54,-1.14) {$S_{22}$\\\tiny softmax};
+
+  % V (8x1), x=16.0; V2=rows 2-3
+  \foreach \r in {0,...,7} {
+    \fill[bgray]   (16.0,{-\r*0.38}) rectangle (16.38,{-\r*0.38-0.38});
+    \draw          (16.0,{-\r*0.38}) rectangle (16.38,{-\r*0.38-0.38});
+  }
+  \foreach \r in {2,3} {
+    \fill[borange] (16.0,{-\r*0.38}) rectangle (16.38,{-\r*0.38-0.38});
+    \draw          (16.0,{-\r*0.38}) rectangle (16.38,{-\r*0.38-0.38});
+  }
+  \node[above,font=\small\bfseries] at (16.19,0) {V};
+  \draw[thick] (15.90,-0.76)--(15.80,-0.76)--(15.80,-1.52)--(15.90,-1.52);
+  \node[left,font=\scriptsize] at (15.80,-1.14) {$V_2$};
+  \draw[-{Stealth}] (16.19,-3.14)--(16.19,-3.60);
+  \node[below,font=\scriptsize] at (16.19,-3.60) {iterates};
+
+  \node[draw,circle,inner sep=1pt,font=\small] (smulB) at (16.85,-1.14) {$\otimes$};
+
+  % O (8x1), x=17.35; O2=rows 2-3
+  \foreach \r in {0,...,7} {
+    \fill[bgray]  (17.35,{-\r*0.38}) rectangle (17.73,{-\r*0.38-0.38});
+    \draw         (17.35,{-\r*0.38}) rectangle (17.73,{-\r*0.38-0.38});
+  }
+  \foreach \r in {2,3} {
+    \fill[bblue]  (17.35,{-\r*0.38}) rectangle (17.73,{-\r*0.38-0.38});
+    \draw         (17.35,{-\r*0.38}) rectangle (17.73,{-\r*0.38-0.38});
+  }
+  \node[above,font=\small\bfseries] at (17.54,0) {O};
+  \node[white,font=\scriptsize] at (17.54,-1.14) {$O_2$};
+  \node[right,font=\scriptsize] at (17.73,-1.14) {$+=$};
+
+  % Arrows iter 2
+  \draw[-{Stealth}] (10.08,-1.14) to[out=20,in=160]  (qkmulB);
+  \draw[-{Stealth}] (11.08,-1.14) to[out=-20,in=200] (qkmulB);
+  \draw[-{Stealth}] (qkmulB) to[out=0,in=150] (13.16,-1.14);
+  \draw[-{Stealth}] (13.92,-1.14)--(smulB);
+  \draw[-{Stealth}] (16.38,-1.14)--(smulB);
+  \draw[-{Stealth}] (smulB)--(17.35,-1.14);
+
+  \node[above,font=\small\bfseries] at (13.7,0.55) {Iteration 2: $K$/$V$-block 2};
+
+\end{tikzpicture}
+}
+\caption{Two consecutive inner-loop iterations for $Q$-block 2. Left: $K_1$ and $V_1$ produce tile $S_{21}$, accumulated into $O_2$. Right: $K_2$ and $V_2$ produce tile $S_{22}$, accumulated into $O_2$.}
+\label{fig:flashattn_snapshot}
+\end{figure}
