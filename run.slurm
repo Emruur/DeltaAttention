@@ -26,7 +26,7 @@ export HF_HOME=$SHARED_SCRATCH
 export HUGGINGFACE_HUB_CACHE=$SHARED_SCRATCH
 export TRANSFORMERS_CACHE=$SHARED_SCRATCH
 
-export HF_TOKEN="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"
+source "$(dirname "${BASH_SOURCE[0]}")/.env.sh"
 
 #srun --export=ALL,HF_TOKEN python eval_all.py --llama --experiment_type row_delta --long_bench
 #srun --export=ALL,HF_TOKEN python eval_speedup.py

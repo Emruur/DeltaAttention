@@ -23,7 +23,7 @@ pip install -q wonderwords tenacity
 export HF_HOME="/gpfs/home2/qchen/hf_cache"
 export HUGGINGFACE_HUB_CACHE=$HF_HOME
 export TRANSFORMERS_CACHE=$HF_HOME
-export HF_TOKEN="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"
+source "$(dirname "${BASH_SOURCE[0]}")/.env.sh"
 export HF_DATASETS_TRUST_REMOTE_CODE=1
 export PYTORCH_ALLOC_CONF="expandable_segments:True"
 
