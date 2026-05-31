@@ -83,3 +83,5 @@ time_internal = True # Controls if we do fine-grained timing with CUDA syncs
 flash= False
 
 delta_decode = False
+
+sanity = False  # If True: run packing + iterate packed K but zero Phase 1's contribution (diagonal-only attention)

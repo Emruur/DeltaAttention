@@ -69,7 +69,7 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05],
-            "delta": [15],
+            "delta": [13, 15, 17],
             "row_sim": ["euclidian"],
             "chunk_size": [512],
             "dense_window_size": [0],
@@ -145,6 +145,37 @@ EXPERIMENT_DEFINITIONS = {
             "delta_decode": False,              # Turns on decoding path in forward()
             "delta_pf_key_on": False,              # Assuming prefill delta is off for isolated testing
             "flash": True,
+        }
+    },
+
+    # Sanity check: run full packing + iterate packed K in Phase 1, but zero Phase 1's
+    # attention contribution.  Output comes from diagonal (dense local window) only.
+    # Compare against row_delta to measure how much Phase 1 packed history actually helps.
+    "sanity": {
+        "grid": {
+            "delta": [13, 15, 17],
+            "row_sim": ["euclidean"],
+            "chunk_size": [512],
+            "dense_window_size": [128],
+        },
+        "arg_builder": lambda p: [
+            "--delta",             str(p["delta"]),
+            "--row_sim",           str(p["row_sim"]),
+            "--chunk_size",        str(p["chunk_size"]),
+            "--dense_window_size", str(p["dense_window_size"]),
+        ],
+        "injector": lambda args: {
+            "delta_pf_key_on": 1,
+            "delta_type": "row",
+            "sanity": True,
+            "delta_mlp": "Regular",
+            "row_delta_threshold": args.delta,
+            "row_similarity_metric": args.row_sim,
+            "chunk_size": args.chunk_size,
+            "divide_to": 0,
+            "flash": True,
+            "delta_decode": False,
+            "dense_window_size": args.dense_window_size,
         }
     },
 
