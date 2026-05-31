@@ -1,8 +1,8 @@
 {
     "task_name": "longbench_hotpotqa",
-    "timestamp": "2026-05-19T15:40:35.103585",
+    "timestamp": "2026-05-31T12:29:18.259254",
     "shot": 0,
-    "sparsity": 0.5020742337862325,
+    "sparsity": 0.3069085234592302,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -12,31 +12,31 @@
         "seq_len_max": 16385,
         "seq_len_std": 3796.3850489643437
     },
-    "accuracy": 0.5067816091954023,
+    "accuracy": 0.42630952380952386,
     "timings": {
-        "total_avg_ms": 7.673175796121359,
+        "total_avg_ms": 8.71727210674435,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.6111092496663332,
-            "time_delta_mm_pattern": 3.933606595406309,
-            "time_prefill_forward_total": 7.673175796121359,
-            "time_baseline_decode_cache_update": 0.08562476992025041,
-            "time_baseline_decode_attn_calc": 0.44184106011874974,
-            "time_baseline_decode_inner_total": 0.44889054998289796,
-            "time_decode_forward_total": 0.7288882703520357
+            "time_get_row_delta": 0.5976600995752961,
+            "time_delta_mm_pattern": 4.99332765233703,
+            "time_prefill_forward_total": 8.71727210674435,
+            "time_baseline_decode_cache_update": 0.08286524993483908,
+            "time_baseline_decode_attn_calc": 0.4218732900591567,
+            "time_baseline_decode_inner_total": 0.42930361011531204,
+            "time_decode_forward_total": 0.7156742496229708
         }
     },
     "metrics": {
         "alias": "longbench_hotpotqa",
-        "qa_f1_score,none": 0.5067816091954023,
-        "qa_f1_score_stderr,none": 0.10295891176114282
+        "qa_f1_score,none": 0.42630952380952386,
+        "qa_f1_score_stderr,none": 0.09430107261434904
     },
-    "total_benchmark_time_s": 21.45168709754944,
+    "total_benchmark_time_s": 21.478591442108154,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
         "scale": 0.05,
         "delta_mlp": "Regular",
-        "row_delta_threshold": 15.0,
+        "row_delta_threshold": 13.0,
         "row_similarity_metric": "euclidian",
         "chunk_size": 512,
         "divide_to": 0,

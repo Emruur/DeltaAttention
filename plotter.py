@@ -6,8 +6,8 @@ import textwrap
 import matplotlib.pyplot as plt
 from pandas.plotting import table
 
-# Hardcoded baseline path
-BASELINE_PATH = "snellius_experiments/llama/experiment_baseline_decoding"
+# Set to None (or pass --baseline) to run without a baseline column
+BASELINE_PATH = None
 
 def load_experiment_data(exp_dir):
     """Crawls an experiment directory and compiles all task JSONs into a DataFrame."""
@@ -104,8 +104,10 @@ def build_table_df(exp_df, baseline_df, x_param):
     table_df = melted.pivot_table(index=[x_param, 'Metric'], columns='task', values='Value', aggfunc='first')
     
     # 5. Sorting and Formatting
-    unique_vals = [v for v in table_df.index.get_level_values(0).unique() if str(v) != 'Baseline']
-    sorted_idx = ['Baseline'] + sorted(unique_vals)
+    all_level0 = table_df.index.get_level_values(0).unique()
+    unique_vals = [v for v in all_level0 if str(v) != 'Baseline']
+    has_baseline = 'Baseline' in all_level0
+    sorted_idx = (['Baseline'] if has_baseline else []) + sorted(unique_vals)
     table_df = table_df.reindex(sorted_idx, level=0)
     
     task_cols = sorted([c for c in table_df.columns if c != 'Average'])
@@ -220,14 +222,22 @@ def save_table_as_png(df, title, out_path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("exp_folder", type=str, help="Path to the experiment folder")
+    parser.add_argument("--baseline", type=str, default=None,
+                        help="Path to a baseline experiment folder (overrides BASELINE_PATH)")
     args = parser.parse_args()
 
     print("\n========================================")
     print(" BitNet Sparsity Table Generator v3.1")
     print("========================================")
-    
+
+    baseline_path = args.baseline if args.baseline is not None else BASELINE_PATH
+
     print("\nSTEP 1: Loading Baseline")
-    baseline_df = load_experiment_data(BASELINE_PATH)
+    if baseline_path:
+        baseline_df = load_experiment_data(baseline_path)
+    else:
+        print("[Info] No baseline path set — skipping baseline column.")
+        baseline_df = pd.DataFrame()
     
     print("\nSTEP 2: Loading Experiment Data")
     exp_df = load_experiment_data(args.exp_folder)

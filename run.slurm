@@ -33,6 +33,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/.env.sh"
 #srun --export=ALL,HF_TOKEN python eval_ruler.py
 #srun --export=ALL,HF_TOKEN python eval_ruler.py
 
-srun --export=ALL,HF_TOKEN python eval_all.py --llama --experiment_type baseline --limit 20                                                                                    
+#srun --export=ALL,HF_TOKEN python eval_all.py --llama --experiment_type baseline --limit 20                                                                                    
                                                                                                                                                       
 #srun --export=ALL,HF_TOKEN python eval_all.py --llama --experiment_type row_delta --limit 20 
+
+
+
+python eval_all.py --llama --experiment_type sanity   --limit 20 --long_bench --exp_name sanity_check_proxy
+python eval_all.py --llama --experiment_type row_delta --limit 20 --long_bench --exp_name sanity_check_proxy

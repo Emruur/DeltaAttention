@@ -1,6 +1,6 @@
 {
     "task_name": "longbench_passage_retrieval_en",
-    "timestamp": "2026-05-19T15:41:36.263668",
+    "timestamp": "2026-05-31T12:32:22.609163",
     "shot": 0,
     "sparsity": 0.5102470304057756,
     "mlp_spars": 0.0,
@@ -14,15 +14,15 @@
     },
     "accuracy": 1.0,
     "timings": {
-        "total_avg_ms": 7.011494860798121,
+        "total_avg_ms": 6.9492793448269365,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.599173450935632,
-            "time_delta_mm_pattern": 3.4405464485287665,
-            "time_prefill_forward_total": 7.011494860798121,
-            "time_baseline_decode_cache_update": 0.08969371016069815,
-            "time_baseline_decode_attn_calc": 0.40021482641822187,
-            "time_baseline_decode_inner_total": 0.4075954492757286,
-            "time_decode_forward_total": 0.7316936955287836
+            "time_get_row_delta": 0.5953558499924838,
+            "time_delta_mm_pattern": 3.4203030437231066,
+            "time_prefill_forward_total": 6.9492793448269365,
+            "time_baseline_decode_cache_update": 0.08980781163014742,
+            "time_baseline_decode_attn_calc": 0.3987843913525559,
+            "time_baseline_decode_inner_total": 0.40664555070300895,
+            "time_decode_forward_total": 0.7497384052831626
         }
     },
     "metrics": {
@@ -30,7 +30,7 @@
         "retrieval_score,none": 1.0,
         "retrieval_score_stderr,none": 0.0
     },
-    "total_benchmark_time_s": 19.349365234375,
+    "total_benchmark_time_s": 19.147950887680054,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
