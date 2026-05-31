@@ -299,6 +299,9 @@ class LlamaAttention(nn.Module):
         packed_timestamps = packed_timestamps.contiguous().to(torch.int32)
         packed_counts = packed_counts.contiguous().to(torch.float32)
 
+        if getattr(globVR, 'no_count', False):
+            packed_counts = torch.ones_like(packed_counts)
+
         out = torch.empty_like(q)
 
         BLOCK_M = 128

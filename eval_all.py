@@ -148,6 +148,36 @@ EXPERIMENT_DEFINITIONS = {
         }
     },
 
+    # Ablation: disable count weighting in Phase 1 (all packed keys treated as count=1).
+    # Compare against row_delta to measure the effect of count-weighted softmax.
+    "no_count": {
+        "grid": {
+            "delta": [13, 15, 17],
+            "row_sim": ["euclidean"],
+            "chunk_size": [512],
+            "dense_window_size": [0],
+        },
+        "arg_builder": lambda p: [
+            "--delta",             str(p["delta"]),
+            "--row_sim",           str(p["row_sim"]),
+            "--chunk_size",        str(p["chunk_size"]),
+            "--dense_window_size", str(p["dense_window_size"]),
+        ],
+        "injector": lambda args: {
+            "delta_pf_key_on": 1,
+            "delta_type": "row",
+            "no_count": True,
+            "delta_mlp": "Regular",
+            "row_delta_threshold": args.delta,
+            "row_similarity_metric": args.row_sim,
+            "chunk_size": args.chunk_size,
+            "divide_to": 0,
+            "flash": True,
+            "delta_decode": False,
+            "dense_window_size": args.dense_window_size,
+        }
+    },
+
     # Sanity check: run full packing + iterate packed K in Phase 1, but zero Phase 1's
     # attention contribution.  Output comes from diagonal (dense local window) only.
     # Compare against row_delta to measure how much Phase 1 packed history actually helps.

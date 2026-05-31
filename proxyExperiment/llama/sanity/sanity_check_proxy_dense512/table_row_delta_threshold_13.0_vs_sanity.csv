@@ -1,0 +1,13 @@
+sanity,Metric,longbench_hotpotqa,longbench_multifieldqa_en,longbench_narrativeqa,longbench_passage_retrieval_en,Average
+False,accuracy,0.428,0.522,0.34,1.0,0.572
+False,avg_kv_compression_pct,0.0,0.0,0.0,0.0,0.0
+False,sparsity,0.306,0.315,0.268,0.322,0.303
+False,time_decode_forward_total,0.716,0.679,1.023,0.73,0.787
+False,total_avg_ms,8.976,5.86,25.539,8.154,12.132
+False,total_benchmark_time_s,22.688,27.249,42.269,20.903,28.277
+True,accuracy,0.015,0.056,0.031,0.0,0.025
+True,avg_kv_compression_pct,0.0,0.0,0.0,0.0,0.0
+True,sparsity,0.388,0.382,0.405,0.42,0.399
+True,time_decode_forward_total,0.753,0.676,1.131,0.747,0.827
+True,total_avg_ms,5.118,4.755,9.244,4.857,5.994
+True,total_benchmark_time_s,27.064,46.565,60.606,32.17,41.601

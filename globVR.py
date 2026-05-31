@@ -85,3 +85,4 @@ flash= False
 delta_decode = False
 
 sanity = False  # If True: run packing + iterate packed K but zero Phase 1's contribution (diagonal-only attention)
+no_count = False  # If True: disable count weighting in Phase 1 (all packed keys treated as count=1)

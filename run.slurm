@@ -39,5 +39,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/.env.sh"
 
 
 
-python eval_all.py --llama --experiment_type sanity   --limit 20 --long_bench --exp_name sanity_check_proxy
-python eval_all.py --llama --experiment_type row_delta --limit 20 --long_bench --exp_name sanity_check_proxy
+python eval_all.py --llama --experiment_type no_count  --limit 20 --long_bench --exp_name count_ablation_proxy
+python eval_all.py --llama --experiment_type row_delta --limit 20 --long_bench --exp_name count_ablation_proxy
+
