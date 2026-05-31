@@ -1,8 +1,8 @@
 {
     "task_name": "longbench_hotpotqa",
-    "timestamp": "2026-05-31T12:26:57.663210",
+    "timestamp": "2026-05-31T13:14:00.838557",
     "shot": 0,
-    "sparsity": 0.6709236414590662,
+    "sparsity": 0.6441397464795767,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -12,25 +12,25 @@
         "seq_len_max": 16385,
         "seq_len_std": 3796.3850489643437
     },
-    "accuracy": 0.0038461538461538455,
+    "accuracy": 0.0,
     "timings": {
-        "total_avg_ms": 4.785003801062703,
+        "total_avg_ms": 5.258223450928926,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.5878941507078708,
-            "time_delta_mm_pattern": 1.1385883508017287,
-            "time_prefill_forward_total": 4.785003801062703,
-            "time_baseline_decode_cache_update": 0.06955537387052421,
-            "time_baseline_decode_attn_calc": 0.45308824597877706,
-            "time_baseline_decode_inner_total": 0.4775812729151416,
-            "time_decode_forward_total": 0.7518601820925902
+            "time_get_row_delta": 0.5966027506161481,
+            "time_delta_mm_pattern": 1.5554009008221328,
+            "time_prefill_forward_total": 5.258223450928926,
+            "time_baseline_decode_cache_update": 0.06567822292057766,
+            "time_baseline_decode_attn_calc": 0.4450792333447054,
+            "time_baseline_decode_inner_total": 0.45350979634362165,
+            "time_decode_forward_total": 0.7505668984451255
         }
     },
     "metrics": {
         "alias": "longbench_hotpotqa",
-        "qa_f1_score,none": 0.0038461538461538455,
-        "qa_f1_score_stderr,none": 0.003846153846153846
+        "qa_f1_score,none": 0.0,
+        "qa_f1_score_stderr,none": 0.0
     },
-    "total_benchmark_time_s": 26.886553049087524,
+    "total_benchmark_time_s": 27.788244009017944,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -42,7 +42,7 @@
         "divide_to": 0,
         "flash": true,
         "delta_decode": false,
-        "dense_window_size": 0
+        "dense_window_size": 512
     },
     "experiment_type": "sanity"
 }

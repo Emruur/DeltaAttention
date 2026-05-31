@@ -72,7 +72,7 @@ EXPERIMENT_DEFINITIONS = {
             "delta": [13, 15, 17],
             "row_sim": ["euclidian"],
             "chunk_size": [512],
-            "dense_window_size": [0],
+            "dense_window_size": [512],
         },
         "arg_builder": lambda p: [
             "--scale",             str(p["scale"]),
@@ -156,7 +156,7 @@ EXPERIMENT_DEFINITIONS = {
             "delta": [13, 15, 17],
             "row_sim": ["euclidean"],
             "chunk_size": [512],
-            "dense_window_size": [0],
+            "dense_window_size": [512],
         },
         "arg_builder": lambda p: [
             "--delta",             str(p["delta"]),

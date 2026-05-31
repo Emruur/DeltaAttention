@@ -1,8 +1,8 @@
 {
     "task_name": "longbench_passage_retrieval_en",
-    "timestamp": "2026-05-31T12:32:22.609163",
+    "timestamp": "2026-05-31T13:19:46.847060",
     "shot": 0,
-    "sparsity": 0.5102470304057756,
+    "sparsity": 0.5083354924773357,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -14,15 +14,15 @@
     },
     "accuracy": 1.0,
     "timings": {
-        "total_avg_ms": 6.9492793448269365,
+        "total_avg_ms": 7.276522948592901,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.5953558499924838,
-            "time_delta_mm_pattern": 3.4203030437231066,
-            "time_prefill_forward_total": 6.9492793448269365,
-            "time_baseline_decode_cache_update": 0.08980781163014742,
-            "time_baseline_decode_attn_calc": 0.3987843913525559,
-            "time_baseline_decode_inner_total": 0.40664555070300895,
-            "time_decode_forward_total": 0.7497384052831626
+            "time_get_row_delta": 0.6106265497393906,
+            "time_delta_mm_pattern": 3.673511801287532,
+            "time_prefill_forward_total": 7.276522948592901,
+            "time_baseline_decode_cache_update": 0.09103020893604453,
+            "time_baseline_decode_attn_calc": 0.39998319383655023,
+            "time_baseline_decode_inner_total": 0.407431656508637,
+            "time_decode_forward_total": 0.7322841639727798
         }
     },
     "metrics": {
@@ -30,19 +30,19 @@
         "retrieval_score,none": 1.0,
         "retrieval_score_stderr,none": 0.0
     },
-    "total_benchmark_time_s": 19.147950887680054,
+    "total_benchmark_time_s": 20.189414739608765,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
         "scale": 0.05,
         "delta_mlp": "Regular",
         "row_delta_threshold": 15.0,
-        "row_similarity_metric": "euclidean",
+        "row_similarity_metric": "euclidian",
         "chunk_size": 512,
         "divide_to": 0,
         "flash": true,
         "delta_decode": false,
-        "dense_window_size": 0
+        "dense_window_size": 512
     },
     "experiment_type": "row_delta"
 }

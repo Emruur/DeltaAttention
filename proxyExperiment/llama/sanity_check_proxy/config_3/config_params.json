@@ -9,5 +9,5 @@
     "divide_to": 0,
     "flash": true,
     "delta_decode": false,
-    "dense_window_size": 0
+    "dense_window_size": 512
 }

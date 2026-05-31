@@ -1,8 +1,8 @@
 {
     "task_name": "longbench_narrativeqa",
-    "timestamp": "2026-05-31T12:25:17.824903",
+    "timestamp": "2026-05-31T13:12:00.939631",
     "shot": 0,
-    "sparsity": 0.5779873192933564,
+    "sparsity": 0.5569517949040841,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -12,25 +12,25 @@
         "seq_len_max": 46755,
         "seq_len_std": 13034.282715592753
     },
-    "accuracy": 0.01460655556781812,
+    "accuracy": 0.020894228949148858,
     "timings": {
-        "total_avg_ms": 8.22886865362525,
+        "total_avg_ms": 9.184502499178052,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.6646932004950941,
-            "time_delta_mm_pattern": 2.0913331004790963,
-            "time_prefill_forward_total": 8.22886865362525,
-            "time_baseline_decode_cache_update": 0.08841795294509068,
-            "time_baseline_decode_attn_calc": 0.588925896322026,
-            "time_baseline_decode_inner_total": 0.6102397592500874,
-            "time_decode_forward_total": 0.8983238993176058
+            "time_get_row_delta": 0.6742901508696377,
+            "time_delta_mm_pattern": 2.9451074982993304,
+            "time_prefill_forward_total": 9.184502499178052,
+            "time_baseline_decode_cache_update": 0.11945766550121001,
+            "time_baseline_decode_attn_calc": 0.8464335868303836,
+            "time_baseline_decode_inner_total": 0.852596043068245,
+            "time_decode_forward_total": 1.1177545666508593
         }
     },
     "metrics": {
         "alias": "longbench_narrativeqa",
-        "qa_f1_score,none": 0.01460655556781812,
-        "qa_f1_score_stderr,none": 0.008112547926053038
+        "qa_f1_score,none": 0.020894228949148858,
+        "qa_f1_score_stderr,none": 0.008501555817602268
     },
-    "total_benchmark_time_s": 43.846410512924194,
+    "total_benchmark_time_s": 63.89055609703064,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -42,7 +42,7 @@
         "divide_to": 0,
         "flash": true,
         "delta_decode": false,
-        "dense_window_size": 0
+        "dense_window_size": 512
     },
     "experiment_type": "sanity"
 }
