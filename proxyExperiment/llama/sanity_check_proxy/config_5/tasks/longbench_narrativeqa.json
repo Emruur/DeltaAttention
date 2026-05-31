@@ -37,7 +37,7 @@
         "scale": 0.05,
         "delta_mlp": "Regular",
         "row_delta_threshold": 15.0,
-        "row_similarity_metric": "euclidian",
+        "row_similarity_metric": "euclidean",
         "chunk_size": 512,
         "divide_to": 0,
         "flash": true,

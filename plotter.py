@@ -67,8 +67,24 @@ def identify_variables(df):
     
     variables = []
     for col in param_cols:
-        if df[col].nunique() > 1:
+        non_null = df[col].dropna()
+        has_nulls = df[col].isna().any()
+
+        if not has_nulls:
+            # No nulls: standard check
+            if df[col].nunique() > 1:
+                variables.append(col)
+            continue
+
+        # Has nulls: only vary if either
+        #   (a) non-null values themselves differ (true grid sweep), or
+        #   (b) non-null values are all boolean True — null means False/absent flag
+        if non_null.nunique() > 1:
             variables.append(col)
+        elif len(non_null) > 0 and set(non_null.unique()) <= {True, False}:
+            # Boolean flag where null means False — treat as varying
+            variables.append(col)
+        # else: constant numeric/string absent in some configs (e.g. scale) — suppress
     return variables
 
 def build_table_df(exp_df, baseline_df, x_param):
@@ -78,6 +94,11 @@ def build_table_df(exp_df, baseline_df, x_param):
         if optional in exp_df.columns:
             metrics.append(optional)
     
+    # Fill NaN x_param values with "False" so pivot_table doesn't drop them
+    exp_df = exp_df.copy()
+    if exp_df[x_param].isna().any():
+        exp_df[x_param] = exp_df[x_param].fillna(False)
+
     # 1. Calculate Averages for the Experiment runs
     exp_avg = exp_df.groupby([x_param])[metrics].mean().reset_index()
     exp_avg['task'] = 'Average'
@@ -174,7 +195,8 @@ def save_table_as_png(df, title, out_path):
 
     # --- Render Table ---
     # Give first two columns (param/metric) fixed widths, distribute the rest
-    col_widths = [0.1, 0.1] + [0.8 / (len(render_df.columns) - 2)] * (len(render_df.columns) - 2)
+    n_data_cols = max(len(render_df.columns) - 2, 1)
+    col_widths = [0.1, 0.1] + [0.8 / n_data_cols] * (len(render_df.columns) - 2)
     
     tbl = table(ax, render_df, loc='center', cellLoc='center', colWidths=col_widths)
     
@@ -224,6 +246,10 @@ def main():
     parser.add_argument("exp_folder", type=str, help="Path to the experiment folder")
     parser.add_argument("--baseline", type=str, default=None,
                         help="Path to a baseline experiment folder (overrides BASELINE_PATH)")
+    parser.add_argument("--x_param", type=str, default=None,
+                        help="Parameter to use as row grouping (skips interactive prompt)")
+    parser.add_argument("--page_param", type=str, default=None,
+                        help="Parameter to split into separate table images (skips interactive prompt)")
     args = parser.parse_args()
 
     print("\n========================================")
@@ -289,24 +315,37 @@ def main():
         
     else:
         print(f"\n[Interactive] Multiple parameters detected: {variables}")
-        
-        while True:
-            x_param = input(f"-> Which parameter should group the Rows (Y-Axis)? {variables}: ").strip()
-            if x_param in variables: break
-            print("Invalid choice.")
-            
+
+        if args.x_param and args.x_param in variables:
+            x_param = args.x_param
+        else:
+            while True:
+                x_param = input(f"-> Which parameter should group the Rows (Y-Axis)? {variables}: ").strip()
+                if x_param in variables: break
+                print("Invalid choice.")
+
         remaining_vars = [v for v in variables if v != x_param]
-        
-        while True:
-            page_param = input(f"-> Which parameter splits the tables into different images? {remaining_vars}: ").strip()
-            if page_param in remaining_vars: break
-            print("Invalid choice.")
+
+        if args.page_param and args.page_param in remaining_vars:
+            page_param = args.page_param
+        else:
+            while True:
+                page_param = input(f"-> Which parameter splits the tables into different images? {remaining_vars}: ").strip()
+                if page_param in remaining_vars: break
+                print("Invalid choice.")
             
         print(f"\n[Generation] Generating 'Book' of table PNGs...")
-        
-        unique_page_vals = sorted(exp_df[page_param].unique().tolist())
+
+        unique_page_vals = sorted(exp_df[page_param].dropna().unique().tolist())
+        has_nan_page = exp_df[page_param].isna().any()
+        if has_nan_page:
+            unique_page_vals = [None] + unique_page_vals
+
         for val in unique_page_vals:
-            page_df = exp_df[exp_df[page_param] == val]
+            if val is None:
+                page_df = exp_df[exp_df[page_param].isna()]
+            else:
+                page_df = exp_df[exp_df[page_param] == val]
             final_table_df = build_table_df(page_df, baseline_df, x_param)
             
             base_filename = f"table_{page_param}_{val}_vs_{x_param}"
