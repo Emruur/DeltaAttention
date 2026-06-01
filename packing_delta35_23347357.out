@@ -1,4 +1,4 @@
-Mon Jun  1 16:40:11 2026       
+Mon Jun  1 17:43:17 2026       
 +-----------------------------------------------------------------------------------------+
 | NVIDIA-SMI 595.71.05              Driver Version: 595.71.05      CUDA Version: 13.2     |
 +-----------------------------------------+------------------------+----------------------+
@@ -7,7 +7,7 @@ Mon Jun  1 16:40:11 2026
 |                                         |                        |               MIG M. |
 |=========================================+========================+======================|
 |   0  NVIDIA H100                    On  |   00000000:26:00.0 Off |                    0 |
-| N/A   34C    P0             66W /  700W |       0MiB /  95830MiB |      0%      Default |
+| N/A   34C    P0             68W /  700W |       0MiB /  95830MiB |      0%      Default |
 |                                         |                        |             Disabled |
 +-----------------------------------------+------------------------+----------------------+
 
@@ -22,6 +22,6 @@ CUDA version: Cuda compilation tools, release 12.1, V12.1.105
 Loading model…
 Loading wikitext…
 Sequence length: 512 tokens
-Forward pass – real tokens…
-Forward pass – shuffled tokens…
-Saved → key_similarity.png
+Forward pass…
+Saved → key_similarity_data.npz
+Array shape: (4, 8, 511)  (layers, kv_heads, seq-1)

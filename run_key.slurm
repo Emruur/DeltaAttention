@@ -26,4 +26,4 @@ export TRANSFORMERS_CACHE=$SHARED_SCRATCH
 
 source "$(dirname "${BASH_SOURCE[0]}")/.env.sh"
 
-python visualize_key_similarity.py
+python compute_key_similarity.py

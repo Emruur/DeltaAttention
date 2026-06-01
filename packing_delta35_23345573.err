@@ -1,4 +1,0 @@
-/var/spool/slurm/slurmd/job23345573/slurm_script: line 27: /var/spool/slurm/slurmd/job23345573/.env.sh: No such file or directory
-/home/qchen/DeltaLLM/venv_delta/lib/python3.11/site-packages/transformers/utils/hub.py:111: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
-  warnings.warn(
-Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:00<00:01,  2.75it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00,  9.02it/s]
