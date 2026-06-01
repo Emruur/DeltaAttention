@@ -1,8 +1,8 @@
 {
     "task_name": "longbench_hotpotqa",
-    "timestamp": "2026-06-01T15:56:31.332799",
+    "timestamp": "2026-06-01T16:46:44.489061",
     "shot": 0,
-    "sparsity": 0.6666666666666419,
+    "sparsity": 0.4997815640017983,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -12,30 +12,30 @@
         "seq_len_max": 16385,
         "seq_len_std": 3796.3850489643437
     },
-    "accuracy": 0.42000000000000004,
+    "accuracy": 0.4168253968253969,
     "timings": {
-        "total_avg_ms": 6.357967793941498,
+        "total_avg_ms": 7.507269247248769,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.32864304990507665,
-            "time_delta_mm_pattern": 2.982478202646598,
-            "time_prefill_forward_total": 6.357967793941498,
-            "time_baseline_decode_cache_update": 0.0926315615747813,
-            "time_baseline_decode_attn_calc": 0.41881342458041154,
-            "time_baseline_decode_inner_total": 0.42615154779784076,
-            "time_decode_forward_total": 0.7318232055651407
+            "time_get_row_delta": 0.3182229006662965,
+            "time_delta_mm_pattern": 4.085940340999514,
+            "time_prefill_forward_total": 7.507269247248769,
+            "time_baseline_decode_cache_update": 0.07854627019690082,
+            "time_baseline_decode_attn_calc": 0.4089156216857871,
+            "time_baseline_decode_inner_total": 0.41786806305098506,
+            "time_decode_forward_total": 0.7327477389795555
         }
     },
     "metrics": {
         "alias": "longbench_hotpotqa",
-        "qa_f1_score,none": 0.42000000000000004,
-        "qa_f1_score_stderr,none": 0.1028653807153194
+        "qa_f1_score,none": 0.4168253968253969,
+        "qa_f1_score_stderr,none": 0.0970818057482098
     },
-    "total_benchmark_time_s": 19.891944646835327,
+    "total_benchmark_time_s": 22.22896099090576,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
         "packing_mode": "periodic",
-        "target_keep_rate": 0.35,
+        "target_keep_rate": 0.5,
         "delta_mlp": "Regular",
         "chunk_size": 512,
         "divide_to": 0,

@@ -1,8 +1,8 @@
 {
     "task_name": "longbench_multifieldqa_en",
-    "timestamp": "2026-06-01T15:54:06.657569",
+    "timestamp": "2026-06-01T16:44:07.767352",
     "shot": 0,
-    "sparsity": 0.49999999999993994,
+    "sparsity": 0.6480036260844811,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -12,30 +12,30 @@
         "seq_len_max": 13472,
         "seq_len_std": 3543.7484458550384
     },
-    "accuracy": 0.5210556248017548,
+    "accuracy": 0.46026340184653,
     "timings": {
-        "total_avg_ms": 4.934205489233136,
+        "total_avg_ms": 4.542437840811909,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 1.0680703793652355,
-            "time_delta_mm_pattern": 1.823430450167507,
-            "time_prefill_forward_total": 4.934205489233136,
-            "time_baseline_decode_cache_update": 0.04765403133294568,
-            "time_baseline_decode_attn_calc": 0.31157489563581836,
-            "time_baseline_decode_inner_total": 0.32513516367078865,
-            "time_decode_forward_total": 0.7023385777251749
+            "time_get_row_delta": 1.0472007451811804,
+            "time_delta_mm_pattern": 1.449676051735878,
+            "time_prefill_forward_total": 4.542437840811909,
+            "time_baseline_decode_cache_update": 0.04812917050439865,
+            "time_baseline_decode_attn_calc": 0.32031853110147795,
+            "time_baseline_decode_inner_total": 0.3548282428003359,
+            "time_decode_forward_total": 0.6969477710298827
         }
     },
     "metrics": {
         "alias": "longbench_multifieldqa_en",
-        "qa_f1_score,none": 0.5210556248017548,
-        "qa_f1_score_stderr,none": 0.08062336655489337
+        "qa_f1_score,none": 0.46026340184653,
+        "qa_f1_score_stderr,none": 0.0820128688155571
     },
-    "total_benchmark_time_s": 23.785808801651,
+    "total_benchmark_time_s": 23.87952160835266,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "packing_mode": "periodic",
-        "target_keep_rate": 0.5,
+        "packing_mode": "random",
+        "target_keep_rate": 0.35,
         "delta_mlp": "Regular",
         "chunk_size": 512,
         "divide_to": 0,
@@ -43,5 +43,5 @@
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "periodic_packing"
+    "experiment_type": "random_packing"
 }

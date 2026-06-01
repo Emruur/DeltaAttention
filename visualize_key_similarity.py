@@ -1,13 +1,15 @@
 """
-Visualise adjacent key-vector cosine similarity along the sequence dimension.
+Compare pre-RoPE vs post-RoPE adjacent key cosine similarity distributions.
 
-For each (layer, head) pair we show two thin vertical strips side-by-side:
-  LEFT  – real wikitext token order
-  RIGHT – same tokens but in a random permutation (shuffled)
+Four CDFs per (layer, head) cell:
+  pre-RoPE  real     – keys before positional encoding, natural order
+  pre-RoPE  shuffled – keys before positional encoding, random order
+  post-RoPE real     – keys after positional encoding, natural order
+  post-RoPE shuffled – keys after positional encoding, random order
 
-If delta packing exploits genuine linguistic structure the real strips should
-show bands of high similarity (adjacent tokens are semantically close),
-while the shuffled strips should look flat / noisy.
+If RoPE is the driving factor for adjacent-token similarity structure,
+pre-RoPE real vs shuffled should overlap, while post-RoPE real should
+diverge (heavier low-similarity tail = more linguistic boundaries).
 """
 
 import os, sys
@@ -23,138 +25,144 @@ import globVR
 from modeling_llama import LlamaForCausalLM, LlamaConfig
 
 # ─────────────────────────────────────────────
-# CONFIG  (edit here)
+# CONFIG
 # ─────────────────────────────────────────────
-MODEL_ID      = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-SEQ_LEN       = 512
-LAYERS        = [0, 8, 16, 23]   # transformer layers to visualise
-HEADS         = [0, 2, 5, 7]     # KV-head indices to visualise
-SEED          = 42
-OUT_PATH      = "key_similarity.png"
+MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+SEQ_LEN  = 512
+LAYERS   = [0, 8, 16, 23]
+HEADS    = [0, 2, 5, 7]
+SEED     = 42
+OUT_PATH = "key_similarity.png"
 # ─────────────────────────────────────────────
 
-# ── Model registration ───────────────────────
 AutoConfig.register("llama", LlamaConfig, exist_ok=True)
 AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 
-# Disable all delta machinery so we get clean key vectors
 globVR.delta_pf_key_on = 0
 globVR.flash           = False
 globVR.delta_decode    = False
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 print("Loading model…")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 model = AutoModelForCausalLM.from_pretrained(
-    MODEL_ID, torch_dtype=torch.bfloat16, device_map="cuda", attn_implementation="eager"
-)
+    MODEL_ID, torch_dtype=torch.bfloat16, attn_implementation="eager"
+).to(device)
 model.eval()
 
 num_kv_heads = model.config.num_key_value_heads
 head_dim     = model.config.hidden_size // model.config.num_attention_heads
 
-# ── Data ─────────────────────────────────────
 print("Loading wikitext…")
 ds   = load_dataset("wikitext", "wikitext-103-raw-v1", split="test", trust_remote_code=True)
 text = " ".join(row["text"] for row in ds if row["text"].strip())
-ids  = tokenizer(text, return_tensors="pt", truncation=True, max_length=SEQ_LEN).input_ids.cuda()
+ids  = tokenizer(text, return_tensors="pt", truncation=True, max_length=SEQ_LEN).input_ids.to(device)
 
 torch.manual_seed(SEED)
-shuffled_ids = ids[:, torch.randperm(ids.shape[1])].cuda()
+shuffled_ids = ids[:, torch.randperm(ids.shape[1])].to(device)
 
 print(f"Sequence length: {ids.shape[1]} tokens")
 
-# ── Forward-pass helper ───────────────────────
-def get_adjacent_cosine_sims(input_ids):
-    """Returns dict  layer_idx -> np.ndarray [seq-1, num_kv_heads]"""
-    captured = {}
-    hooks    = []
+
+def extract_layer_keys(past_key_values, layer_idx):
+    """Handle both DynamicCache and legacy tuple formats."""
+    if hasattr(past_key_values, "key_cache"):
+        return past_key_values.key_cache[layer_idx]  # [1, num_kv_heads, seq, d]
+    return past_key_values[layer_idx][0]
+
+
+def adj_cos(k):
+    """k: [num_kv_heads, seq, head_dim] → [num_kv_heads, seq-1]"""
+    k = F.normalize(k.float(), dim=-1)
+    return (k[:, :-1, :] * k[:, 1:, :]).sum(dim=-1).cpu().numpy()
+
+
+def get_sims(input_ids):
+    """
+    Returns (pre, post) where each is dict layer_idx -> [num_kv_heads, seq-1].
+    pre  = k_proj output (before RoPE)
+    post = KV-cache keys (after RoPE)
+    """
+    pre_captured = {}
+    hooks = []
 
     for layer_idx in LAYERS:
         def _hook(module, inp, out, _idx=layer_idx):
             # out: [batch, seq, num_kv_heads * head_dim]
             k = out[0].float().reshape(-1, num_kv_heads, head_dim)  # [seq, h, d]
-            k = F.normalize(k, dim=-1)
-            # dot product of consecutive positions → [seq-1, h]
-            captured[_idx] = (k[:-1] * k[1:]).sum(dim=-1).cpu().numpy()
+            k = k.permute(1, 0, 2)                                   # [h, seq, d]
+            pre_captured[_idx] = adj_cos(k)
 
         h = model.model.layers[layer_idx].self_attn.k_proj.register_forward_hook(_hook)
         hooks.append(h)
 
     with torch.no_grad():
-        model(input_ids=input_ids)
+        outputs = model(input_ids=input_ids, use_cache=True)
 
     for h in hooks:
         h.remove()
 
-    return captured
+    post_captured = {}
+    for layer_idx in LAYERS:
+        k = extract_layer_keys(outputs.past_key_values, layer_idx)
+        post_captured[layer_idx] = adj_cos(k[0])  # [num_kv_heads, seq-1]
+
+    return pre_captured, post_captured
 
 
 print("Forward pass – real tokens…")
-real_sims = get_adjacent_cosine_sims(ids)
+pre_real, post_real = get_sims(ids)
 
 print("Forward pass – shuffled tokens…")
-shuf_sims = get_adjacent_cosine_sims(shuffled_ids)
+pre_shuf, post_shuf = get_sims(shuffled_ids)
 
-# ── Plot ──────────────────────────────────────
+# ── Plot ──────────────────────────────────────────────────────────────────────
 n_layers = len(LAYERS)
 n_heads  = len(HEADS)
 
-# Each head occupies 2 columns (real | shuffled), with a small gap between pairs
-col_per_head = 2
-total_cols   = n_heads * col_per_head
-
 fig, axes = plt.subplots(
-    n_layers, total_cols,
-    figsize=(n_heads * 3, n_layers * 4),
-    gridspec_kw={"wspace": 0.08, "hspace": 0.35},
+    n_heads, n_layers,
+    figsize=(n_layers * 3, n_heads * 2.2),
+    sharex=True, sharey=True,
+    gridspec_kw={"hspace": 0.30, "wspace": 0.15},
 )
-if n_layers == 1:
-    axes = axes[np.newaxis, :]
 
-CMAP = "RdYlGn"
-VMIN, VMAX = -1.0, 1.0
+STYLES = [
+    (pre_real,  "pre  real",     "steelblue", "-",  1.4),
+    (pre_shuf,  "pre  shuffled", "steelblue", "--", 1.0),
+    (post_real, "post real",     "tomato",    "-",  1.4),
+    (post_shuf, "post shuffled", "tomato",    "--", 1.0),
+]
 
-for r, layer_idx in enumerate(LAYERS):
-    for c, head_idx in enumerate(HEADS):
-        col_r = c * col_per_head
-        col_s = c * col_per_head + 1
+for r, head_idx in enumerate(HEADS):
+    for c, layer_idx in enumerate(LAYERS):
+        ax = axes[r, c]
 
-        real_vec = real_sims[layer_idx][:, head_idx, np.newaxis]   # [seq-1, 1]
-        shuf_vec = shuf_sims[layer_idx][:, head_idx, np.newaxis]
+        for data, label, color, ls, lw in STYLES:
+            vals = np.sort(data[layer_idx][head_idx])
+            cdf  = np.arange(1, len(vals) + 1) / len(vals)
+            ax.plot(vals, cdf, color=color, ls=ls, lw=lw, label=label)
 
-        ax_r = axes[r, col_r]
-        ax_s = axes[r, col_s]
+        ax.set_xlim(-1, 1)
+        ax.set_ylim(0, 1)
+        ax.axvline(0, color="gray", lw=0.5, ls=":")
+        ax.grid(True, alpha=0.25, lw=0.5)
+        ax.tick_params(labelsize=7)
 
-        ax_r.imshow(real_vec, aspect="auto", cmap=CMAP, vmin=VMIN, vmax=VMAX, interpolation="nearest")
-        ax_s.imshow(shuf_vec, aspect="auto", cmap=CMAP, vmin=VMIN, vmax=VMAX, interpolation="nearest")
-
-        for ax in (ax_r, ax_s):
-            ax.set_xticks([])
-            ax.set_yticks([])
-
-        # column headers (top row only)
         if r == 0:
-            ax_r.set_title(f"Head {head_idx}\nreal",    fontsize=8, pad=3)
-            ax_s.set_title(f"Head {head_idx}\nshuffled", fontsize=8, pad=3)
-
-        # row labels (first pair only)
+            ax.set_title(f"Layer {layer_idx}", fontsize=9, pad=4)
         if c == 0:
-            ax_r.set_ylabel(f"Layer {layer_idx}", fontsize=9)
+            ax.set_ylabel(f"Head {head_idx}\nCDF", fontsize=8)
+        if r == n_heads - 1:
+            ax.set_xlabel("cos sim(K[t], K[t+1])", fontsize=7)
 
-        # subtle border to separate real/shuffled within a pair
-        ax_s.spines["left"].set_linewidth(0.5)
-        ax_s.spines["left"].set_color("gray")
-
-# shared colour bar
-sm = plt.cm.ScalarMappable(cmap=CMAP, norm=plt.Normalize(vmin=VMIN, vmax=VMAX))
-sm.set_array([])
-fig.colorbar(sm, ax=axes[:, -1], orientation="vertical",
-             fraction=0.6, pad=0.04, label="cos sim with next token")
+axes[0, 0].legend(fontsize=6.5, loc="upper left", framealpha=0.8)
 
 fig.suptitle(
-    "Adjacent key-vector cosine similarity  ·  real vs shuffled token order\n"
-    f"(LLaMA 3.1-8B-Instruct  ·  {ids.shape[1]} tokens from WikiText-103)",
-    fontsize=11, y=1.02,
+    "Adjacent key cosine similarity · pre-RoPE vs post-RoPE · real vs shuffled\n"
+    f"LLaMA 3.1-8B-Instruct  ·  {ids.shape[1]} tokens from WikiText-103",
+    fontsize=10, y=1.01,
 )
 
 plt.savefig(OUT_PATH, dpi=160, bbox_inches="tight")

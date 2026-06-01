@@ -1,8 +1,8 @@
 {
     "task_name": "longbench_multifieldqa_en",
-    "timestamp": "2026-06-01T15:51:51.219492",
+    "timestamp": "2026-06-01T16:42:02.281786",
     "shot": 0,
-    "sparsity": 0.6480036260844811,
+    "sparsity": 0.4969350033556016,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -12,30 +12,30 @@
         "seq_len_max": 13472,
         "seq_len_std": 3543.7484458550384
     },
-    "accuracy": 0.46026340184653,
+    "accuracy": 0.4217240478819426,
     "timings": {
-        "total_avg_ms": 4.485058084875345,
+        "total_avg_ms": 4.9801003684289755,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 1.028420011769049,
-            "time_delta_mm_pattern": 1.434556649834849,
-            "time_prefill_forward_total": 4.485058084875345,
-            "time_baseline_decode_cache_update": 0.0477311967074352,
-            "time_baseline_decode_attn_calc": 0.31935716381937757,
-            "time_baseline_decode_inner_total": 0.3535908259756741,
-            "time_decode_forward_total": 0.6863770878950103
+            "time_get_row_delta": 1.0695478743640705,
+            "time_delta_mm_pattern": 1.8436368020018563,
+            "time_prefill_forward_total": 4.9801003684289755,
+            "time_baseline_decode_cache_update": 0.0465109968733682,
+            "time_baseline_decode_attn_calc": 0.30801736712131556,
+            "time_baseline_decode_inner_total": 0.3426590126311359,
+            "time_decode_forward_total": 0.6850371395261322
         }
     },
     "metrics": {
         "alias": "longbench_multifieldqa_en",
-        "qa_f1_score,none": 0.46026340184653,
-        "qa_f1_score_stderr,none": 0.0820128688155571
+        "qa_f1_score,none": 0.4217240478819426,
+        "qa_f1_score_stderr,none": 0.0678017525518862
     },
-    "total_benchmark_time_s": 23.665820837020874,
+    "total_benchmark_time_s": 24.564337730407715,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
         "packing_mode": "random",
-        "target_keep_rate": 0.35,
+        "target_keep_rate": 0.5,
         "delta_mlp": "Regular",
         "chunk_size": 512,
         "divide_to": 0,

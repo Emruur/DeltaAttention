@@ -1,6 +1,6 @@
 {
     "task_name": "longbench_passage_retrieval_en",
-    "timestamp": "2026-06-01T15:49:01.022265",
+    "timestamp": "2026-06-01T16:39:11.365677",
     "shot": 0,
     "sparsity": 0.5102470304057756,
     "mlp_spars": 0.0,
@@ -14,15 +14,15 @@
     },
     "accuracy": 1.0,
     "timings": {
-        "total_avg_ms": 6.977910596132278,
+        "total_avg_ms": 7.03133745342493,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.59832159942016,
-            "time_delta_mm_pattern": 3.4284542970359326,
-            "time_prefill_forward_total": 6.977910596132278,
-            "time_baseline_decode_cache_update": 0.09001053616647488,
-            "time_baseline_decode_attn_calc": 0.400105362461097,
-            "time_baseline_decode_inner_total": 0.4077257245131161,
-            "time_decode_forward_total": 0.7404921745638484
+            "time_get_row_delta": 0.5982237000018358,
+            "time_delta_mm_pattern": 3.4532206527888776,
+            "time_prefill_forward_total": 7.03133745342493,
+            "time_baseline_decode_cache_update": 0.09078684053552485,
+            "time_baseline_decode_attn_calc": 0.39957891306097526,
+            "time_baseline_decode_inner_total": 0.40788330429274106,
+            "time_decode_forward_total": 0.7475748259466195
         }
     },
     "metrics": {
@@ -30,12 +30,12 @@
         "retrieval_score,none": 1.0,
         "retrieval_score_stderr,none": 0.0
     },
-    "total_benchmark_time_s": 20.066118001937866,
+    "total_benchmark_time_s": 20.329092979431152,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
         "packing_mode": "delta",
-        "keep_rate": 0.5,
+        "target_keep_rate": 0.5,
         "row_delta_threshold": 15,
         "delta_mlp": "Regular",
         "row_similarity_metric": "euclidean",

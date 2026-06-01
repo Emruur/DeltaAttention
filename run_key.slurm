@@ -26,4 +26,4 @@ export TRANSFORMERS_CACHE=$SHARED_SCRATCH
 
 source "$(dirname "${BASH_SOURCE[0]}")/.env.sh"
 
-python eval_all.py --llama --experiment_type row_delta --exp_name packing_ablation --long_bench --limit 20
+python visualize_key_similarity.py

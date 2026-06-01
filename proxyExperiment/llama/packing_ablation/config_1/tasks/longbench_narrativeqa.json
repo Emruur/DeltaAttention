@@ -1,6 +1,6 @@
 {
     "task_name": "longbench_narrativeqa",
-    "timestamp": "2026-06-01T15:48:40.503525",
+    "timestamp": "2026-06-01T16:38:50.529729",
     "shot": 0,
     "sparsity": 0.4600775532038577,
     "mlp_spars": 0.0,
@@ -14,15 +14,15 @@
     },
     "accuracy": 0.37549783549783544,
     "timings": {
-        "total_avg_ms": 20.83303755745292,
+        "total_avg_ms": 21.057964081317188,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.6915057998150587,
-            "time_delta_mm_pattern": 14.632476228661835,
-            "time_prefill_forward_total": 20.83303755745292,
-            "time_baseline_decode_cache_update": 0.13276697404458251,
-            "time_baseline_decode_attn_calc": 0.8040263418716238,
-            "time_baseline_decode_inner_total": 0.8107057560351074,
-            "time_decode_forward_total": 1.100319880847409
+            "time_get_row_delta": 0.6965153508819639,
+            "time_delta_mm_pattern": 14.793931607343257,
+            "time_prefill_forward_total": 21.057964081317188,
+            "time_baseline_decode_cache_update": 0.13294170461136634,
+            "time_baseline_decode_attn_calc": 0.8042697250611424,
+            "time_baseline_decode_inner_total": 0.8111726838728616,
+            "time_decode_forward_total": 1.1003242488853981
         }
     },
     "metrics": {
@@ -30,12 +30,12 @@
         "qa_f1_score,none": 0.37549783549783544,
         "qa_f1_score_stderr,none": 0.06468394062874518
     },
-    "total_benchmark_time_s": 40.350890159606934,
+    "total_benchmark_time_s": 40.98838520050049,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
         "packing_mode": "delta",
-        "keep_rate": 0.5,
+        "target_keep_rate": 0.5,
         "row_delta_threshold": 15,
         "delta_mlp": "Regular",
         "row_similarity_metric": "euclidean",

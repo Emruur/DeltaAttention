@@ -1,8 +1,8 @@
 {
     "task_name": "longbench_narrativeqa",
-    "timestamp": "2026-06-01T15:50:51.855264",
+    "timestamp": "2026-06-01T16:40:55.368348",
     "shot": 0,
-    "sparsity": 0.5002702433587638,
+    "sparsity": 0.6282265743499367,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -12,36 +12,38 @@
         "seq_len_max": 46755,
         "seq_len_std": 13034.282715592753
     },
-    "accuracy": 0.3329574760938858,
+    "accuracy": 0.341978201537025,
     "timings": {
-        "total_avg_ms": 20.43963790126145,
+        "total_avg_ms": 17.507292375713586,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.3884761504363269,
-            "time_delta_mm_pattern": 14.618410168401898,
-            "time_prefill_forward_total": 20.43963790126145,
-            "time_baseline_decode_cache_update": 0.12261992850627783,
-            "time_baseline_decode_attn_calc": 0.7568783750882305,
-            "time_baseline_decode_inner_total": 0.7638240404111067,
-            "time_decode_forward_total": 1.0440450753833699
+            "time_get_row_delta": 0.7050101003609598,
+            "time_delta_mm_pattern": 11.28680455069989,
+            "time_prefill_forward_total": 17.507292375713586,
+            "time_baseline_decode_cache_update": 0.1186022663867811,
+            "time_baseline_decode_attn_calc": 0.7321186063956225,
+            "time_baseline_decode_inner_total": 0.7390593729539179,
+            "time_decode_forward_total": 1.0220286062399506
         }
     },
     "metrics": {
         "alias": "longbench_narrativeqa",
-        "qa_f1_score,none": 0.3329574760938858,
-        "qa_f1_score_stderr,none": 0.07046703429384814
+        "qa_f1_score,none": 0.341978201537025,
+        "qa_f1_score_stderr,none": 0.060101468204938974
     },
-    "total_benchmark_time_s": 41.019840240478516,
+    "total_benchmark_time_s": 40.3771288394928,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "packing_mode": "random",
-        "target_keep_rate": 0.5,
+        "packing_mode": "delta",
+        "target_keep_rate": 0.35,
+        "row_delta_threshold": 17,
         "delta_mlp": "Regular",
+        "row_similarity_metric": "euclidean",
         "chunk_size": 512,
         "divide_to": 0,
         "flash": true,
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "random_packing"
+    "experiment_type": "row_delta"
 }
