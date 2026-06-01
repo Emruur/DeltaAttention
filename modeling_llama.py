@@ -593,32 +593,46 @@ class LlamaAttention(nn.Module):
                 end_evt_rd = torch.cuda.Event(enable_timing=True)
                 start_evt_rd.record()
 
-            # --- 1. EVALUATE DELTAS ---
-            BLOCK_D_EVAL = triton.next_power_of_2(self.head_dim)
+            # --- 1. GENERATE KEEP MASK ---
+            packing_mode = getattr(globVR, 'packing_mode', 'delta')
 
-            keep_mask = torch.zeros((bsz, self.config.num_key_value_heads, q_len), dtype=torch.int32, device=key_states.device)
-            chunk_counts = torch.zeros((bsz, self.config.num_key_value_heads, num_chunks), dtype=torch.int32, device=key_states.device)
+            if packing_mode == 'random':
+                target_keep_rate = getattr(globVR, 'target_keep_rate', 0.5)
+                keep_mask = (torch.rand(bsz, self.config.num_key_value_heads, q_len, device=key_states.device) < target_keep_rate).to(torch.int32)
+                keep_mask[:, :, 0] = 1  # position 0 must be an anchor so index_map stays non-negative
+                active_counts = keep_mask.sum(dim=-1)
 
-            grid_eval = (bsz * self.config.num_key_value_heads, num_chunks)
-            similarity_metric = getattr(globVR, 'row_similarity_metric', 'euclidean')
-            use_cosine = (similarity_metric == 'cosine')
-            raw_threshold = getattr(globVR, 'row_delta_threshold', 0.0)
-            threshold_val = raw_threshold if use_cosine else raw_threshold ** 2
+            elif packing_mode == 'periodic':
+                target_keep_rate = getattr(globVR, 'target_keep_rate', 0.5)
+                period = max(1, round(1.0 / target_keep_rate))
+                positions = torch.arange(q_len, device=key_states.device)
+                keep_row = (positions % period == 0).to(torch.int32)  # pos 0 always kept (0 % k == 0)
+                keep_mask = keep_row.unsqueeze(0).unsqueeze(0).expand(bsz, self.config.num_key_value_heads, q_len).contiguous()
+                active_counts = keep_mask.sum(dim=-1)
 
-            chunked_eval_kernel[grid_eval](
-                key_states, keep_mask, chunk_counts,
-                threshold_val,
-                key_states.stride(0), key_states.stride(1), key_states.stride(2), key_states.stride(3),
-                keep_mask.stride(0), keep_mask.stride(1), keep_mask.stride(2),
-                chunk_counts.stride(0), chunk_counts.stride(1), chunk_counts.stride(2),
-                q_len, self.head_dim, chunk_size, num_heads=self.config.num_key_value_heads,
-                BLOCK_D=BLOCK_D_EVAL,
-                USE_COSINE=use_cosine,
-            )
-            
+            else:  # 'delta' (default)
+                BLOCK_D_EVAL = triton.next_power_of_2(self.head_dim)
+                keep_mask = torch.zeros((bsz, self.config.num_key_value_heads, q_len), dtype=torch.int32, device=key_states.device)
+                chunk_counts = torch.zeros((bsz, self.config.num_key_value_heads, num_chunks), dtype=torch.int32, device=key_states.device)
+                grid_eval = (bsz * self.config.num_key_value_heads, num_chunks)
+                similarity_metric = getattr(globVR, 'row_similarity_metric', 'euclidean')
+                use_cosine = (similarity_metric == 'cosine')
+                raw_threshold = getattr(globVR, 'row_delta_threshold', 0.0)
+                threshold_val = raw_threshold if use_cosine else raw_threshold ** 2
+                chunked_eval_kernel[grid_eval](
+                    key_states, keep_mask, chunk_counts,
+                    threshold_val,
+                    key_states.stride(0), key_states.stride(1), key_states.stride(2), key_states.stride(3),
+                    keep_mask.stride(0), keep_mask.stride(1), keep_mask.stride(2),
+                    chunk_counts.stride(0), chunk_counts.stride(1), chunk_counts.stride(2),
+                    q_len, self.head_dim, chunk_size, num_heads=self.config.num_key_value_heads,
+                    BLOCK_D=BLOCK_D_EVAL,
+                    USE_COSINE=use_cosine,
+                )
+                active_counts = chunk_counts.sum(dim=-1)
+
             index_map = (torch.cumsum(keep_mask, dim=-1) - 1).to(torch.int32)
-            active_counts = chunk_counts.sum(dim=-1)
-            max_packed_len_gpu = active_counts.max().item() # Safe here: only runs once per sequence
+            max_packed_len_gpu = active_counts.max().item()  # Safe here: only runs once per sequence
             
             k_packed = torch.zeros((bsz, self.config.num_key_value_heads, max_packed_len_gpu, self.head_dim), device=key_states.device, dtype=key_states.dtype)
             v_packed = torch.zeros_like(k_packed)

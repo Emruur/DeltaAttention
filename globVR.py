@@ -87,3 +87,6 @@ delta_decode = False
 sanity = False  # If True: run packing + iterate packed K but zero Phase 1's contribution (diagonal-only attention)
 no_count = False  # If True: disable count weighting in Phase 1 (all packed keys treated as count=1)
 pure_phase1 = False  # If True: attend only to packed history (Phase 1 only); skip Phase 2 dense window entirely
+
+packing_mode = "delta"    # "delta" | "random" | "periodic" — controls which tokens become packed anchors
+target_keep_rate = 0.5    # fraction of tokens to keep as anchors (used by random and periodic modes)

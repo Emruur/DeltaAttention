@@ -69,7 +69,7 @@ EXPERIMENT_DEFINITIONS = {
     "row_delta": {
         "grid": {
             "scale": [0.05],
-            "delta": [13, 15, 17],
+            "delta": [15, 17],
             "row_sim": ["euclidean"],
             "chunk_size": [512],
             "dense_window_size": [0],
@@ -232,6 +232,61 @@ EXPERIMENT_DEFINITIONS = {
             "delta_mlp": "Regular",
             "row_delta_threshold": args.delta,
             "row_similarity_metric": args.row_sim,
+            "chunk_size": args.chunk_size,
+            "divide_to": 0,
+            "flash": True,
+            "delta_decode": False,
+            "dense_window_size": args.dense_window_size,
+        }
+    },
+
+    # Random packing baseline: keep a random fraction of tokens as anchors.
+    # keep_rate values chosen to match observed sparsity of row_delta at delta=13/15/17.
+    "random_packing": {
+        "grid": {
+            "keep_rate": [0.5, 0.35],
+            "chunk_size": [512],
+            "dense_window_size": [0],
+        },
+        "arg_builder": lambda p: [
+            "--keep_rate",         str(p["keep_rate"]),
+            "--chunk_size",        str(p["chunk_size"]),
+            "--dense_window_size", str(p["dense_window_size"]),
+        ],
+        "injector": lambda args: {
+            "delta_pf_key_on": 1,
+            "delta_type": "row",
+            "packing_mode": "random",
+            "target_keep_rate": args.keep_rate,
+            "delta_mlp": "Regular",
+            "chunk_size": args.chunk_size,
+            "divide_to": 0,
+            "flash": True,
+            "delta_decode": False,
+            "dense_window_size": args.dense_window_size,
+        }
+    },
+
+    # Periodic packing baseline: keep every k-th token (k = round(1/keep_rate)).
+    # keep_rate=0.5 → period=2; keep_rate=0.35 → period=3.
+    # 0.7 is excluded: round(1/0.7)=1, period=1 keeps every token (no compression).
+    "periodic_packing": {
+        "grid": {
+            "keep_rate": [0.5, 0.35],
+            "chunk_size": [512],
+            "dense_window_size": [0],
+        },
+        "arg_builder": lambda p: [
+            "--keep_rate",         str(p["keep_rate"]),
+            "--chunk_size",        str(p["chunk_size"]),
+            "--dense_window_size", str(p["dense_window_size"]),
+        ],
+        "injector": lambda args: {
+            "delta_pf_key_on": 1,
+            "delta_type": "row",
+            "packing_mode": "periodic",
+            "target_keep_rate": args.keep_rate,
+            "delta_mlp": "Regular",
             "chunk_size": args.chunk_size,
             "divide_to": 0,
             "flash": True,
@@ -642,6 +697,7 @@ if __name__ == "__main__":
     # PREFILL DENSE WINDOW
     parser.add_argument('--dense_window_size', default=128, type=int)
     parser.add_argument('--no_count', action='store_true', help="Disable count weighting in Phase 1 (treat all packed keys as count=1)")
+    parser.add_argument('--keep_rate', default=0.5, type=float, help="Fraction of tokens to keep as anchors for random/periodic packing")
     parser.add_argument('--limit', default=None, type=int, help="Max samples per task (None = full eval)")
 
     args = parser.parse_args()
