@@ -70,9 +70,9 @@ EXPERIMENT_DEFINITIONS = {
         "grid": {
             "scale": [0.05],
             "delta": [13, 15, 17],
-            "row_sim": ["euclidian"],
+            "row_sim": ["euclidean"],
             "chunk_size": [512],
-            "dense_window_size": [512],
+            "dense_window_size": [0],
         },
         "arg_builder": lambda p: [
             "--scale",             str(p["scale"]),
