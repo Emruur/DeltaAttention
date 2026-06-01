@@ -68,15 +68,14 @@ EXPERIMENT_DEFINITIONS = {
     },
     "row_delta": {
         "grid": {
-            "scale": [0.05],
-            "delta": [15, 17],
+            "keep_rate": [0.5, 0.35],
             "row_sim": ["euclidean"],
             "chunk_size": [512],
             "dense_window_size": [0],
         },
         "arg_builder": lambda p: [
-            "--scale",             str(p["scale"]),
-            "--delta",             str(p["delta"]),
+            "--scale",             "0.05",
+            "--delta",             str({0.5: 15, 0.35: 17}[p["keep_rate"]]),
             "--row_sim",           str(p["row_sim"]),
             "--chunk_size",        str(p["chunk_size"]),
             "--dense_window_size", str(p["dense_window_size"]),
@@ -84,9 +83,10 @@ EXPERIMENT_DEFINITIONS = {
         "injector": lambda args: {
             "delta_pf_key_on": 1,
             "delta_type": "row",
-            "scale": args.scale,
+            "packing_mode": "delta",
+            "keep_rate": args.keep_rate,
+            "row_delta_threshold": {0.5: 15, 0.35: 17}[args.keep_rate],
             "delta_mlp": "Regular",
-            "row_delta_threshold": args.delta,
             "row_similarity_metric": args.row_sim,
             "chunk_size": args.chunk_size,
             "divide_to": 0,

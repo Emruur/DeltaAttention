@@ -27,8 +27,8 @@ export HUGGINGFACE_HUB_CACHE=$SHARED_SCRATCH
 export TRANSFORMERS_CACHE=$SHARED_SCRATCH
 
 source "$(dirname "${BASH_SOURCE[0]}")/.env.sh"
+python eval_all.py --llama --experiment_type row_delta        --exp_name packing_ablation --long_bench
+python eval_all.py --llama --experiment_type random_packing   --exp_name packing_ablation --long_bench
+python eval_all.py --llama --experiment_type periodic_packing --exp_name packing_ablation --long_bench
 
-python eval_all.py --llama --experiment_type pure_phase1 --exp_name pure_phase1_vs_hybrid --limit 20
-python eval_all.py --llama --experiment_type row_delta   --exp_name pure_phase1_vs_hybrid --limit 20
-
-
+python plotter.py snellius_experiments/llama/packing_ablation --x_param keep_rate --page_param packing_mode
