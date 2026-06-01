@@ -28,17 +28,7 @@ export TRANSFORMERS_CACHE=$SHARED_SCRATCH
 
 source "$(dirname "${BASH_SOURCE[0]}")/.env.sh"
 
-#srun --export=ALL,HF_TOKEN python eval_all.py --llama --experiment_type row_delta --long_bench
-#srun --export=ALL,HF_TOKEN python eval_speedup.py
-#srun --export=ALL,HF_TOKEN python eval_ruler.py
-#srun --export=ALL,HF_TOKEN python eval_ruler.py
+python eval_all.py --llama --experiment_type pure_phase1 --exp_name pure_phase1_vs_hybrid --limit 20
+python eval_all.py --llama --experiment_type row_delta   --exp_name pure_phase1_vs_hybrid --limit 20
 
-#srun --export=ALL,HF_TOKEN python eval_all.py --llama --experiment_type baseline --limit 20                                                                                    
-                                                                                                                                                      
-#srun --export=ALL,HF_TOKEN python eval_all.py --llama --experiment_type row_delta --limit 20 
-
-
-
-python eval_all.py --llama --experiment_type no_count  --limit 20 --long_bench --exp_name count_ablation_proxy
-python eval_all.py --llama --experiment_type row_delta --limit 20 --long_bench --exp_name count_ablation_proxy
 

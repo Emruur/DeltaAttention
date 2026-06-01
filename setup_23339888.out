@@ -1,4 +1,4 @@
-Mon Jun  1 14:18:54 2026       
+Mon Jun  1 14:51:49 2026       
 +-----------------------------------------------------------------------------------------+
 | NVIDIA-SMI 595.71.05              Driver Version: 595.71.05      CUDA Version: 13.2     |
 +-----------------------------------------+------------------------+----------------------+
@@ -6,8 +6,8 @@ Mon Jun  1 14:18:54 2026
 | Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
 |                                         |                        |               MIG M. |
 |=========================================+========================+======================|
-|   0  NVIDIA H100                    On  |   00000000:26:00.0 Off |                    0 |
-| N/A   35C    P0             68W /  700W |       0MiB /  95830MiB |      0%      Default |
+|   0  NVIDIA H100                    On  |   00000000:06:00.0 Off |                    0 |
+| N/A   33C    P0             68W /  700W |       0MiB /  95830MiB |      0%      Default |
 |                                         |                        |             Disabled |
 +-----------------------------------------+------------------------+----------------------+
 
@@ -19,28 +19,28 @@ Mon Jun  1 14:18:54 2026
 |  No running processes found                                                             |
 +-----------------------------------------------------------------------------------------+
 CUDA version: Cuda compilation tools, release 12.1, V12.1.105
-[Master] Starting no_count Grid Search for LLAMA.
+[Master] Starting pure_phase1 Grid Search for LLAMA.
 [Master] Parameters: ['delta', 'row_sim', 'chunk_size', 'dense_window_size']
 [Master] Total Experiments: 3
-[Master] Output Folder: count_ablation_proxy
+[Master] Output Folder: pure_phase1_vs_hybrid
 
 === Step 1/3: {'delta': 13, 'row_sim': 'euclidean', 'chunk_size': 512, 'dense_window_size': 0} ===
 [Master] Running worker for {'delta': 13, 'row_sim': 'euclidean', 'chunk_size': 512, 'dense_window_size': 0}
-Experiment Globals: {'delta_pf_key_on': 1, 'delta_type': 'row', 'no_count': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 13.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
+Experiment Globals: {'delta_pf_key_on': 1, 'delta_type': 'row', 'pure_phase1': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 13.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
 [Worker] Setting safe globVR defaults for model initialization...
-[Worker] '--long_bench' triggered. Running 4 LongBench tasks.
+[Worker] --limit set, defaulting to LongBench tasks (4 tasks).
 [Worker] Loading Model: meta-llama/Meta-Llama-3.1-8B-Instruct...
-[Worker] Applying no_count settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'no_count': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 13.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
-[Config] Created new directory: proxyExperiment/llama/count_ablation_proxy/config_1
+[Worker] Applying pure_phase1 settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'pure_phase1': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 13.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
+[Config] Created new directory: proxyExperiment/llama/pure_phase1_vs_hybrid/config_1
 --- Running Task: longbench_multifieldqa_en ---
     - Setting time_internal: True
-    - Task 'longbench_multifieldqa_en' completed in 32.01 seconds.
-Task: longbench_multifieldqa_en | Acc: 0.5571 | Total Time: 32.01s
+    - Task 'longbench_multifieldqa_en' completed in 35.19 seconds.
+Task: longbench_multifieldqa_en | Acc: 0.4087 | Total Time: 35.19s
 {
     "task_name": "longbench_multifieldqa_en",
-    "timestamp": "2026-06-01T14:20:07.211512",
+    "timestamp": "2026-06-01T14:53:02.400287",
     "shot": 0,
-    "sparsity": 0.3186236454469609,
+    "sparsity": 0.3701830452161888,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -50,29 +50,29 @@ Task: longbench_multifieldqa_en | Acc: 0.5571 | Total Time: 32.01s
         "seq_len_max": 13472,
         "seq_len_std": 3543.7484458550384
     },
-    "accuracy": 0.5570590962484219,
+    "accuracy": 0.4087151536198202,
     "timings": {
-        "total_avg_ms": 6.164409257285297,
+        "total_avg_ms": 13.170391762442886,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 1.7383070337586104,
-            "time_delta_mm_pattern": 2.301249396475032,
-            "time_prefill_forward_total": 6.164409257285297,
-            "time_baseline_decode_cache_update": 0.04618699143108513,
-            "time_baseline_decode_attn_calc": 0.31455802559320417,
-            "time_baseline_decode_inner_total": 0.34384180275058107,
-            "time_decode_forward_total": 0.6860970478185585
+            "time_get_row_delta": 1.596750334976241,
+            "time_delta_mm_pattern": 9.456514669908211,
+            "time_prefill_forward_total": 13.170391762442886,
+            "time_baseline_decode_cache_update": 0.04725080293000621,
+            "time_baseline_decode_attn_calc": 0.3186607030302505,
+            "time_baseline_decode_inner_total": 0.3517082441899487,
+            "time_decode_forward_total": 0.6980489467106321
         }
     },
     "metrics": {
         "alias": "longbench_multifieldqa_en",
-        "qa_f1_score,none": 0.5570590962484219,
-        "qa_f1_score_stderr,none": 0.08152203182961773
+        "qa_f1_score,none": 0.4087151536198202,
+        "qa_f1_score_stderr,none": 0.070542124908426
     },
-    "total_benchmark_time_s": 32.01285219192505,
+    "total_benchmark_time_s": 35.192891120910645,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 13.0,
         "row_similarity_metric": "euclidean",
@@ -82,18 +82,18 @@ Task: longbench_multifieldqa_en | Acc: 0.5571 | Total Time: 32.01s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_multifieldqa_en.json
 --- Running Task: longbench_hotpotqa ---
     - Setting time_internal: True
-    - Task 'longbench_hotpotqa' completed in 21.83 seconds.
-Task: longbench_hotpotqa | Acc: 0.4557 | Total Time: 21.83s
+    - Task 'longbench_hotpotqa' completed in 29.65 seconds.
+Task: longbench_hotpotqa | Acc: 0.3960 | Total Time: 29.65s
 {
     "task_name": "longbench_hotpotqa",
-    "timestamp": "2026-06-01T14:20:29.545658",
+    "timestamp": "2026-06-01T14:53:32.513775",
     "shot": 0,
-    "sparsity": 0.3104496402542226,
+    "sparsity": 0.3510648631945232,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -103,29 +103,29 @@ Task: longbench_hotpotqa | Acc: 0.4557 | Total Time: 21.83s
         "seq_len_max": 16385,
         "seq_len_std": 3796.3850489643437
     },
-    "accuracy": 0.4557142857142857,
+    "accuracy": 0.39600358422939075,
     "timings": {
-        "total_avg_ms": 8.765094358660281,
+        "total_avg_ms": 15.900192919373513,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.6218839000444859,
-            "time_delta_mm_pattern": 5.010359552316368,
-            "time_prefill_forward_total": 8.765094358660281,
-            "time_baseline_decode_cache_update": 0.08879126501213534,
-            "time_baseline_decode_attn_calc": 0.4257942168715309,
-            "time_baseline_decode_inner_total": 0.43385048173592394,
-            "time_decode_forward_total": 0.7402893375515579
+            "time_get_row_delta": 0.6414346993435174,
+            "time_delta_mm_pattern": 12.109141098475083,
+            "time_prefill_forward_total": 15.900192919373513,
+            "time_baseline_decode_cache_update": 0.07052838171003586,
+            "time_baseline_decode_attn_calc": 0.4038926559069785,
+            "time_baseline_decode_inner_total": 0.4139688871775864,
+            "time_decode_forward_total": 0.732251607402358
         }
     },
     "metrics": {
         "alias": "longbench_hotpotqa",
-        "qa_f1_score,none": 0.4557142857142857,
-        "qa_f1_score_stderr,none": 0.10142386471717962
+        "qa_f1_score,none": 0.39600358422939075,
+        "qa_f1_score_stderr,none": 0.08550591520959111
     },
-    "total_benchmark_time_s": 21.83259391784668,
+    "total_benchmark_time_s": 29.645440340042114,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 13.0,
         "row_similarity_metric": "euclidean",
@@ -135,18 +135,18 @@ Task: longbench_hotpotqa | Acc: 0.4557 | Total Time: 21.83s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_hotpotqa.json
 --- Running Task: longbench_narrativeqa ---
     - Setting time_internal: True
-    - Task 'longbench_narrativeqa' completed in 42.71 seconds.
-Task: longbench_narrativeqa | Acc: 0.3378 | Total Time: 42.71s
+    - Task 'longbench_narrativeqa' completed in 64.07 seconds.
+Task: longbench_narrativeqa | Acc: 0.3016 | Total Time: 64.07s
 {
     "task_name": "longbench_narrativeqa",
-    "timestamp": "2026-06-01T14:21:12.695905",
+    "timestamp": "2026-06-01T14:54:37.043942",
     "shot": 0,
-    "sparsity": 0.26779482818870287,
+    "sparsity": 0.305855418632204,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -156,29 +156,29 @@ Task: longbench_narrativeqa | Acc: 0.3378 | Total Time: 42.71s
         "seq_len_max": 46755,
         "seq_len_std": 13034.282715592753
     },
-    "accuracy": 0.3377630147630148,
+    "accuracy": 0.3015522516698988,
     "timings": {
-        "total_avg_ms": 24.96830908060074,
+        "total_avg_ms": 54.96428217068315,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.7103897989727557,
-            "time_delta_mm_pattern": 18.708987421914934,
-            "time_prefill_forward_total": 24.96830908060074,
-            "time_baseline_decode_cache_update": 0.12469195561457633,
-            "time_baseline_decode_attn_calc": 0.7349477163102064,
-            "time_baseline_decode_inner_total": 0.7420317383534792,
-            "time_decode_forward_total": 1.0329398494938182
+            "time_get_row_delta": 0.7470273003913462,
+            "time_delta_mm_pattern": 48.64788195863366,
+            "time_prefill_forward_total": 54.96428217068315,
+            "time_baseline_decode_cache_update": 0.11829275558650908,
+            "time_baseline_decode_attn_calc": 0.7243872842358219,
+            "time_baseline_decode_inner_total": 0.7313185551638405,
+            "time_decode_forward_total": 1.0213780980805556
         }
     },
     "metrics": {
         "alias": "longbench_narrativeqa",
-        "qa_f1_score,none": 0.3377630147630148,
-        "qa_f1_score_stderr,none": 0.061917502560281425
+        "qa_f1_score,none": 0.3015522516698988,
+        "qa_f1_score_stderr,none": 0.0648038953891992
     },
-    "total_benchmark_time_s": 42.70843434333801,
+    "total_benchmark_time_s": 64.06920957565308,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 13.0,
         "row_similarity_metric": "euclidean",
@@ -188,18 +188,18 @@ Task: longbench_narrativeqa | Acc: 0.3378 | Total Time: 42.71s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_narrativeqa.json
 --- Running Task: longbench_passage_retrieval_en ---
     - Setting time_internal: True
-    - Task 'longbench_passage_retrieval_en' completed in 20.24 seconds.
-Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 20.24s
+    - Task 'longbench_passage_retrieval_en' completed in 25.75 seconds.
+Task: longbench_passage_retrieval_en | Acc: 0.7750 | Total Time: 25.75s
 {
     "task_name": "longbench_passage_retrieval_en",
-    "timestamp": "2026-06-01T14:21:33.376416",
+    "timestamp": "2026-06-01T14:55:03.259046",
     "shot": 0,
-    "sparsity": 0.3217634910318874,
+    "sparsity": 0.351571776199484,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -209,29 +209,29 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 20.24s
         "seq_len_max": 15168,
         "seq_len_std": 1128.9244206323115
     },
-    "accuracy": 1.0,
+    "accuracy": 0.775,
     "timings": {
-        "total_avg_ms": 7.9309388399124146,
+        "total_avg_ms": 13.90404291152954,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.6054202486760915,
-            "time_delta_mm_pattern": 4.351742054894567,
-            "time_prefill_forward_total": 7.9309388399124146,
-            "time_baseline_decode_cache_update": 0.09092213437239181,
-            "time_baseline_decode_attn_calc": 0.3991408211165177,
-            "time_baseline_decode_inner_total": 0.4069535070891256,
-            "time_decode_forward_total": 0.7439048055614998
+            "time_get_row_delta": 0.6235299005173147,
+            "time_delta_mm_pattern": 10.296832653135061,
+            "time_prefill_forward_total": 13.90404291152954,
+            "time_baseline_decode_cache_update": 0.0758245089392793,
+            "time_baseline_decode_attn_calc": 0.39997772328622105,
+            "time_baseline_decode_inner_total": 0.40851449124082656,
+            "time_decode_forward_total": 0.7495430086107392
         }
     },
     "metrics": {
         "alias": "longbench_passage_retrieval_en",
-        "retrieval_score,none": 1.0,
-        "retrieval_score_stderr,none": 0.0
+        "retrieval_score,none": 0.775,
+        "retrieval_score_stderr,none": 0.09230242056471359
     },
-    "total_benchmark_time_s": 20.243056535720825,
+    "total_benchmark_time_s": 25.75401496887207,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 13.0,
         "row_similarity_metric": "euclidean",
@@ -241,28 +241,28 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 20.24s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_passage_retrieval_en.json
 [Worker] Finished. Exiting.
 
 === Step 2/3: {'delta': 15, 'row_sim': 'euclidean', 'chunk_size': 512, 'dense_window_size': 0} ===
 [Master] Running worker for {'delta': 15, 'row_sim': 'euclidean', 'chunk_size': 512, 'dense_window_size': 0}
-Experiment Globals: {'delta_pf_key_on': 1, 'delta_type': 'row', 'no_count': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
+Experiment Globals: {'delta_pf_key_on': 1, 'delta_type': 'row', 'pure_phase1': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
 [Worker] Setting safe globVR defaults for model initialization...
-[Worker] '--long_bench' triggered. Running 4 LongBench tasks.
+[Worker] --limit set, defaulting to LongBench tasks (4 tasks).
 [Worker] Loading Model: meta-llama/Meta-Llama-3.1-8B-Instruct...
-[Worker] Applying no_count settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'no_count': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
-[Config] Created new directory: proxyExperiment/llama/count_ablation_proxy/config_2
+[Worker] Applying pure_phase1 settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'pure_phase1': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
+[Config] Created new directory: proxyExperiment/llama/pure_phase1_vs_hybrid/config_2
 --- Running Task: longbench_multifieldqa_en ---
     - Setting time_internal: True
-    - Task 'longbench_multifieldqa_en' completed in 27.13 seconds.
-Task: longbench_multifieldqa_en | Acc: 0.4852 | Total Time: 27.13s
+    - Task 'longbench_multifieldqa_en' completed in 30.73 seconds.
+Task: longbench_multifieldqa_en | Acc: 0.3991 | Total Time: 30.73s
 {
     "task_name": "longbench_multifieldqa_en",
-    "timestamp": "2026-06-01T14:22:15.450521",
+    "timestamp": "2026-06-01T14:55:49.999540",
     "shot": 0,
-    "sparsity": 0.5145394880378882,
+    "sparsity": 0.573581948221558,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -272,29 +272,29 @@ Task: longbench_multifieldqa_en | Acc: 0.4852 | Total Time: 27.13s
         "seq_len_max": 13472,
         "seq_len_std": 3543.7484458550384
     },
-    "accuracy": 0.4851682725449459,
+    "accuracy": 0.3991080390910643,
     "timings": {
-        "total_avg_ms": 5.100579821877181,
+        "total_avg_ms": 7.574607117846608,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 1.2745983220636845,
-            "time_delta_mm_pattern": 1.7701033524237573,
-            "time_prefill_forward_total": 5.100579821877181,
-            "time_baseline_decode_cache_update": 0.0441905538597777,
-            "time_baseline_decode_attn_calc": 0.3000375744086714,
-            "time_baseline_decode_inner_total": 0.33059986917636336,
-            "time_decode_forward_total": 0.676001096655352
+            "time_get_row_delta": 1.3324811424594372,
+            "time_delta_mm_pattern": 4.182885396224447,
+            "time_prefill_forward_total": 7.574607117846608,
+            "time_baseline_decode_cache_update": 0.04558582660513469,
+            "time_baseline_decode_attn_calc": 0.31657744147437245,
+            "time_baseline_decode_inner_total": 0.34392840054666474,
+            "time_decode_forward_total": 0.6889631507146332
         }
     },
     "metrics": {
         "alias": "longbench_multifieldqa_en",
-        "qa_f1_score,none": 0.4851682725449459,
-        "qa_f1_score_stderr,none": 0.07865568145116097
+        "qa_f1_score,none": 0.3991080390910643,
+        "qa_f1_score_stderr,none": 0.07604196931495245
     },
-    "total_benchmark_time_s": 27.134886741638184,
+    "total_benchmark_time_s": 30.72731614112854,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 15.0,
         "row_similarity_metric": "euclidean",
@@ -304,18 +304,18 @@ Task: longbench_multifieldqa_en | Acc: 0.4852 | Total Time: 27.13s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_multifieldqa_en.json
 --- Running Task: longbench_hotpotqa ---
     - Setting time_internal: True
-    - Task 'longbench_hotpotqa' completed in 20.56 seconds.
-Task: longbench_hotpotqa | Acc: 0.3944 | Total Time: 20.56s
+    - Task 'longbench_hotpotqa' completed in 28.55 seconds.
+Task: longbench_hotpotqa | Acc: 0.2242 | Total Time: 28.55s
 {
     "task_name": "longbench_hotpotqa",
-    "timestamp": "2026-06-01T14:22:36.376567",
+    "timestamp": "2026-06-01T14:56:18.985042",
     "shot": 0,
-    "sparsity": 0.5075437591341602,
+    "sparsity": 0.5826503930808101,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -325,29 +325,29 @@ Task: longbench_hotpotqa | Acc: 0.3944 | Total Time: 20.56s
         "seq_len_max": 16385,
         "seq_len_std": 3796.3850489643437
     },
-    "accuracy": 0.3943589743589744,
+    "accuracy": 0.22415458937198066,
     "timings": {
-        "total_avg_ms": 7.629361945949495,
+        "total_avg_ms": 13.70994299352169,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.5962067505344748,
-            "time_delta_mm_pattern": 3.9344978436362,
-            "time_prefill_forward_total": 7.629361945949495,
-            "time_baseline_decode_cache_update": 0.08699606019436909,
-            "time_baseline_decode_attn_calc": 0.41302691568362426,
-            "time_baseline_decode_inner_total": 0.42133712070623797,
-            "time_decode_forward_total": 0.7338810957609171
+            "time_get_row_delta": 0.6250089500565081,
+            "time_delta_mm_pattern": 9.974234110116958,
+            "time_prefill_forward_total": 13.70994299352169,
+            "time_baseline_decode_cache_update": 0.0738397639773242,
+            "time_baseline_decode_attn_calc": 0.4365590898885151,
+            "time_baseline_decode_inner_total": 0.4444082640373054,
+            "time_decode_forward_total": 0.75067848344909
         }
     },
     "metrics": {
         "alias": "longbench_hotpotqa",
-        "qa_f1_score,none": 0.3943589743589744,
-        "qa_f1_score_stderr,none": 0.09846719647486028
+        "qa_f1_score,none": 0.22415458937198066,
+        "qa_f1_score_stderr,none": 0.08291609657986339
     },
-    "total_benchmark_time_s": 20.559550523757935,
+    "total_benchmark_time_s": 28.545369386672974,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 15.0,
         "row_similarity_metric": "euclidean",
@@ -357,18 +357,18 @@ Task: longbench_hotpotqa | Acc: 0.3944 | Total Time: 20.56s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_hotpotqa.json
 --- Running Task: longbench_narrativeqa ---
     - Setting time_internal: True
-    - Task 'longbench_narrativeqa' completed in 39.34 seconds.
-Task: longbench_narrativeqa | Acc: 0.3505 | Total Time: 39.34s
+    - Task 'longbench_narrativeqa' completed in 64.03 seconds.
+Task: longbench_narrativeqa | Acc: 0.1958 | Total Time: 64.03s
 {
     "task_name": "longbench_narrativeqa",
-    "timestamp": "2026-06-01T14:23:16.146071",
+    "timestamp": "2026-06-01T14:57:23.539335",
     "shot": 0,
-    "sparsity": 0.465144297326563,
+    "sparsity": 0.536690062102081,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -378,29 +378,29 @@ Task: longbench_narrativeqa | Acc: 0.3505 | Total Time: 39.34s
         "seq_len_max": 46755,
         "seq_len_std": 13034.282715592753
     },
-    "accuracy": 0.3504656862745098,
+    "accuracy": 0.19577734801190577,
     "timings": {
-        "total_avg_ms": 20.774733812734485,
+        "total_avg_ms": 45.8041573651135,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.703262799885124,
-            "time_delta_mm_pattern": 14.578307648561895,
-            "time_prefill_forward_total": 20.774733812734485,
-            "time_baseline_decode_cache_update": 0.12441858756724261,
-            "time_baseline_decode_attn_calc": 0.7320531695386616,
-            "time_baseline_decode_inner_total": 0.7394528416180088,
-            "time_decode_forward_total": 1.0348402823053173
+            "time_get_row_delta": 0.741249400191009,
+            "time_delta_mm_pattern": 39.55490978769958,
+            "time_prefill_forward_total": 45.8041573651135,
+            "time_baseline_decode_cache_update": 0.1234294450582779,
+            "time_baseline_decode_attn_calc": 0.8162618224469709,
+            "time_baseline_decode_inner_total": 0.8413134508254663,
+            "time_decode_forward_total": 1.1120770650797747
         }
     },
     "metrics": {
         "alias": "longbench_narrativeqa",
-        "qa_f1_score,none": 0.3504656862745098,
-        "qa_f1_score_stderr,none": 0.06980858743399797
+        "qa_f1_score,none": 0.19577734801190577,
+        "qa_f1_score_stderr,none": 0.047140020477373916
     },
-    "total_benchmark_time_s": 39.344534397125244,
+    "total_benchmark_time_s": 64.02853345870972,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 15.0,
         "row_similarity_metric": "euclidean",
@@ -410,18 +410,18 @@ Task: longbench_narrativeqa | Acc: 0.3505 | Total Time: 39.34s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_narrativeqa.json
 --- Running Task: longbench_passage_retrieval_en ---
     - Setting time_internal: True
-    - Task 'longbench_passage_retrieval_en' completed in 19.45 seconds.
-Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.45s
+    - Task 'longbench_passage_retrieval_en' completed in 29.39 seconds.
+Task: longbench_passage_retrieval_en | Acc: 0.1000 | Total Time: 29.39s
 {
     "task_name": "longbench_passage_retrieval_en",
-    "timestamp": "2026-06-01T14:23:36.038746",
+    "timestamp": "2026-06-01T14:57:53.434874",
     "shot": 0,
-    "sparsity": 0.5118129798044173,
+    "sparsity": 0.5548791621983926,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -431,29 +431,29 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.45s
         "seq_len_max": 15168,
         "seq_len_std": 1128.9244206323115
     },
-    "accuracy": 1.0,
+    "accuracy": 0.1,
     "timings": {
-        "total_avg_ms": 6.969815295189619,
+        "total_avg_ms": 12.062252213060855,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.5999067497439683,
-            "time_delta_mm_pattern": 3.4302379045635463,
-            "time_prefill_forward_total": 6.969815295189619,
-            "time_baseline_decode_cache_update": 0.08969149266140185,
-            "time_baseline_decode_attn_calc": 0.39808743501055066,
-            "time_baseline_decode_inner_total": 0.40596098529741814,
-            "time_decode_forward_total": 0.7468375074744656
+            "time_get_row_delta": 0.6205399506725371,
+            "time_delta_mm_pattern": 8.493729962408542,
+            "time_prefill_forward_total": 12.062252213060855,
+            "time_baseline_decode_cache_update": 0.064340434955221,
+            "time_baseline_decode_attn_calc": 0.4079438292883276,
+            "time_baseline_decode_inner_total": 0.4162358862264612,
+            "time_decode_forward_total": 0.749156325184778
         }
     },
     "metrics": {
         "alias": "longbench_passage_retrieval_en",
-        "retrieval_score,none": 1.0,
-        "retrieval_score_stderr,none": 0.0
+        "retrieval_score,none": 0.1,
+        "retrieval_score_stderr,none": 0.06882472016116853
     },
-    "total_benchmark_time_s": 19.45033073425293,
+    "total_benchmark_time_s": 29.391661167144775,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 15.0,
         "row_similarity_metric": "euclidean",
@@ -463,28 +463,28 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.45s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_passage_retrieval_en.json
 [Worker] Finished. Exiting.
 
 === Step 3/3: {'delta': 17, 'row_sim': 'euclidean', 'chunk_size': 512, 'dense_window_size': 0} ===
 [Master] Running worker for {'delta': 17, 'row_sim': 'euclidean', 'chunk_size': 512, 'dense_window_size': 0}
-Experiment Globals: {'delta_pf_key_on': 1, 'delta_type': 'row', 'no_count': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 17.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
+Experiment Globals: {'delta_pf_key_on': 1, 'delta_type': 'row', 'pure_phase1': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 17.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
 [Worker] Setting safe globVR defaults for model initialization...
-[Worker] '--long_bench' triggered. Running 4 LongBench tasks.
+[Worker] --limit set, defaulting to LongBench tasks (4 tasks).
 [Worker] Loading Model: meta-llama/Meta-Llama-3.1-8B-Instruct...
-[Worker] Applying no_count settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'no_count': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 17.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
-[Config] Created new directory: proxyExperiment/llama/count_ablation_proxy/config_3
+[Worker] Applying pure_phase1 settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'pure_phase1': True, 'delta_mlp': 'Regular', 'row_delta_threshold': 17.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
+[Config] Created new directory: proxyExperiment/llama/pure_phase1_vs_hybrid/config_3
 --- Running Task: longbench_multifieldqa_en ---
     - Setting time_internal: True
-    - Task 'longbench_multifieldqa_en' completed in 25.62 seconds.
-Task: longbench_multifieldqa_en | Acc: 0.5327 | Total Time: 25.62s
+    - Task 'longbench_multifieldqa_en' completed in 48.28 seconds.
+Task: longbench_multifieldqa_en | Acc: 0.2043 | Total Time: 48.28s
 {
     "task_name": "longbench_multifieldqa_en",
-    "timestamp": "2026-06-01T14:24:15.990604",
+    "timestamp": "2026-06-01T14:58:57.561401",
     "shot": 0,
-    "sparsity": 0.674353973400579,
+    "sparsity": 0.7442591095282636,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -494,29 +494,29 @@ Task: longbench_multifieldqa_en | Acc: 0.5327 | Total Time: 25.62s
         "seq_len_max": 13472,
         "seq_len_std": 3543.7484458550384
     },
-    "accuracy": 0.5327189541826123,
+    "accuracy": 0.2043371196831539,
     "timings": {
-        "total_avg_ms": 4.717623792029917,
+        "total_avg_ms": 6.65818083267659,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 1.2635259645991028,
-            "time_delta_mm_pattern": 1.425332448258996,
-            "time_prefill_forward_total": 4.717623792029917,
-            "time_baseline_decode_cache_update": 0.045329548489628745,
-            "time_baseline_decode_attn_calc": 0.30601552080677774,
-            "time_baseline_decode_inner_total": 0.33532729968712394,
-            "time_decode_forward_total": 0.6740664790366413
+            "time_get_row_delta": 1.3156363037414849,
+            "time_delta_mm_pattern": 3.3075845470186325,
+            "time_prefill_forward_total": 6.65818083267659,
+            "time_baseline_decode_cache_update": 0.04509590165634152,
+            "time_baseline_decode_attn_calc": 0.3195084617747954,
+            "time_baseline_decode_inner_total": 0.34068887460327035,
+            "time_decode_forward_total": 0.6971969554185343
         }
     },
     "metrics": {
         "alias": "longbench_multifieldqa_en",
-        "qa_f1_score,none": 0.5327189541826123,
-        "qa_f1_score_stderr,none": 0.0774496044098739
+        "qa_f1_score,none": 0.2043371196831539,
+        "qa_f1_score_stderr,none": 0.04294234527350533
     },
-    "total_benchmark_time_s": 25.616631746292114,
+    "total_benchmark_time_s": 48.282904624938965,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 17.0,
         "row_similarity_metric": "euclidean",
@@ -526,18 +526,18 @@ Task: longbench_multifieldqa_en | Acc: 0.5327 | Total Time: 25.62s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_multifieldqa_en.json
 --- Running Task: longbench_hotpotqa ---
     - Setting time_internal: True
-    - Task 'longbench_hotpotqa' completed in 20.61 seconds.
-Task: longbench_hotpotqa | Acc: 0.3598 | Total Time: 20.61s
+    - Task 'longbench_hotpotqa' completed in 36.56 seconds.
+Task: longbench_hotpotqa | Acc: 0.0439 | Total Time: 36.56s
 {
     "task_name": "longbench_hotpotqa",
-    "timestamp": "2026-06-01T14:24:36.997621",
+    "timestamp": "2026-06-01T14:59:34.674572",
     "shot": 0,
-    "sparsity": 0.6676845604490952,
+    "sparsity": 0.7431351001522942,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -547,29 +547,29 @@ Task: longbench_hotpotqa | Acc: 0.3598 | Total Time: 20.61s
         "seq_len_max": 16385,
         "seq_len_std": 3796.3850489643437
     },
-    "accuracy": 0.3597916666666667,
+    "accuracy": 0.04385858585858586,
     "timings": {
-        "total_avg_ms": 6.75681416131556,
+        "total_avg_ms": 11.603827235847712,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.6003463009372354,
-            "time_delta_mm_pattern": 3.08337175110355,
-            "time_prefill_forward_total": 6.75681416131556,
-            "time_baseline_decode_cache_update": 0.08460125957488064,
-            "time_baseline_decode_attn_calc": 0.43691761535592377,
-            "time_baseline_decode_inner_total": 0.4440860770096501,
-            "time_decode_forward_total": 0.7327304804482713
+            "time_get_row_delta": 0.6124352002050728,
+            "time_delta_mm_pattern": 7.914126796042547,
+            "time_prefill_forward_total": 11.603827235847712,
+            "time_baseline_decode_cache_update": 0.0641872125398576,
+            "time_baseline_decode_attn_calc": 0.42942283460474523,
+            "time_baseline_decode_inner_total": 0.4526738052108477,
+            "time_decode_forward_total": 0.7585748411606689
         }
     },
     "metrics": {
         "alias": "longbench_hotpotqa",
-        "qa_f1_score,none": 0.3597916666666667,
-        "qa_f1_score_stderr,none": 0.10060365815593746
+        "qa_f1_score,none": 0.04385858585858586,
+        "qa_f1_score_stderr,none": 0.025455819230088994
     },
-    "total_benchmark_time_s": 20.60631036758423,
+    "total_benchmark_time_s": 36.5610568523407,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 17.0,
         "row_similarity_metric": "euclidean",
@@ -579,18 +579,18 @@ Task: longbench_hotpotqa | Acc: 0.3598 | Total Time: 20.61s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_hotpotqa.json
 --- Running Task: longbench_narrativeqa ---
     - Setting time_internal: True
-    - Task 'longbench_narrativeqa' completed in 37.41 seconds.
-Task: longbench_narrativeqa | Acc: 0.3269 | Total Time: 37.41s
+    - Task 'longbench_narrativeqa' completed in 108.33 seconds.
+Task: longbench_narrativeqa | Acc: 0.0468 | Total Time: 108.33s
 {
     "task_name": "longbench_narrativeqa",
-    "timestamp": "2026-06-01T14:25:14.846460",
+    "timestamp": "2026-06-01T15:01:24.089081",
     "shot": 0,
-    "sparsity": 0.6347042392611812,
+    "sparsity": 0.7248327646112832,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -600,29 +600,29 @@ Task: longbench_narrativeqa | Acc: 0.3269 | Total Time: 37.41s
         "seq_len_max": 46755,
         "seq_len_std": 13034.282715592753
     },
-    "accuracy": 0.32688750862663907,
+    "accuracy": 0.0467982246564222,
     "timings": {
-        "total_avg_ms": 17.145999589934945,
+        "total_avg_ms": 37.221790766343474,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.6886641994118691,
-            "time_delta_mm_pattern": 11.027379447035491,
-            "time_prefill_forward_total": 17.145999589934945,
-            "time_baseline_decode_cache_update": 0.12213849490544075,
-            "time_baseline_decode_attn_calc": 0.7310403567805354,
-            "time_baseline_decode_inner_total": 0.7377058415607151,
-            "time_decode_forward_total": 1.0201718830313458
+            "time_get_row_delta": 0.7300890503451228,
+            "time_delta_mm_pattern": 31.050719499960543,
+            "time_prefill_forward_total": 37.221790766343474,
+            "time_baseline_decode_cache_update": 0.1025749545265204,
+            "time_baseline_decode_attn_calc": 0.7363522507750043,
+            "time_baseline_decode_inner_total": 0.753858709063236,
+            "time_decode_forward_total": 1.0374858322330482
         }
     },
     "metrics": {
         "alias": "longbench_narrativeqa",
-        "qa_f1_score,none": 0.32688750862663907,
-        "qa_f1_score_stderr,none": 0.06197533760132957
+        "qa_f1_score,none": 0.0467982246564222,
+        "qa_f1_score_stderr,none": 0.018726987481796364
     },
-    "total_benchmark_time_s": 37.413705825805664,
+    "total_benchmark_time_s": 108.33102631568909,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 17.0,
         "row_similarity_metric": "euclidean",
@@ -632,18 +632,18 @@ Task: longbench_narrativeqa | Acc: 0.3269 | Total Time: 37.41s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_narrativeqa.json
 --- Running Task: longbench_passage_retrieval_en ---
     - Setting time_internal: True
-    - Task 'longbench_passage_retrieval_en' completed in 18.80 seconds.
-Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 18.80s
+    - Task 'longbench_passage_retrieval_en' completed in 38.00 seconds.
+Task: longbench_passage_retrieval_en | Acc: 0.0000 | Total Time: 38.00s
 {
     "task_name": "longbench_passage_retrieval_en",
-    "timestamp": "2026-06-01T14:25:34.085059",
+    "timestamp": "2026-06-01T15:02:02.753279",
     "shot": 0,
-    "sparsity": 0.671546343264327,
+    "sparsity": 0.7384503825127819,
     "mlp_spars": 0.0,
     "avg_kv_compression_pct": 0.0,
     "benchmark_stats": {
@@ -653,29 +653,29 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 18.80s
         "seq_len_max": 15168,
         "seq_len_std": 1128.9244206323115
     },
-    "accuracy": 1.0,
+    "accuracy": 0.0,
     "timings": {
-        "total_avg_ms": 6.207337152957916,
+        "total_avg_ms": 10.125124549120665,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.5977662991732359,
-            "time_delta_mm_pattern": 2.697709200531244,
-            "time_prefill_forward_total": 6.207337152957916,
-            "time_baseline_decode_cache_update": 0.0886183014547784,
-            "time_baseline_decode_attn_calc": 0.4010711234981475,
-            "time_baseline_decode_inner_total": 0.4085577672526036,
-            "time_decode_forward_total": 0.7368839455589856
+            "time_get_row_delta": 0.6135009493678808,
+            "time_delta_mm_pattern": 6.597014497220516,
+            "time_prefill_forward_total": 10.125124549120665,
+            "time_baseline_decode_cache_update": 0.05875824952143289,
+            "time_baseline_decode_attn_calc": 0.40432854484589326,
+            "time_baseline_decode_inner_total": 0.42384169133113964,
+            "time_decode_forward_total": 0.7597441129350946
         }
     },
     "metrics": {
         "alias": "longbench_passage_retrieval_en",
-        "retrieval_score,none": 1.0,
+        "retrieval_score,none": 0.0,
         "retrieval_score_stderr,none": 0.0
     },
-    "total_benchmark_time_s": 18.79582691192627,
+    "total_benchmark_time_s": 37.99641513824463,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
-        "no_count": true,
+        "pure_phase1": true,
         "delta_mlp": "Regular",
         "row_delta_threshold": 17.0,
         "row_similarity_metric": "euclidean",
@@ -685,30 +685,30 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 18.80s
         "delta_decode": false,
         "dense_window_size": 0
     },
-    "experiment_type": "no_count"
+    "experiment_type": "pure_phase1"
 }
 [IO] Saved full result to longbench_passage_retrieval_en.json
 [Worker] Finished. Exiting.
 [Master] Starting row_delta Grid Search for LLAMA.
 [Master] Parameters: ['scale', 'delta', 'row_sim', 'chunk_size', 'dense_window_size']
 [Master] Total Experiments: 3
-[Master] Output Folder: count_ablation_proxy
+[Master] Output Folder: pure_phase1_vs_hybrid
 
 === Step 1/3: {'scale': 0.05, 'delta': 13, 'row_sim': 'euclidean', 'chunk_size': 512, 'dense_window_size': 0} ===
 [Master] Running worker for {'scale': 0.05, 'delta': 13, 'row_sim': 'euclidean', 'chunk_size': 512, 'dense_window_size': 0}
 Experiment Globals: {'delta_pf_key_on': 1, 'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 13.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
 [Worker] Setting safe globVR defaults for model initialization...
-[Worker] '--long_bench' triggered. Running 4 LongBench tasks.
+[Worker] --limit set, defaulting to LongBench tasks (4 tasks).
 [Worker] Loading Model: meta-llama/Meta-Llama-3.1-8B-Instruct...
 [Worker] Applying row_delta settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 13.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
-[Config] Created new directory: proxyExperiment/llama/count_ablation_proxy/config_4
+[Config] Created new directory: proxyExperiment/llama/pure_phase1_vs_hybrid/config_4
 --- Running Task: longbench_multifieldqa_en ---
     - Setting time_internal: True
-    - Task 'longbench_multifieldqa_en' completed in 23.35 seconds.
-Task: longbench_multifieldqa_en | Acc: 0.5495 | Total Time: 23.35s
+    - Task 'longbench_multifieldqa_en' completed in 24.61 seconds.
+Task: longbench_multifieldqa_en | Acc: 0.5495 | Total Time: 24.61s
 {
     "task_name": "longbench_multifieldqa_en",
-    "timestamp": "2026-06-01T14:26:17.730560",
+    "timestamp": "2026-06-01T15:02:50.246676",
     "shot": 0,
     "sparsity": 0.31587790142411576,
     "mlp_spars": 0.0,
@@ -722,15 +722,15 @@ Task: longbench_multifieldqa_en | Acc: 0.5495 | Total Time: 23.35s
     },
     "accuracy": 0.5494506048086611,
     "timings": {
-        "total_avg_ms": 5.5708510870113965,
+        "total_avg_ms": 5.713233571872115,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 1.2782187541946768,
-            "time_delta_mm_pattern": 2.2147500479361044,
-            "time_prefill_forward_total": 5.5708510870113965,
-            "time_baseline_decode_cache_update": 0.047570213268045336,
-            "time_baseline_decode_attn_calc": 0.31351453678422225,
-            "time_baseline_decode_inner_total": 0.34870393838911484,
-            "time_decode_forward_total": 0.689165772534633
+            "time_get_row_delta": 1.3272904954385012,
+            "time_delta_mm_pattern": 2.2845992001704873,
+            "time_prefill_forward_total": 5.713233571872115,
+            "time_baseline_decode_cache_update": 0.048334312469010265,
+            "time_baseline_decode_attn_calc": 0.31579892299829654,
+            "time_baseline_decode_inner_total": 0.3541772578986745,
+            "time_decode_forward_total": 0.7067023637184107
         }
     },
     "metrics": {
@@ -738,7 +738,7 @@ Task: longbench_multifieldqa_en | Acc: 0.5495 | Total Time: 23.35s
         "qa_f1_score,none": 0.5494506048086611,
         "qa_f1_score_stderr,none": 0.08103038048425372
     },
-    "total_benchmark_time_s": 23.35144543647766,
+    "total_benchmark_time_s": 24.612530946731567,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -757,11 +757,11 @@ Task: longbench_multifieldqa_en | Acc: 0.5495 | Total Time: 23.35s
 [IO] Saved full result to longbench_multifieldqa_en.json
 --- Running Task: longbench_hotpotqa ---
     - Setting time_internal: True
-    - Task 'longbench_hotpotqa' completed in 21.64 seconds.
-Task: longbench_hotpotqa | Acc: 0.4263 | Total Time: 21.64s
+    - Task 'longbench_hotpotqa' completed in 21.74 seconds.
+Task: longbench_hotpotqa | Acc: 0.4263 | Total Time: 21.74s
 {
     "task_name": "longbench_hotpotqa",
-    "timestamp": "2026-06-01T14:26:39.765756",
+    "timestamp": "2026-06-01T15:03:12.384806",
     "shot": 0,
     "sparsity": 0.3069085234592302,
     "mlp_spars": 0.0,
@@ -775,15 +775,15 @@ Task: longbench_hotpotqa | Acc: 0.4263 | Total Time: 21.64s
     },
     "accuracy": 0.42630952380952386,
     "timings": {
-        "total_avg_ms": 8.742925493046641,
+        "total_avg_ms": 8.822686701081693,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.5995129005052149,
-            "time_delta_mm_pattern": 5.013150552753359,
-            "time_prefill_forward_total": 8.742925493046641,
-            "time_baseline_decode_cache_update": 0.08282379998709075,
-            "time_baseline_decode_attn_calc": 0.4206709801312536,
-            "time_baseline_decode_inner_total": 0.42848474012687804,
-            "time_decode_forward_total": 0.7234597496688366
+            "time_get_row_delta": 0.6076211491599679,
+            "time_delta_mm_pattern": 5.05317584881559,
+            "time_prefill_forward_total": 8.822686701081693,
+            "time_baseline_decode_cache_update": 0.08338527999003417,
+            "time_baseline_decode_attn_calc": 0.42360347996931524,
+            "time_baseline_decode_inner_total": 0.43129324983805417,
+            "time_decode_forward_total": 0.7453639099933207
         }
     },
     "metrics": {
@@ -791,7 +791,7 @@ Task: longbench_hotpotqa | Acc: 0.4263 | Total Time: 21.64s
         "qa_f1_score,none": 0.42630952380952386,
         "qa_f1_score_stderr,none": 0.09430107261434904
     },
-    "total_benchmark_time_s": 21.64160656929016,
+    "total_benchmark_time_s": 21.736979484558105,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -810,11 +810,11 @@ Task: longbench_hotpotqa | Acc: 0.4263 | Total Time: 21.64s
 [IO] Saved full result to longbench_hotpotqa.json
 --- Running Task: longbench_narrativeqa ---
     - Setting time_internal: True
-    - Task 'longbench_narrativeqa' completed in 43.65 seconds.
-Task: longbench_narrativeqa | Acc: 0.3293 | Total Time: 43.65s
+    - Task 'longbench_narrativeqa' completed in 44.34 seconds.
+Task: longbench_narrativeqa | Acc: 0.3293 | Total Time: 44.34s
 {
     "task_name": "longbench_narrativeqa",
-    "timestamp": "2026-06-01T14:27:23.857015",
+    "timestamp": "2026-06-01T15:03:57.205177",
     "shot": 0,
     "sparsity": 0.26715716925736066,
     "mlp_spars": 0.0,
@@ -828,15 +828,15 @@ Task: longbench_narrativeqa | Acc: 0.3293 | Total Time: 43.65s
     },
     "accuracy": 0.3292805117587726,
     "timings": {
-        "total_avg_ms": 24.947723241150378,
+        "total_avg_ms": 25.183060275018214,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.7054768501780927,
-            "time_delta_mm_pattern": 18.696950066648423,
-            "time_prefill_forward_total": 24.947723241150378,
-            "time_baseline_decode_cache_update": 0.1214602341983459,
-            "time_baseline_decode_attn_calc": 0.7457826889187165,
-            "time_baseline_decode_inner_total": 0.7525417208000347,
-            "time_decode_forward_total": 1.0330489411245327
+            "time_get_row_delta": 0.717214100714773,
+            "time_delta_mm_pattern": 18.867372012883425,
+            "time_prefill_forward_total": 25.183060275018214,
+            "time_baseline_decode_cache_update": 0.12179549100970312,
+            "time_baseline_decode_attn_calc": 0.7480073601955565,
+            "time_baseline_decode_inner_total": 0.7546139642940247,
+            "time_decode_forward_total": 1.0436403647585362
         }
     },
     "metrics": {
@@ -844,7 +844,7 @@ Task: longbench_narrativeqa | Acc: 0.3293 | Total Time: 43.65s
         "qa_f1_score,none": 0.3292805117587726,
         "qa_f1_score_stderr,none": 0.06031437740370716
     },
-    "total_benchmark_time_s": 43.65489459037781,
+    "total_benchmark_time_s": 44.33821702003479,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -863,11 +863,11 @@ Task: longbench_narrativeqa | Acc: 0.3293 | Total Time: 43.65s
 [IO] Saved full result to longbench_narrativeqa.json
 --- Running Task: longbench_passage_retrieval_en ---
     - Setting time_internal: True
-    - Task 'longbench_passage_retrieval_en' completed in 19.80 seconds.
-Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.80s
+    - Task 'longbench_passage_retrieval_en' completed in 20.80 seconds.
+Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 20.80s
 {
     "task_name": "longbench_passage_retrieval_en",
-    "timestamp": "2026-06-01T14:27:44.118471",
+    "timestamp": "2026-06-01T15:04:18.464400",
     "shot": 0,
     "sparsity": 0.3221194064730773,
     "mlp_spars": 0.0,
@@ -881,15 +881,15 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.80s
     },
     "accuracy": 1.0,
     "timings": {
-        "total_avg_ms": 7.924694345146418,
+        "total_avg_ms": 7.978069290518761,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.6057672996073962,
-            "time_delta_mm_pattern": 4.3474605970084665,
-            "time_prefill_forward_total": 7.924694345146418,
-            "time_baseline_decode_cache_update": 0.08933352168136532,
-            "time_baseline_decode_attn_calc": 0.39744413078533136,
-            "time_baseline_decode_inner_total": 0.40540434780490137,
-            "time_decode_forward_total": 0.7369907684894144
+            "time_get_row_delta": 0.6142960006371141,
+            "time_delta_mm_pattern": 4.3659392960369585,
+            "time_prefill_forward_total": 7.978069290518761,
+            "time_baseline_decode_cache_update": 0.0905524059030079,
+            "time_baseline_decode_attn_calc": 0.40015173901844286,
+            "time_baseline_decode_inner_total": 0.40894676828621956,
+            "time_decode_forward_total": 0.7621936809163594
         }
     },
     "metrics": {
@@ -897,7 +897,7 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.80s
         "retrieval_score,none": 1.0,
         "retrieval_score_stderr,none": 0.0
     },
-    "total_benchmark_time_s": 19.796433925628662,
+    "total_benchmark_time_s": 20.797691583633423,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -920,17 +920,17 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.80s
 [Master] Running worker for {'scale': 0.05, 'delta': 15, 'row_sim': 'euclidean', 'chunk_size': 512, 'dense_window_size': 0}
 Experiment Globals: {'delta_pf_key_on': 1, 'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
 [Worker] Setting safe globVR defaults for model initialization...
-[Worker] '--long_bench' triggered. Running 4 LongBench tasks.
+[Worker] --limit set, defaulting to LongBench tasks (4 tasks).
 [Worker] Loading Model: meta-llama/Meta-Llama-3.1-8B-Instruct...
 [Worker] Applying row_delta settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 15.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
-[Config] Created new directory: proxyExperiment/llama/count_ablation_proxy/config_5
+[Config] Created new directory: proxyExperiment/llama/pure_phase1_vs_hybrid/config_5
 --- Running Task: longbench_multifieldqa_en ---
     - Setting time_internal: True
-    - Task 'longbench_multifieldqa_en' completed in 24.19 seconds.
-Task: longbench_multifieldqa_en | Acc: 0.5280 | Total Time: 24.19s
+    - Task 'longbench_multifieldqa_en' completed in 24.42 seconds.
+Task: longbench_multifieldqa_en | Acc: 0.5280 | Total Time: 24.42s
 {
     "task_name": "longbench_multifieldqa_en",
-    "timestamp": "2026-06-01T14:28:22.767521",
+    "timestamp": "2026-06-01T15:04:58.420510",
     "shot": 0,
     "sparsity": 0.5079925613629943,
     "mlp_spars": 0.0,
@@ -944,15 +944,15 @@ Task: longbench_multifieldqa_en | Acc: 0.5280 | Total Time: 24.19s
     },
     "accuracy": 0.5279851127335047,
     "timings": {
-        "total_avg_ms": 5.112410850636661,
+        "total_avg_ms": 5.18014658074826,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 1.2762950147967786,
-            "time_delta_mm_pattern": 1.7773539025336504,
-            "time_prefill_forward_total": 5.112410850636661,
-            "time_baseline_decode_cache_update": 0.046802039104604835,
-            "time_baseline_decode_attn_calc": 0.3109067554831359,
-            "time_baseline_decode_inner_total": 0.34501841960395974,
-            "time_decode_forward_total": 0.6856218988579434
+            "time_get_row_delta": 1.311830769944936,
+            "time_delta_mm_pattern": 1.7910043981857597,
+            "time_prefill_forward_total": 5.18014658074826,
+            "time_baseline_decode_cache_update": 0.046838100966603076,
+            "time_baseline_decode_attn_calc": 0.3121860944620464,
+            "time_baseline_decode_inner_total": 0.3470949806373093,
+            "time_decode_forward_total": 0.6931260492446368
         }
     },
     "metrics": {
@@ -960,7 +960,7 @@ Task: longbench_multifieldqa_en | Acc: 0.5280 | Total Time: 24.19s
         "qa_f1_score,none": 0.5279851127335047,
         "qa_f1_score_stderr,none": 0.07628527338988184
     },
-    "total_benchmark_time_s": 24.186380863189697,
+    "total_benchmark_time_s": 24.42363405227661,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -979,11 +979,11 @@ Task: longbench_multifieldqa_en | Acc: 0.5280 | Total Time: 24.19s
 [IO] Saved full result to longbench_multifieldqa_en.json
 --- Running Task: longbench_hotpotqa ---
     - Setting time_internal: True
-    - Task 'longbench_hotpotqa' completed in 20.87 seconds.
-Task: longbench_hotpotqa | Acc: 0.5068 | Total Time: 20.87s
+    - Task 'longbench_hotpotqa' completed in 22.13 seconds.
+Task: longbench_hotpotqa | Acc: 0.5068 | Total Time: 22.13s
 {
     "task_name": "longbench_hotpotqa",
-    "timestamp": "2026-06-01T14:28:44.004204",
+    "timestamp": "2026-06-01T15:05:20.947341",
     "shot": 0,
     "sparsity": 0.5020742337862325,
     "mlp_spars": 0.0,
@@ -997,15 +997,15 @@ Task: longbench_hotpotqa | Acc: 0.5068 | Total Time: 20.87s
     },
     "accuracy": 0.5067816091954023,
     "timings": {
-        "total_avg_ms": 7.643585003353655,
+        "total_avg_ms": 7.709302987530828,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.5924794505350292,
-            "time_delta_mm_pattern": 3.952035642368719,
-            "time_prefill_forward_total": 7.643585003353655,
-            "time_baseline_decode_cache_update": 0.08619536997517571,
-            "time_baseline_decode_attn_calc": 0.4392540901293978,
-            "time_baseline_decode_inner_total": 0.44670870013535025,
-            "time_decode_forward_total": 0.7334742599539459
+            "time_get_row_delta": 0.6069551996421069,
+            "time_delta_mm_pattern": 3.974175199866295,
+            "time_prefill_forward_total": 7.709302987530828,
+            "time_baseline_decode_cache_update": 0.08608966004685499,
+            "time_baseline_decode_attn_calc": 0.44237452019937334,
+            "time_baseline_decode_inner_total": 0.44972833011299373,
+            "time_decode_forward_total": 0.7491299502924085
         }
     },
     "metrics": {
@@ -1013,7 +1013,7 @@ Task: longbench_hotpotqa | Acc: 0.5068 | Total Time: 20.87s
         "qa_f1_score,none": 0.5067816091954023,
         "qa_f1_score_stderr,none": 0.10295891176114282
     },
-    "total_benchmark_time_s": 20.868238925933838,
+    "total_benchmark_time_s": 22.12772226333618,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -1032,11 +1032,11 @@ Task: longbench_hotpotqa | Acc: 0.5068 | Total Time: 20.87s
 [IO] Saved full result to longbench_hotpotqa.json
 --- Running Task: longbench_narrativeqa ---
     - Setting time_internal: True
-    - Task 'longbench_narrativeqa' completed in 40.38 seconds.
-Task: longbench_narrativeqa | Acc: 0.3755 | Total Time: 40.38s
+    - Task 'longbench_narrativeqa' completed in 40.73 seconds.
+Task: longbench_narrativeqa | Acc: 0.3755 | Total Time: 40.73s
 {
     "task_name": "longbench_narrativeqa",
-    "timestamp": "2026-06-01T14:29:24.810787",
+    "timestamp": "2026-06-01T15:06:02.145223",
     "shot": 0,
     "sparsity": 0.4600775532038577,
     "mlp_spars": 0.0,
@@ -1050,15 +1050,15 @@ Task: longbench_narrativeqa | Acc: 0.3755 | Total Time: 40.38s
     },
     "accuracy": 0.37549783549783544,
     "timings": {
-        "total_avg_ms": 20.860747066512705,
+        "total_avg_ms": 21.01490710154176,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.6952747490257025,
-            "time_delta_mm_pattern": 14.675839924439789,
-            "time_prefill_forward_total": 20.860747066512705,
-            "time_baseline_decode_cache_update": 0.13287232640209015,
-            "time_baseline_decode_attn_calc": 0.8037318340189021,
-            "time_baseline_decode_inner_total": 0.8105493678513509,
-            "time_decode_forward_total": 1.0980897980882096
+            "time_get_row_delta": 0.7023059493862093,
+            "time_delta_mm_pattern": 14.775414798222481,
+            "time_prefill_forward_total": 21.01490710154176,
+            "time_baseline_decode_cache_update": 0.1327210674074435,
+            "time_baseline_decode_attn_calc": 0.804459880829977,
+            "time_baseline_decode_inner_total": 0.8111065439204324,
+            "time_decode_forward_total": 1.1009081046005296
         }
     },
     "metrics": {
@@ -1066,7 +1066,7 @@ Task: longbench_narrativeqa | Acc: 0.3755 | Total Time: 40.38s
         "qa_f1_score,none": 0.37549783549783544,
         "qa_f1_score_stderr,none": 0.06468394062874518
     },
-    "total_benchmark_time_s": 40.37695288658142,
+    "total_benchmark_time_s": 40.72680854797363,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -1085,11 +1085,11 @@ Task: longbench_narrativeqa | Acc: 0.3755 | Total Time: 40.38s
 [IO] Saved full result to longbench_narrativeqa.json
 --- Running Task: longbench_passage_retrieval_en ---
     - Setting time_internal: True
-    - Task 'longbench_passage_retrieval_en' completed in 19.07 seconds.
-Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.07s
+    - Task 'longbench_passage_retrieval_en' completed in 20.24 seconds.
+Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 20.24s
 {
     "task_name": "longbench_passage_retrieval_en",
-    "timestamp": "2026-06-01T14:29:44.326807",
+    "timestamp": "2026-06-01T15:06:22.856094",
     "shot": 0,
     "sparsity": 0.5102470304057756,
     "mlp_spars": 0.0,
@@ -1103,15 +1103,15 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.07s
     },
     "accuracy": 1.0,
     "timings": {
-        "total_avg_ms": 6.973908445984125,
+        "total_avg_ms": 7.035690238326788,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.5973293998278677,
-            "time_delta_mm_pattern": 3.438112354837358,
-            "time_prefill_forward_total": 6.973908445984125,
-            "time_baseline_decode_cache_update": 0.0896078406131246,
-            "time_baseline_decode_attn_calc": 0.39774224629112775,
-            "time_baseline_decode_inner_total": 0.40576282601155667,
-            "time_decode_forward_total": 0.7367734198283026
+            "time_get_row_delta": 0.606922400277108,
+            "time_delta_mm_pattern": 3.4617491498589517,
+            "time_prefill_forward_total": 7.035690238326788,
+            "time_baseline_decode_cache_update": 0.09028594202422739,
+            "time_baseline_decode_attn_calc": 0.4002843767107613,
+            "time_baseline_decode_inner_total": 0.4084113767856489,
+            "time_decode_forward_total": 0.7499709855225207
         }
     },
     "metrics": {
@@ -1119,7 +1119,7 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.07s
         "retrieval_score,none": 1.0,
         "retrieval_score_stderr,none": 0.0
     },
-    "total_benchmark_time_s": 19.066089868545532,
+    "total_benchmark_time_s": 20.24235200881958,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -1142,17 +1142,17 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.07s
 [Master] Running worker for {'scale': 0.05, 'delta': 17, 'row_sim': 'euclidean', 'chunk_size': 512, 'dense_window_size': 0}
 Experiment Globals: {'delta_pf_key_on': 1, 'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 17.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
 [Worker] Setting safe globVR defaults for model initialization...
-[Worker] '--long_bench' triggered. Running 4 LongBench tasks.
+[Worker] --limit set, defaulting to LongBench tasks (4 tasks).
 [Worker] Loading Model: meta-llama/Meta-Llama-3.1-8B-Instruct...
 [Worker] Applying row_delta settings: {'delta_pf_key_on': 1, 'delta_type': 'row', 'scale': 0.05, 'delta_mlp': 'Regular', 'row_delta_threshold': 17.0, 'row_similarity_metric': 'euclidean', 'chunk_size': 512, 'divide_to': 0, 'flash': True, 'delta_decode': False, 'dense_window_size': 0}
-[Config] Created new directory: proxyExperiment/llama/count_ablation_proxy/config_6
+[Config] Created new directory: proxyExperiment/llama/pure_phase1_vs_hybrid/config_6
 --- Running Task: longbench_multifieldqa_en ---
     - Setting time_internal: True
-    - Task 'longbench_multifieldqa_en' completed in 25.65 seconds.
-Task: longbench_multifieldqa_en | Acc: 0.4520 | Total Time: 25.65s
+    - Task 'longbench_multifieldqa_en' completed in 26.00 seconds.
+Task: longbench_multifieldqa_en | Acc: 0.4520 | Total Time: 26.00s
 {
     "task_name": "longbench_multifieldqa_en",
-    "timestamp": "2026-06-01T14:30:24.429282",
+    "timestamp": "2026-06-01T15:07:04.748514",
     "shot": 0,
     "sparsity": 0.6676057041576211,
     "mlp_spars": 0.0,
@@ -1166,15 +1166,15 @@ Task: longbench_multifieldqa_en | Acc: 0.4520 | Total Time: 25.65s
     },
     "accuracy": 0.45197319580053846,
     "timings": {
-        "total_avg_ms": 4.7456626679748295,
+        "total_avg_ms": 4.829642222076655,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 1.2799189599696548,
-            "time_delta_mm_pattern": 1.4341551512014121,
-            "time_prefill_forward_total": 4.7456626679748295,
-            "time_baseline_decode_cache_update": 0.045414963806038953,
-            "time_baseline_decode_attn_calc": 0.30968301120398356,
-            "time_baseline_decode_inner_total": 0.3396228501757394,
-            "time_decode_forward_total": 0.6799947182416999
+            "time_get_row_delta": 1.3224547112360596,
+            "time_delta_mm_pattern": 1.460009451303631,
+            "time_prefill_forward_total": 4.829642222076655,
+            "time_baseline_decode_cache_update": 0.04549699165556102,
+            "time_baseline_decode_attn_calc": 0.3090337910261368,
+            "time_baseline_decode_inner_total": 0.34029608040731557,
+            "time_decode_forward_total": 0.684805515728123
         }
     },
     "metrics": {
@@ -1182,7 +1182,7 @@ Task: longbench_multifieldqa_en | Acc: 0.4520 | Total Time: 25.65s
         "qa_f1_score,none": 0.45197319580053846,
         "qa_f1_score_stderr,none": 0.08111293242210929
     },
-    "total_benchmark_time_s": 25.653489589691162,
+    "total_benchmark_time_s": 25.995429277420044,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -1201,11 +1201,11 @@ Task: longbench_multifieldqa_en | Acc: 0.4520 | Total Time: 25.65s
 [IO] Saved full result to longbench_multifieldqa_en.json
 --- Running Task: longbench_hotpotqa ---
     - Setting time_internal: True
-    - Task 'longbench_hotpotqa' completed in 20.30 seconds.
-Task: longbench_hotpotqa | Acc: 0.4242 | Total Time: 20.30s
+    - Task 'longbench_hotpotqa' completed in 21.03 seconds.
+Task: longbench_hotpotqa | Acc: 0.4242 | Total Time: 21.03s
 {
     "task_name": "longbench_hotpotqa",
-    "timestamp": "2026-06-01T14:30:45.127565",
+    "timestamp": "2026-06-01T15:07:26.152373",
     "shot": 0,
     "sparsity": 0.6594335305925259,
     "mlp_spars": 0.0,
@@ -1219,15 +1219,15 @@ Task: longbench_hotpotqa | Acc: 0.4242 | Total Time: 20.30s
     },
     "accuracy": 0.42416666666666664,
     "timings": {
-        "total_avg_ms": 6.753868941217661,
+        "total_avg_ms": 6.821725666895508,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.5935887491796166,
-            "time_delta_mm_pattern": 3.092760702082887,
-            "time_prefill_forward_total": 6.753868941217661,
-            "time_baseline_decode_cache_update": 0.08942315470942828,
-            "time_baseline_decode_attn_calc": 0.42747751200970796,
-            "time_baseline_decode_inner_total": 0.4347979523064125,
-            "time_decode_forward_total": 0.7356513451917895
+            "time_get_row_delta": 0.6000297997612506,
+            "time_delta_mm_pattern": 3.121875147568062,
+            "time_prefill_forward_total": 6.821725666895508,
+            "time_baseline_decode_cache_update": 0.08934594045387625,
+            "time_baseline_decode_attn_calc": 0.4289743570621968,
+            "time_baseline_decode_inner_total": 0.4362260597325595,
+            "time_decode_forward_total": 0.7452401312156802
         }
     },
     "metrics": {
@@ -1235,7 +1235,7 @@ Task: longbench_hotpotqa | Acc: 0.4242 | Total Time: 20.30s
         "qa_f1_score,none": 0.42416666666666664,
         "qa_f1_score_stderr,none": 0.1024086741917285
     },
-    "total_benchmark_time_s": 20.299134016036987,
+    "total_benchmark_time_s": 21.031261682510376,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -1254,11 +1254,11 @@ Task: longbench_hotpotqa | Acc: 0.4242 | Total Time: 20.30s
 [IO] Saved full result to longbench_hotpotqa.json
 --- Running Task: longbench_narrativeqa ---
     - Setting time_internal: True
-    - Task 'longbench_narrativeqa' completed in 39.88 seconds.
-Task: longbench_narrativeqa | Acc: 0.3420 | Total Time: 39.88s
+    - Task 'longbench_narrativeqa' completed in 40.15 seconds.
+Task: longbench_narrativeqa | Acc: 0.3420 | Total Time: 40.15s
 {
     "task_name": "longbench_narrativeqa",
-    "timestamp": "2026-06-01T14:31:25.506060",
+    "timestamp": "2026-06-01T15:08:06.795834",
     "shot": 0,
     "sparsity": 0.6282265743499367,
     "mlp_spars": 0.0,
@@ -1272,15 +1272,15 @@ Task: longbench_narrativeqa | Acc: 0.3420 | Total Time: 39.88s
     },
     "accuracy": 0.341978201537025,
     "timings": {
-        "total_avg_ms": 17.267967806383968,
+        "total_avg_ms": 17.48682156279683,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.6874812503345311,
-            "time_delta_mm_pattern": 11.154055947251617,
-            "time_prefill_forward_total": 17.267967806383968,
-            "time_baseline_decode_cache_update": 0.11773987289458002,
-            "time_baseline_decode_attn_calc": 0.7308952380277094,
-            "time_baseline_decode_inner_total": 0.7376577461245241,
-            "time_decode_forward_total": 1.0168347097704278
+            "time_get_row_delta": 0.6957800490781665,
+            "time_delta_mm_pattern": 11.298716502077877,
+            "time_prefill_forward_total": 17.48682156279683,
+            "time_baseline_decode_cache_update": 0.11781064344982266,
+            "time_baseline_decode_attn_calc": 0.7313490081082297,
+            "time_baseline_decode_inner_total": 0.7379711349990952,
+            "time_decode_forward_total": 1.0194552460547963
         }
     },
     "metrics": {
@@ -1288,7 +1288,7 @@ Task: longbench_narrativeqa | Acc: 0.3420 | Total Time: 39.88s
         "qa_f1_score,none": 0.341978201537025,
         "qa_f1_score_stderr,none": 0.060101468204938974
     },
-    "total_benchmark_time_s": 39.87686491012573,
+    "total_benchmark_time_s": 40.15142226219177,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
@@ -1307,11 +1307,11 @@ Task: longbench_narrativeqa | Acc: 0.3420 | Total Time: 39.88s
 [IO] Saved full result to longbench_narrativeqa.json
 --- Running Task: longbench_passage_retrieval_en ---
     - Setting time_internal: True
-    - Task 'longbench_passage_retrieval_en' completed in 18.91 seconds.
-Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 18.91s
+    - Task 'longbench_passage_retrieval_en' completed in 19.74 seconds.
+Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 19.74s
 {
     "task_name": "longbench_passage_retrieval_en",
-    "timestamp": "2026-06-01T14:31:44.855554",
+    "timestamp": "2026-06-01T15:08:26.981335",
     "shot": 0,
     "sparsity": 0.6673871324105239,
     "mlp_spars": 0.0,
@@ -1325,15 +1325,15 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 18.91s
     },
     "accuracy": 1.0,
     "timings": {
-        "total_avg_ms": 6.231586299091577,
+        "total_avg_ms": 6.292116958647966,
         "latency_breakdown_ms": {
-            "time_get_row_delta": 0.5990290003828704,
-            "time_delta_mm_pattern": 2.721384347230196,
-            "time_prefill_forward_total": 6.231586299091577,
-            "time_baseline_decode_cache_update": 0.08988836238268709,
-            "time_baseline_decode_attn_calc": 0.39909115924999333,
-            "time_baseline_decode_inner_total": 0.4067806521214653,
-            "time_decode_forward_total": 0.7411486808264601
+            "time_get_row_delta": 0.6037504503503441,
+            "time_delta_mm_pattern": 2.7485013000667093,
+            "time_prefill_forward_total": 6.292116958647966,
+            "time_baseline_decode_cache_update": 0.09049620288187989,
+            "time_baseline_decode_attn_calc": 0.399874333265251,
+            "time_baseline_decode_inner_total": 0.4075469999047725,
+            "time_decode_forward_total": 0.749068014404696
         }
     },
     "metrics": {
@@ -1341,7 +1341,7 @@ Task: longbench_passage_retrieval_en | Acc: 1.0000 | Total Time: 18.91s
         "retrieval_score,none": 1.0,
         "retrieval_score_stderr,none": 0.0
     },
-    "total_benchmark_time_s": 18.90788173675537,
+    "total_benchmark_time_s": 19.743850708007812,
     "parameters": {
         "delta_pf_key_on": 1,
         "delta_type": "row",
