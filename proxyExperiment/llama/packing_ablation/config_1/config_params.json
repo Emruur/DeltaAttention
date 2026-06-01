@@ -2,7 +2,7 @@
     "delta_pf_key_on": 1,
     "delta_type": "row",
     "packing_mode": "delta",
-    "keep_rate": 0.5,
+    "target_keep_rate": 0.5,
     "row_delta_threshold": 15,
     "delta_mlp": "Regular",
     "row_similarity_metric": "euclidean",

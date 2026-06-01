@@ -84,7 +84,7 @@ EXPERIMENT_DEFINITIONS = {
             "delta_pf_key_on": 1,
             "delta_type": "row",
             "packing_mode": "delta",
-            "keep_rate": args.keep_rate,
+            "target_keep_rate": args.keep_rate,
             "row_delta_threshold": {0.5: 15, 0.35: 17}[args.keep_rate],
             "delta_mlp": "Regular",
             "row_similarity_metric": args.row_sim,
