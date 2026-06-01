@@ -209,6 +209,37 @@ EXPERIMENT_DEFINITIONS = {
         }
     },
 
+    # Pure Phase 1: attend only to packed compressed history; Phase 2 (dense window) skipped.
+    # Causality enforced per-element inside the kernel using packed key timestamps.
+    # Grid sweeps both count-weighted and unweighted to isolate that effect cleanly.
+    "pure_phase1": {
+        "grid": {
+            "delta": [13, 15, 17],
+            "row_sim": ["euclidean"],
+            "chunk_size": [512],
+            "dense_window_size": [0],
+        },
+        "arg_builder": lambda p: [
+            "--delta",             str(p["delta"]),
+            "--row_sim",           str(p["row_sim"]),
+            "--chunk_size",        str(p["chunk_size"]),
+            "--dense_window_size", str(p["dense_window_size"]),
+        ],
+        "injector": lambda args: {
+            "delta_pf_key_on": 1,
+            "delta_type": "row",
+            "pure_phase1": True,
+            "delta_mlp": "Regular",
+            "row_delta_threshold": args.delta,
+            "row_similarity_metric": args.row_sim,
+            "chunk_size": args.chunk_size,
+            "divide_to": 0,
+            "flash": True,
+            "delta_decode": False,
+            "dense_window_size": args.dense_window_size,
+        }
+    },
+
     # Regular prefill attention + delta-compressed KV cache for decoding only
     "decode_only_delta": {
         "grid": {
@@ -610,6 +641,7 @@ if __name__ == "__main__":
 
     # PREFILL DENSE WINDOW
     parser.add_argument('--dense_window_size', default=128, type=int)
+    parser.add_argument('--no_count', action='store_true', help="Disable count weighting in Phase 1 (treat all packed keys as count=1)")
     parser.add_argument('--limit', default=None, type=int, help="Max samples per task (None = full eval)")
 
     args = parser.parse_args()

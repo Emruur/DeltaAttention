@@ -257,3 +257,101 @@ def hybrid_compressed_flash_kernel_sanity(
 
     out_ptrs = Out + batch_idx * stride_ob + head_idx * stride_oh + offs_m[:, None] * stride_om + offs_d[None, :] * stride_od
     tl.store(out_ptrs, acc.to(Out.dtype.element_ty), mask=(offs_m[:, None] < seq_len_q) & (offs_d[None, :] < head_dim))
+
+
+@triton.jit
+def pure_phase1_flash_kernel(
+    Q, K_dense, V_dense,
+    K_packed, V_packed,
+    Packed_Timestamps, Packed_Counts,
+    Out,
+    stride_qb, stride_qh, stride_qm, stride_qd,
+    stride_kdb, stride_kdh, stride_kdn, stride_kdd,
+    stride_vdb, stride_vdh, stride_vdn, stride_vdd,
+    stride_kpb, stride_kph, stride_kpn, stride_kpd,
+    stride_vpb, stride_vph, stride_vpn, stride_vpd,
+    stride_ptb, stride_pth, stride_ptn,
+    stride_pcb, stride_pch, stride_pcn,
+    stride_ob, stride_oh, stride_om, stride_od,
+    sm_scale,
+    seq_len_q, seq_len_k, num_packed_keys, head_dim, num_heads,
+    denseWindowSize,
+    BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, BLOCK_D: tl.constexpr
+):
+    """Pure Phase 1 kernel: attends ONLY to packed compressed history.
+    Phase 2 (dense local window) is skipped entirely.
+    Causality enforced per-element: key at timestamp T is valid for query at position m iff T <= m.
+    Padding entries (count == 0) are masked out to avoid spurious attention from zero-init slots."""
+    pid_m = tl.program_id(0)
+    pid_bh = tl.program_id(1)
+
+    batch_idx = pid_bh // num_heads
+    head_idx = pid_bh % num_heads
+
+    start_m = pid_m * BLOCK_M
+    offs_m = start_m + tl.arange(0, BLOCK_M)
+    offs_d = tl.arange(0, BLOCK_D)
+
+    q_ptrs = Q + batch_idx * stride_qb + head_idx * stride_qh + offs_m[:, None] * stride_qm + offs_d[None, :] * stride_qd
+    q = tl.load(q_ptrs, mask=(offs_m[:, None] < seq_len_q) & (offs_d[None, :] < head_dim), other=0.0)
+
+    m_i = tl.zeros([BLOCK_M], dtype=tl.float32) - float("inf")
+    l_i = tl.zeros([BLOCK_M], dtype=tl.float32)
+    acc = tl.zeros([BLOCK_M, BLOCK_D], dtype=tl.float32)
+
+    k_pack_base = K_packed + batch_idx * stride_kpb + head_idx * stride_kph
+    v_pack_base = V_packed + batch_idx * stride_vpb + head_idx * stride_vph
+    pt_base = Packed_Timestamps + batch_idx * stride_ptb + head_idx * stride_pth
+    pc_base = Packed_Counts + batch_idx * stride_pcb + head_idx * stride_pch
+
+    # ===========================================================
+    # PHASE 1 ONLY: packed history with per-element causal mask
+    # ===========================================================
+    start_n = 0
+    while start_n < num_packed_keys:
+        offs_n = start_n + tl.arange(0, BLOCK_N)
+        packed_mask = offs_n < num_packed_keys
+
+        timestamps = tl.load(pt_base + offs_n * stride_ptn, mask=packed_mask, other=seq_len_k + 1)
+        counts = tl.load(pc_base + offs_n * stride_pcn, mask=packed_mask, other=0.0)
+
+        # A packed slot is real only if it received at least one token (count > 0).
+        # Zero-initialised padding slots have count == 0 and timestamp == 0; masking them
+        # prevents spurious attention from the zero K/V vectors they contain.
+        key_valid = (counts > 0) & packed_mask  # [BLOCK_N]
+
+        # Per-element causal mask: key at T valid for query at m iff T <= m
+        causal_valid = (timestamps[None, :] <= offs_m[:, None]) & key_valid[None, :]  # [BLOCK_M, BLOCK_N]
+
+        k_ptrs = k_pack_base + offs_n[None, :] * stride_kpn + offs_d[:, None] * stride_kpd
+        k_pack = tl.load(k_ptrs, mask=(packed_mask[None, :]) & (offs_d[:, None] < head_dim), other=0.0)
+
+        qk = tl.dot(q, k_pack) * sm_scale
+        qk = tl.where(causal_valid, qk, float("-inf"))
+
+        m_ij = tl.maximum(m_i, tl.max(qk, 1))
+        p = tl.math.exp(qk - m_ij[:, None])
+
+        p_weighted = p * counts[None, :]
+
+        l_ij = tl.sum(p_weighted, 1)
+        alpha = tl.math.exp(m_i - m_ij)
+
+        l_i = l_i * alpha + l_ij
+        acc = acc * alpha[:, None]
+
+        v_ptrs = v_pack_base + offs_n[:, None] * stride_vpn + offs_d[None, :] * stride_vpd
+        v_pack = tl.load(v_ptrs, mask=(packed_mask[:, None]) & (offs_d[None, :] < head_dim), other=0.0)
+
+        acc += tl.dot(p_weighted.to(v_pack.dtype), v_pack)
+        m_i = m_ij
+
+        start_n += BLOCK_N
+
+    # Phase 2 skipped entirely.
+    # Guard: queries with no valid packed keys leave l_i == 0; clamp to avoid NaN output.
+    safe_l_i = tl.where(l_i > 0, l_i, 1.0)
+    acc = acc / safe_l_i[:, None]
+
+    out_ptrs = Out + batch_idx * stride_ob + head_idx * stride_oh + offs_m[:, None] * stride_om + offs_d[None, :] * stride_od
+    tl.store(out_ptrs, acc.to(Out.dtype.element_ty), mask=(offs_m[:, None] < seq_len_q) & (offs_d[None, :] < head_dim))
