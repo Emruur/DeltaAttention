@@ -1,0 +1,12 @@
+{
+    "delta_pf_key_on": 1,
+    "delta_type": "row",
+    "packing_mode": "random",
+    "target_keep_rate": 0.5,
+    "delta_mlp": "Regular",
+    "chunk_size": 512,
+    "divide_to": 0,
+    "flash": true,
+    "delta_decode": false,
+    "dense_window_size": 0
+}
