@@ -1,0 +1,48 @@
+{
+    "task_name": "longbench_narrativeqa",
+    "timestamp": "2026-06-01T14:21:12.695905",
+    "shot": 0,
+    "sparsity": 0.26779482818870287,
+    "mlp_spars": 0.0,
+    "avg_kv_compression_pct": 0.0,
+    "benchmark_stats": {
+        "num_passages": 20,
+        "seq_len_avg": 24177.7,
+        "seq_len_min": 8092,
+        "seq_len_max": 46755,
+        "seq_len_std": 13034.282715592753
+    },
+    "accuracy": 0.3377630147630148,
+    "timings": {
+        "total_avg_ms": 24.96830908060074,
+        "latency_breakdown_ms": {
+            "time_get_row_delta": 0.7103897989727557,
+            "time_delta_mm_pattern": 18.708987421914934,
+            "time_prefill_forward_total": 24.96830908060074,
+            "time_baseline_decode_cache_update": 0.12469195561457633,
+            "time_baseline_decode_attn_calc": 0.7349477163102064,
+            "time_baseline_decode_inner_total": 0.7420317383534792,
+            "time_decode_forward_total": 1.0329398494938182
+        }
+    },
+    "metrics": {
+        "alias": "longbench_narrativeqa",
+        "qa_f1_score,none": 0.3377630147630148,
+        "qa_f1_score_stderr,none": 0.061917502560281425
+    },
+    "total_benchmark_time_s": 42.70843434333801,
+    "parameters": {
+        "delta_pf_key_on": 1,
+        "delta_type": "row",
+        "no_count": true,
+        "delta_mlp": "Regular",
+        "row_delta_threshold": 13.0,
+        "row_similarity_metric": "euclidean",
+        "chunk_size": 512,
+        "divide_to": 0,
+        "flash": true,
+        "delta_decode": false,
+        "dense_window_size": 0
+    },
+    "experiment_type": "no_count"
+}
