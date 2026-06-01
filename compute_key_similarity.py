@@ -106,17 +106,28 @@ def compute_all(input_ids, seed):
 
 
 torch.manual_seed(SEED)
-print("Forward pass…")
+print("Forward pass – real tokens…")
 data = compute_all(ids, seed=SEED)
+
+# 5th variant: shuffle input tokens (random content), keep sequential positions
+# → RoPE still applied at positions 0,1,2,... so positional adjacency is preserved
+# → content adjacency is destroyed
+torch.manual_seed(SEED)
+shuffled_ids = ids[:, torch.randperm(ids.shape[1])]
+print("Forward pass – content-shuffled tokens (pre-shuffle → RoPE)…")
+content_shuf_data = compute_all(shuffled_ids, seed=SEED + 1)
+# we only need the post-RoPE real from this run (content shuffled, positions sequential)
+post_content_shuf = content_shuf_data["post_real"]
 
 np.savez(
     OUT_PATH,
-    pre_real  = data["pre_real"],
-    pre_shuf  = data["pre_shuf"],
-    post_real = data["post_real"],
-    post_shuf = data["post_shuf"],
-    layers    = np.array(LAYERS),
-    seq_len   = np.array(ids.shape[1]),
+    pre_real          = data["pre_real"],
+    pre_shuf          = data["pre_shuf"],
+    post_real         = data["post_real"],
+    post_shuf         = data["post_shuf"],
+    post_content_shuf = post_content_shuf,   # content shuffled, RoPE on sequential positions
+    layers            = np.array(LAYERS),
+    seq_len           = np.array(ids.shape[1]),
 )
 
 print(f"Saved → {OUT_PATH}")
