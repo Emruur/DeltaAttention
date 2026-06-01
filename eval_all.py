@@ -75,6 +75,7 @@ EXPERIMENT_DEFINITIONS = {
         },
         "arg_builder": lambda p: [
             "--scale",             "0.05",
+            "--keep_rate",         str(p["keep_rate"]),
             "--delta",             str({0.5: 15, 0.35: 17}[p["keep_rate"]]),
             "--row_sim",           str(p["row_sim"]),
             "--chunk_size",        str(p["chunk_size"]),
