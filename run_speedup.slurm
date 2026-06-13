@@ -27,4 +27,4 @@ export TRANSFORMERS_CACHE=$SHARED_SCRATCH
 ENV_SH="$(dirname "${BASH_SOURCE[0]}")/.env.sh"
 [ -f "$ENV_SH" ] && source "$ENV_SH"
 
-python eval_speedup.py --n_warmup 1 --n_runs 3
+python eval_speedup.py --n_warmup 3 --n_runs 10
