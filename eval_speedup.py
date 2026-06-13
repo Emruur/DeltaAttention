@@ -44,12 +44,12 @@ def reset_timing():
     globVR.kv_compression_samples = []
 
 
-def set_row_delta(time_internal=False):
+def set_row_delta(threshold, time_internal=False):
     globVR.delta_pf_key_on = 1
     globVR.delta_type = "row"
     globVR.scale = 0.05
     globVR.delta_mlp = "Regular"
-    globVR.row_delta_threshold = 17
+    globVR.row_delta_threshold = threshold
     globVR.row_similarity_metric = "euclidian"
     globVR.chunk_size = 512
     globVR.divide_to = 0
@@ -203,9 +203,9 @@ def benchmark_mode(model, tokens, seq_lengths, device, mode_name, setup_fn, n_wa
     return results
 
 
-def collect_overhead_profile(model, tokens, seq_lengths, device):
+def collect_overhead_profile(model, tokens, seq_lengths, device, threshold):
     """One forward per N with time_internal=True to get per-operation breakdown."""
-    print("\n=== Overhead profiling (row delta, time_internal=True) ===", flush=True)
+    print(f"\n=== Overhead profiling (row delta thresh={threshold}, time_internal=True) ===", flush=True)
     overhead_data = {key: [] for key in OVERHEAD_KEYS}
 
     for N in seq_lengths:
@@ -217,7 +217,7 @@ def collect_overhead_profile(model, tokens, seq_lengths, device):
         ids = tokens[:N]
         try:
             reset_timing()
-            set_row_delta(time_internal=True)
+            set_row_delta(threshold, time_internal=True)
             run_prefill_e2e(model, ids, device, setup_fn=None)
             glob_set.resolve_latency_events()
             stats = getattr(globVR, "latency_stats", {})
@@ -310,10 +310,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--n_warmup", type=int, default=1, help="Warmup iterations per sequence length")
     parser.add_argument("--n_runs", type=int, default=3, help="Timed iterations per sequence length")
+    parser.add_argument("--threshold", type=int, default=17, help="Row delta threshold")
     args = parser.parse_args()
 
+    out_dir = f"speedup_experiments_{args.threshold}"
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Device: {device}  |  warmup={args.n_warmup}  runs={args.n_runs}", flush=True)
+    print(f"Device: {device}  |  warmup={args.n_warmup}  runs={args.n_runs}  threshold={args.threshold}", flush=True)
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
     tokens = get_wikitext_tokens(tokenizer, max(SEQ_LENGTHS))
@@ -339,7 +342,7 @@ def main():
 
     row_delta_times = benchmark_mode(
         delta_model, tokens, SEQ_LENGTHS, device,
-        "Row Delta (flash, prefill only)", setup_fn=set_row_delta,
+        f"Row Delta (flash, thresh={args.threshold})", setup_fn=lambda: set_row_delta(args.threshold),
         n_warmup=args.n_warmup, n_runs=args.n_runs,
     )
 
@@ -349,7 +352,7 @@ def main():
         n_warmup=args.n_warmup, n_runs=args.n_runs,
     )
 
-    overhead_data = collect_overhead_profile(delta_model, tokens, SEQ_LENGTHS, device)
+    overhead_data = collect_overhead_profile(delta_model, tokens, SEQ_LENGTHS, device, args.threshold)
 
     del delta_model
     torch.cuda.empty_cache()
@@ -383,16 +386,17 @@ def main():
     # ------------------------------------------
     # Save raw results
     # ------------------------------------------
-    os.makedirs("speedup_experiments", exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
     results = {
         "model": MODEL_ID,
+        "threshold": args.threshold,
         "seq_lengths": SEQ_LENGTHS,
         "baseline_sdpa_e2e_ms": baseline_times,
         "flash_baseline_e2e_ms": flash_baseline_times,
         "row_delta_e2e_ms": row_delta_times,
         "overhead": {k: overhead_data[k] for k in OVERHEAD_KEYS},
     }
-    json_path = "speedup_experiments/speedup_results.json"
+    json_path = f"{out_dir}/speedup_results.json"
     with open(json_path, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {json_path}", flush=True)
@@ -409,7 +413,7 @@ def main():
 
     fig, axes = plt.subplots(2, 2, figsize=(18, 12))
     fig.suptitle(
-        "Row Delta vs Baselines  |  Llama-3-8B-1M (Gradient), Wikitext",
+        f"Row Delta (thresh={args.threshold}) vs Baselines  |  Llama-3.1-8B, Wikitext",
         fontsize=14,
     )
     ax1, ax2 = axes[0, 0], axes[0, 1]
@@ -464,7 +468,7 @@ def main():
     plt.tight_layout()
 
     for ext in ("png", "pdf"):
-        path = f"speedup_experiments/speedup_plot.{ext}"
+        path = f"{out_dir}/speedup_plot.{ext}"
         plt.savefig(path, dpi=150)
         print(f"Plot saved to {path}", flush=True)
 
