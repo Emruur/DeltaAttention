@@ -2,8 +2,8 @@
 Compare pre-RoPE vs post-RoPE adjacent query cosine similarity distributions.
 
 Same structure as visualize_key_similarity.py but for Q instead of K.
-Pre-RoPE Q is captured from the q_proj hook; post-RoPE Q is computed by
-applying the layer's own rotary embedding to the captured tensor.
+Pre-RoPE Q: hooked from q_proj output.
+Post-RoPE Q: captured by monkey-patching apply_rotary_pos_emb during forward.
 """
 
 import os, sys
@@ -16,6 +16,7 @@ from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import globVR
+import modeling_llama as _ml
 from modeling_llama import LlamaForCausalLM, LlamaConfig
 
 # ─────────────────────────────────────────────
@@ -60,39 +61,18 @@ shuffled_ids = ids[:, torch.randperm(ids.shape[1])].to(device)
 print(f"Sequence length: {ids.shape[1]} tokens")
 
 
-def rotate_half(x):
-    x1 = x[..., : x.shape[-1] // 2]
-    x2 = x[..., x.shape[-1] // 2 :]
-    return torch.cat((-x2, x1), dim=-1)
-
-
-def apply_rope(q, cos, sin):
-    """q: [h, seq, d]; cos/sin: [1, seq, d] → [h, seq, d]"""
-    return q * cos + rotate_half(q) * sin
-
-
 def adj_cos(q):
     """q: [num_heads, seq, head_dim] → [num_heads, seq-1]"""
     q = F.normalize(q.float(), dim=-1)
     return (q[:, :-1, :] * q[:, 1:, :]).sum(dim=-1).cpu().numpy()
 
 
-def get_post_rope_q(q_pre, seq_len):
-    """Apply the model's rotary embedding to pre-RoPE q_pre [h, seq, d]."""
-    position_ids = torch.arange(seq_len, device=device).unsqueeze(0)  # [1, seq]
-    with torch.no_grad():
-        dummy = q_pre.unsqueeze(0)  # [1, h, seq, d] — used for dtype/device
-        cos, sin = model.model.rotary_emb(dummy, position_ids)  # [1, seq, d]
-    cos = cos.float().squeeze(0)  # [seq, d]
-    sin = sin.float().squeeze(0)
-    return apply_rope(q_pre.float(), cos, sin)  # [h, seq, d]
-
-
 def get_sims(input_ids):
-    pre_raw = {}
-    hooks   = []
-    seq_len = input_ids.shape[1]
+    pre_raw    = {}
+    hooks      = []
+    captured_qs = []   # one entry per layer, in order
 
+    # pre-RoPE Q from q_proj hook
     for layer_idx in LAYERS:
         def _hook(module, inp, out, _idx=layer_idx):
             q = out[0].float().reshape(-1, num_heads, head_dim)
@@ -100,16 +80,28 @@ def get_sims(input_ids):
         h = model.model.layers[layer_idx].self_attn.q_proj.register_forward_hook(_hook)
         hooks.append(h)
 
+    # post-RoPE Q by patching apply_rotary_pos_emb in modeling_llama
+    _orig_rope = _ml.apply_rotary_pos_emb
+
+    def _capturing_rope(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
+        q_rot, k_rot = _orig_rope(q, k, cos, sin, position_ids, unsqueeze_dim)
+        captured_qs.append(q_rot.detach().float())  # [1, heads, seq, d]
+        return q_rot, k_rot
+
+    _ml.apply_rotary_pos_emb = _capturing_rope
+
     with torch.no_grad():
         _ = model(input_ids=input_ids, use_cache=False)
 
+    _ml.apply_rotary_pos_emb = _orig_rope
     for h in hooks:
         h.remove()
 
+    # captured_qs[i] = post-RoPE Q for layer i (all 32 layers in order)
     pre_real, pre_shuf, post_real, post_shuf = {}, {}, {}, {}
     for layer_idx in LAYERS:
-        q_pre  = pre_raw[layer_idx]                          # [h, seq, d]
-        q_post = get_post_rope_q(q_pre, seq_len)  # [h, seq, d]
+        q_pre  = pre_raw[layer_idx]              # [h, seq, d]
+        q_post = captured_qs[layer_idx][0]       # [h, seq, d]
 
         perm = torch.randperm(q_pre.shape[1])
 
@@ -138,10 +130,10 @@ fig, axes = plt.subplots(
 )
 
 STYLES = [
-    (pre_real,  "pre-RoPE real",          "steelblue", "-",  1.4),
-    (pre_shuf,  "pre-RoPE Q-shuffled",    "steelblue", "--", 1.0),
-    (post_real, "post-RoPE real",         "tomato",    "-",  1.4),
-    (post_shuf, "post-RoPE Q-shuffled",   "tomato",    "--", 1.0),
+    (pre_real,  "pre-RoPE real",        "steelblue", "-",  1.4),
+    (pre_shuf,  "pre-RoPE Q-shuffled",  "steelblue", "--", 1.0),
+    (post_real, "post-RoPE real",       "tomato",    "-",  1.4),
+    (post_shuf, "post-RoPE Q-shuffled", "tomato",    "--", 1.0),
 ]
 
 for r, head_idx in enumerate(HEADS):
