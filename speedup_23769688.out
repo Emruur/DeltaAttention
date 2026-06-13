@@ -1,0 +1,86 @@
+Sat Jun 13 14:32:20 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.71.05              Driver Version: 595.71.05      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100                    On  |   00000000:26:00.0 Off |                    0 |
+| N/A   33C    P0             67W /  700W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+CUDA version: Cuda compilation tools, release 12.1, V12.1.105
+Device: cuda  |  warmup=3  runs=10
+Loading wikitext-103-raw-v1 ...
+Tokenized 351451 tokens (using 3569 articles).
+
+Loading delta model: meta-llama/Meta-Llama-3.1-8B-Instruct ...
+Delta model ready.
+
+=== Row Delta (flash, prefill only) (warmup=3, runs=10) ===
+  Warming up at N=512 ...
+  N=    512:     82.02 ms  (avg of 10 runs)
+  N=   1024:     96.37 ms  (avg of 10 runs)
+  N=   2048:    132.35 ms  (avg of 10 runs)
+  N=   4096:    229.11 ms  (avg of 10 runs)
+  N=   8192:    426.38 ms  (avg of 10 runs)
+  N=  16384:    719.36 ms  (avg of 10 runs)
+  N=  32768:   1589.90 ms  (avg of 10 runs)
+  N=  65536:   3972.82 ms  (avg of 10 runs)
+  N= 131072:  11049.43 ms  (avg of 10 runs)
+  N= 262144:  35539.45 ms  (avg of 10 runs)
+
+=== Flash Baseline (triton, no delta) (warmup=3, runs=10) ===
+  Warming up at N=512 ...
+  N=    512:     54.12 ms  (avg of 10 runs)
+  N=   1024:     68.45 ms  (avg of 10 runs)
+  N=   2048:    105.15 ms  (avg of 10 runs)
+  N=   4096:    187.84 ms  (avg of 10 runs)
+  N=   8192:    367.42 ms  (avg of 10 runs)
+  N=  16384:    823.62 ms  (avg of 10 runs)
+  N=  32768:   2142.96 ms  (avg of 10 runs)
+  N=  65536:   6293.91 ms  (avg of 10 runs)
+  N= 131072:  20959.89 ms  (avg of 10 runs)
+  N= 262144:  73804.73 ms  (avg of 10 runs)
+
+=== Overhead profiling (row delta, time_internal=True) ===
+  N=    512: delta=0.0ms  pattern=0.0ms  total=0.0ms
+  N=   1024: delta=0.0ms  pattern=0.0ms  total=0.0ms
+  N=   2048: delta=0.0ms  pattern=0.0ms  total=0.0ms
+  N=   4096: delta=0.0ms  pattern=0.0ms  total=0.0ms
+  N=   8192: delta=0.0ms  pattern=0.0ms  total=0.0ms
+  N=  16384: delta=0.0ms  pattern=0.0ms  total=0.0ms
+  N=  32768: delta=0.0ms  pattern=0.0ms  total=0.0ms
+  N=  65536: delta=0.0ms  pattern=0.0ms  total=0.0ms
+  N= 131072: delta=0.0ms  pattern=0.0ms  total=0.0ms
+  N= 262144: delta=0.0ms  pattern=0.0ms  total=0.0ms
+Delta model freed.
+
+Loading baseline model (sdpa): meta-llama/Meta-Llama-3.1-8B-Instruct ...
+Baseline model ready.
+
+=== Baseline SDPA (warmup=3, runs=10) ===
+  Warming up at N=512 ...
+  N=    512:     53.08 ms  (avg of 10 runs)
+  N=   1024:     66.85 ms  (avg of 10 runs)
+  N=   2048:    103.27 ms  (avg of 10 runs)
+  N=   4096:    182.91 ms  (avg of 10 runs)
+  N=   8192:    352.30 ms  (avg of 10 runs)
+  N=  16384:    771.29 ms  (avg of 10 runs)
+  N=  32768:   1957.88 ms  (avg of 10 runs)
+  N=  65536:   5691.81 ms  (avg of 10 runs)
+  N= 131072:  18596.41 ms  (avg of 10 runs)
+  N= 262144:  64486.52 ms  (avg of 10 runs)
+
+Results saved to speedup_experiments/speedup_results.json
+Plot saved to speedup_experiments/speedup_plot.png
+Plot saved to speedup_experiments/speedup_plot.pdf
