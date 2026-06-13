@@ -168,3 +168,41 @@ fig.suptitle(
 
 plt.savefig(OUT_PATH, dpi=160, bbox_inches="tight")
 print(f"Saved → {OUT_PATH}")
+
+# ── Bar chart: mean adjacent cosine similarity per layer ──────────────────────
+BAR_VARIANTS = [
+    ("pre-RoPE real",     pre_real,  "#E6A817", ""),
+    ("pre-RoPE shuffled", pre_shuf,  "#E6A817", "//"),
+    ("post-RoPE real",    post_real, "#6B6B6B", ""),
+    ("post-RoPE shuffled",post_shuf, "#6B6B6B", "xx"),
+]
+HATCHES = ["", "//", "", "xx"]
+
+fig2, axes2 = plt.subplots(1, n_layers, figsize=(n_layers * 2.5, 3.5), sharey=True,
+                            gridspec_kw={"wspace": 0.10})
+
+for c, (layer_idx, ax) in enumerate(zip(LAYERS, axes2)):
+    means  = [v[layer_idx].mean() for _, v, _, _ in BAR_VARIANTS]
+    colors = [col               for _, _, col, _ in BAR_VARIANTS]
+    bars   = ax.bar(range(len(BAR_VARIANTS)), means, color=colors,
+                    edgecolor="white", width=0.65)
+    for bar, (_, _, _, h) in zip(bars, BAR_VARIANTS):
+        bar.set_hatch(h)
+    ax.set_xticks(range(len(BAR_VARIANTS)))
+    ax.set_xticklabels([str(i+1) for i in range(len(BAR_VARIANTS))], fontsize=8)
+    ax.set_title(f"Layer {layer_idx}", fontsize=8)
+    ax.set_ylim(0, 1)
+    ax.grid(True, axis="y", alpha=0.3)
+    if c == 0:
+        ax.set_ylabel("Mean adj. cos sim", fontsize=8)
+
+legend_labels = [f"{i+1}. {name}" for i, (name, _, _, _) in enumerate(BAR_VARIANTS)]
+handles = [plt.Rectangle((0,0), 1, 1, color=col, hatch=h, edgecolor="white")
+           for _, _, col, h in BAR_VARIANTS]
+fig2.legend(handles, legend_labels, loc="lower center", ncol=2,
+            fontsize=7, framealpha=0.9, bbox_to_anchor=(0.5, -0.18))
+
+fig2.suptitle("Mean adjacent query cosine similarity per layer (avg over all heads)", fontsize=9)
+bar_path = "query_similarity_mean_by_layer.png"
+plt.savefig(bar_path, dpi=160, bbox_inches="tight")
+print(f"Saved → {bar_path}")
