@@ -32,11 +32,11 @@ SEQ_LEN           = int(d["seq_len"])
 n_layers, n_heads, _ = pre_real.shape
 
 VARIANTS = {
-    "pre-RoPE real":              (pre_real,          "steelblue", "-",  1.5),
-    "pre-RoPE shuffled":          (pre_shuf,          "steelblue", "--", 1.0),
-    "post-RoPE real":             (post_real,         "tomato",    "-",  1.5),
-    "post-RoPE content-shuffled": (post_content_shuf, "tomato",    ":",  1.2),
-    "post-RoPE key-shuffled":     (post_shuf,         "tomato",    "--", 1.0),
+    "pre-RoPE real":              (pre_real,          "#E6A817", "-",  1.5),
+    "pre-RoPE shuffled":          (pre_shuf,          "#E6A817", "--", 1.0),
+    "post-RoPE real":             (post_real,         "#6B6B6B", "-",  1.5),
+    "post-RoPE content-shuffled": (post_content_shuf, "#6B6B6B", ":",  1.2),
+    "post-RoPE key-shuffled":     (post_shuf,         "#6B6B6B", "--", 1.0),
 }
 
 
@@ -147,8 +147,8 @@ fig, axes = plt.subplots(1, n_layers, figsize=(n_layers * 2.2, 2.8), sharey=True
 x = np.arange(n_heads)
 w = 0.35
 for c, (layer_idx, ax) in enumerate(zip(LAYERS, axes)):
-    ax.bar(x - w/2, pre_gap[c],  w, label="pre-RoPE gap",  color="steelblue", alpha=0.85)
-    ax.bar(x + w/2, post_gap[c], w, label="post-RoPE gap", color="tomato",    alpha=0.85)
+    ax.bar(x - w/2, pre_gap[c],  w, label="pre-RoPE gap",  color="#E6A817", alpha=0.85)
+    ax.bar(x + w/2, post_gap[c], w, label="post-RoPE gap", color="#6B6B6B", alpha=0.85)
     ax.axhline(0, color="black", lw=0.6)
     ax.set_xticks(x)
     ax.set_xticklabels([f"H{h}" for h in range(n_heads)], fontsize=6)
