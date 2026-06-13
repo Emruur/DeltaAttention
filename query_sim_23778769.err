@@ -1,0 +1,5 @@
+/scratch-shared/qchen/venv_delta/lib/python3.11/site-packages/transformers/utils/hub.py:111: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:00<00:00, 26.52it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 33.37it/s]
+/gpfs/home2/qchen/DeltaLLM/DeltaLLM-main/visualize_query_similarity.py:200: UserWarning: Setting the 'color' property will override the edgecolor or facecolor properties.
+  handles = [plt.Rectangle((0,0), 1, 1, color=col, hatch=h, edgecolor="white")
