@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH -J packing_delta35
+#SBATCH -J speedup_delta
 #SBATCH -p gpu_h100
 #SBATCH --cpus-per-task=18
 #SBATCH --gpus=1
-#SBATCH --time=0-24:00:00
-#SBATCH --output=packing_delta35_%j.out
-#SBATCH --error=packing_delta35_%j.err
+#SBATCH --time=0-12:00:00
+#SBATCH --output=speedup_%j.out
+#SBATCH --error=speedup_%j.err
 
 source ~/.bashrc
 
@@ -26,4 +26,4 @@ export TRANSFORMERS_CACHE=$SHARED_SCRATCH
 
 source "$(dirname "${BASH_SOURCE[0]}")/.env.sh"
 
-python compute_key_similarity.py
+python eval_speedup.py --n_warmup 1 --n_runs 3

@@ -16,7 +16,7 @@ module load UCX-CUDA/1.14.1-GCCcore-12.3.0-CUDA-12.1.1
 nvidia-smi
 echo "CUDA version: $(nvcc --version | grep release)"
 
-source /home/qchen/DeltaLLM/venv_delta/bin/activate
+source /scratch-shared/qchen/venv_delta/bin/activate
 
 export SHARED_SCRATCH="/gpfs/home2/qchen/hf_cache"
 mkdir -p $SHARED_SCRATCH

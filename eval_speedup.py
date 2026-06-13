@@ -11,6 +11,7 @@ import json
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM
 from transformers.models.llama.modeling_llama import LlamaForCausalLM as HFLlamaForCausalLM
 
@@ -25,6 +26,8 @@ AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 MODEL_ID = "gradientai/Llama-3-8b-Instruct-Gradient-1048k"
 
 SEQ_LENGTHS = [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144]
+
+OVERHEAD_KEYS = ["time_get_row_delta", "time_delta_mm_pattern", "time_prefill_forward_total"]
 
 
 # ==========================================
@@ -41,7 +44,7 @@ def reset_timing():
     globVR.kv_compression_samples = []
 
 
-def set_row_delta():
+def set_row_delta(time_internal=False):
     globVR.delta_pf_key_on = 1
     globVR.delta_type = "row"
     globVR.scale = 0.05
@@ -52,8 +55,17 @@ def set_row_delta():
     globVR.divide_to = 0
     globVR.flash = True
     globVR.delta_decode = False
+    globVR.time_internal = time_internal
+    globVR.skip_causal_mask = True
+
+
+def set_flash_baseline():
+    globVR.delta_pf_key_on = 0
+    globVR.delta_mlp = "Regular"
+    globVR.delta_decode = False
+    globVR.flash = True
     globVR.time_internal = False
-    globVR.skip_causal_mask = True  # safe: batch_size=1, no padding in speedup benchmark
+    globVR.skip_causal_mask = True
 
 
 # ==========================================
@@ -135,7 +147,7 @@ def benchmark_mode(model, tokens, seq_lengths, device, mode_name, setup_fn, n_wa
         recover_cuda()
 
     results = []
-    cuda_dead = False  # once GPU enters bad state, skip remaining lengths
+    cuda_dead = False
     for N in seq_lengths:
         if cuda_dead:
             results.append(float("nan"))
@@ -180,7 +192,6 @@ def benchmark_mode(model, tokens, seq_lengths, device, mode_name, setup_fn, n_wa
             print(f"  N={N:>7}: {label} — skipping ({error_msg})", flush=True)
             results.append(float("nan"))
             if not is_oom:
-                # Illegal memory access puts GPU in unrecoverable state
                 cuda_dead = True
         elif run_times:
             avg_t = float(np.mean(run_times))
@@ -190,6 +201,104 @@ def benchmark_mode(model, tokens, seq_lengths, device, mode_name, setup_fn, n_wa
             results.append(float("nan"))
 
     return results
+
+
+def collect_overhead_profile(model, tokens, seq_lengths, device):
+    """One forward per N with time_internal=True to get per-operation breakdown."""
+    print("\n=== Overhead profiling (row delta, time_internal=True) ===", flush=True)
+    overhead_data = {key: [] for key in OVERHEAD_KEYS}
+
+    for N in seq_lengths:
+        if N > len(tokens):
+            for key in OVERHEAD_KEYS:
+                overhead_data[key].append(float("nan"))
+            continue
+
+        ids = tokens[:N]
+        try:
+            reset_timing()
+            set_row_delta(time_internal=True)
+            run_prefill_e2e(model, ids, device, setup_fn=None)
+            stats = getattr(globVR, "latency_stats", {})
+            for key in OVERHEAD_KEYS:
+                val = stats.get(key, {}).get("time_ms", float("nan"))
+                overhead_data[key].append(float(val))
+            summary = "  ".join(
+                f"{k.rsplit('_', 1)[-1]}={stats.get(k, {}).get('time_ms', 0):.1f}ms"
+                for k in OVERHEAD_KEYS
+            )
+            print(f"  N={N:>7}: {summary}", flush=True)
+        except Exception as e:
+            if is_cuda_error(e):
+                recover_cuda()
+                for key in OVERHEAD_KEYS:
+                    overhead_data[key].append(float("nan"))
+                print(f"  N={N:>7}: CUDA error", flush=True)
+            else:
+                raise
+        recover_cuda()
+
+    return overhead_data
+
+
+# ==========================================
+# CURVE FITTING + OVERHEAD PLOT
+# ==========================================
+
+def _r2(y, y_hat):
+    ss_res = np.sum((y - y_hat) ** 2)
+    ss_tot = np.sum((y - y.mean()) ** 2)
+    return 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+
+
+def plot_overhead(ax, seq_lengths, vals, title):
+    ns = np.array(seq_lengths, dtype=float)
+    vals = np.array(vals, dtype=float)
+    mask = np.isfinite(vals) & np.isfinite(ns) & (ns > 0)
+    ns_m, vals_m = ns[mask], vals[mask]
+
+    ax.scatter(ns_m, vals_m, color="black", s=45, zorder=5, label="Measured")
+
+    if len(ns_m) >= 3:
+        ns_dense = np.linspace(ns_m.min(), ns_m.max(), 600)
+
+        # Linear
+        try:
+            p = np.polyfit(ns_m, vals_m, 1)
+            r2 = _r2(vals_m, np.polyval(p, ns_m))
+            ax.plot(ns_dense, np.polyval(p, ns_dense), "--", color="royalblue",
+                    linewidth=1.6, label=f"Linear (R²={r2:.3f})")
+        except Exception:
+            pass
+
+        # N log N
+        try:
+            def nlogn(x, a, b):
+                return a * x * np.log(x) + b
+            p0 = [vals_m[-1] / (ns_m[-1] * np.log(ns_m[-1])), 0.0]
+            popt, _ = curve_fit(nlogn, ns_m, vals_m, p0=p0, maxfev=10000)
+            r2 = _r2(vals_m, nlogn(ns_m, *popt))
+            ax.plot(ns_dense, nlogn(ns_dense, *popt), "--", color="forestgreen",
+                    linewidth=1.6, label=f"N·log(N) (R²={r2:.3f})")
+        except Exception:
+            pass
+
+        # Quadratic
+        try:
+            p = np.polyfit(ns_m, vals_m, 2)
+            r2 = _r2(vals_m, np.polyval(p, ns_m))
+            ax.plot(ns_dense, np.polyval(p, ns_dense), "--", color="crimson",
+                    linewidth=1.6, label=f"Quadratic (R²={r2:.3f})")
+        except Exception:
+            pass
+
+    ax.set_xscale("log", base=2)
+    ax.set_xlabel("Sequence length N (tokens)", fontsize=11)
+    ax.set_ylabel("Time (ms)", fontsize=11)
+    ax.set_title(title, fontsize=12)
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.35, which="both")
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{int(x):,}"))
 
 
 # ==========================================
@@ -209,7 +318,7 @@ def main():
     tokens = get_wikitext_tokens(tokenizer, max(SEQ_LENGTHS))
 
     # ------------------------------------------
-    # Delta model: custom LlamaForCausalLM (row delta)
+    # Delta model: row delta + flash baseline + overhead profile
     # ------------------------------------------
     globVR.delta_pf_key_on = 0
     globVR.delta_mlp = "Regular"
@@ -229,9 +338,17 @@ def main():
 
     row_delta_times = benchmark_mode(
         delta_model, tokens, SEQ_LENGTHS, device,
-        "Row Delta (prefill only)", setup_fn=set_row_delta,
+        "Row Delta (flash, prefill only)", setup_fn=set_row_delta,
         n_warmup=args.n_warmup, n_runs=args.n_runs,
     )
+
+    flash_baseline_times = benchmark_mode(
+        delta_model, tokens, SEQ_LENGTHS, device,
+        "Flash Baseline (triton, no delta)", setup_fn=set_flash_baseline,
+        n_warmup=args.n_warmup, n_runs=args.n_runs,
+    )
+
+    overhead_data = collect_overhead_profile(delta_model, tokens, SEQ_LENGTHS, device)
 
     del delta_model
     torch.cuda.empty_cache()
@@ -239,8 +356,7 @@ def main():
     print("Delta model freed.", flush=True)
 
     # ------------------------------------------
-    # Baseline: SDPA
-    # Load standard HF class directly to bypass our custom registration
+    # Baseline: SDPA (stock HF model, bypasses our custom registration)
     # ------------------------------------------
     print(f"\nLoading baseline model (sdpa): {MODEL_ID} ...", flush=True)
     baseline_model = HFLlamaForCausalLM.from_pretrained(
@@ -271,7 +387,9 @@ def main():
         "model": MODEL_ID,
         "seq_lengths": SEQ_LENGTHS,
         "baseline_sdpa_e2e_ms": baseline_times,
+        "flash_baseline_e2e_ms": flash_baseline_times,
         "row_delta_e2e_ms": row_delta_times,
+        "overhead": {k: overhead_data[k] for k in OVERHEAD_KEYS},
     }
     json_path = "speedup_experiments/speedup_results.json"
     with open(json_path, "w") as f:
@@ -279,7 +397,7 @@ def main():
     print(f"\nResults saved to {json_path}", flush=True)
 
     # ------------------------------------------
-    # Plot
+    # 4-subplot figure (2x2)
     # ------------------------------------------
     def valid(times):
         return [(N, t) for N, t in zip(SEQ_LENGTHS, times) if not np.isnan(t)]
@@ -288,13 +406,19 @@ def main():
         bl_d = {N: t for N, t in valid(bl_list)}
         return [(N, bl_d[N] / t) for N, t in valid(rd_list) if N in bl_d and t > 0]
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
-    fig.suptitle("Row Delta vs SDPA  |  Llama-3-8B-1M (Gradient), Wikitext",
-                 fontsize=14)
+    fig, axes = plt.subplots(2, 2, figsize=(18, 12))
+    fig.suptitle(
+        "Row Delta vs Baselines  |  Llama-3-8B-1M (Gradient), Wikitext",
+        fontsize=14,
+    )
+    ax1, ax2 = axes[0, 0], axes[0, 1]
+    ax3, ax4 = axes[1, 0], axes[1, 1]
 
+    # --- Plot 1: Absolute latency ---
     for times, color, label in [
-        (baseline_times,  "blue", "SDPA (baseline)"),
-        (row_delta_times, "red",  "Row Delta (prefill)"),
+        (baseline_times,       "steelblue",  "SDPA baseline"),
+        (flash_baseline_times, "darkorange", "Flash baseline (triton)"),
+        (row_delta_times,      "crimson",    "Row Delta (flash)"),
     ]:
         pts = valid(times)
         if pts:
@@ -302,32 +426,39 @@ def main():
             ax1.plot(ns, ts, "-o", color=color, label=label, linewidth=2, markersize=6)
 
     ax1.set_xscale("log", base=2)
-    ax1.set_xlabel("Sequence Length N (tokens)", fontsize=12)
-    ax1.set_ylabel("End-to-end prefill latency (ms)", fontsize=12)
-    ax1.set_title("Absolute latency", fontsize=13)
-    ax1.legend(fontsize=11)
+    ax1.set_xlabel("Sequence Length N (tokens)", fontsize=11)
+    ax1.set_ylabel("End-to-end prefill latency (ms)", fontsize=11)
+    ax1.set_title("Absolute latency", fontsize=12)
+    ax1.legend(fontsize=10)
     ax1.grid(True, alpha=0.35, which="both")
     ax1.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{int(x):,}"))
 
-    pr = paired_ratios(baseline_times, row_delta_times)
-    if pr:
-        ns_p, ratios = zip(*pr)
-        ax2.plot(ns_p, ratios, "-o", color="red", linewidth=2, markersize=6,
-                 label="Row Delta (prefill)")
-        ax2.fill_between(ns_p, ratios, 1.0,
-                         where=[r >= 1.0 for r in ratios],
-                         alpha=0.15, color="green", label="Row delta faster")
-        ax2.fill_between(ns_p, ratios, 1.0,
-                         where=[r < 1.0 for r in ratios],
-                         alpha=0.15, color="red", label="Row delta slower")
+    # --- Plot 2: Speedup ratios ---
+    for bl_times, color, label in [
+        (baseline_times,       "steelblue",  "SDPA / Row Delta"),
+        (flash_baseline_times, "darkorange", "Flash / Row Delta"),
+    ]:
+        pr = paired_ratios(bl_times, row_delta_times)
+        if pr:
+            ns_p, ratios = zip(*pr)
+            ax2.plot(ns_p, ratios, "-o", color=color, linewidth=2, markersize=6, label=label)
+
     ax2.axhline(1.0, color="gray", linestyle="--", linewidth=1.5, label="Break-even")
     ax2.set_xscale("log", base=2)
-    ax2.set_xlabel("Sequence Length N (tokens)", fontsize=12)
-    ax2.set_ylabel("Speedup  (SDPA / row_delta)", fontsize=12)
-    ax2.set_title("Speedup ratio", fontsize=13)
-    ax2.legend(fontsize=11)
+    ax2.set_xlabel("Sequence Length N (tokens)", fontsize=11)
+    ax2.set_ylabel("Speedup  (baseline / row_delta)", fontsize=11)
+    ax2.set_title("Speedup ratio", fontsize=12)
+    ax2.legend(fontsize=10)
     ax2.grid(True, alpha=0.35, which="both")
     ax2.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{int(x):,}"))
+
+    # --- Plot 3: time_get_row_delta overhead ---
+    plot_overhead(ax3, SEQ_LENGTHS, overhead_data["time_get_row_delta"],
+                  "Overhead: time_get_row_delta")
+
+    # --- Plot 4: time_delta_mm_pattern overhead ---
+    plot_overhead(ax4, SEQ_LENGTHS, overhead_data["time_delta_mm_pattern"],
+                  "Overhead: time_delta_mm_pattern")
 
     plt.tight_layout()
 
