@@ -77,22 +77,12 @@ def adj_cos(q):
     return (q[:, :-1, :] * q[:, 1:, :]).sum(dim=-1).cpu().numpy()
 
 
-def get_post_rope_q(layer_idx, q_pre, seq_len):
-    """Apply the layer's rotary embedding to pre-RoPE q_pre [h, seq, d]."""
-    rotary_emb = model.model.layers[layer_idx].self_attn.rotary_emb
+def get_post_rope_q(q_pre, seq_len):
+    """Apply the model's rotary embedding to pre-RoPE q_pre [h, seq, d]."""
     position_ids = torch.arange(seq_len, device=device).unsqueeze(0)  # [1, seq]
-
     with torch.no_grad():
         dummy = q_pre.unsqueeze(0)  # [1, h, seq, d] — used for dtype/device
-        try:
-            cos, sin = rotary_emb(dummy, position_ids)   # [1, seq, d]
-        except TypeError:
-            cos, sin = rotary_emb(seq_len=seq_len, device=device, dtype=q_pre.dtype)
-            cos = cos[:seq_len]   # [seq, d]
-            sin = sin[:seq_len]
-            cos = cos.unsqueeze(0)
-            sin = sin.unsqueeze(0)
-
+        cos, sin = model.model.rotary_emb(dummy, position_ids)  # [1, seq, d]
     cos = cos.float().squeeze(0)  # [seq, d]
     sin = sin.float().squeeze(0)
     return apply_rope(q_pre.float(), cos, sin)  # [h, seq, d]
@@ -119,7 +109,7 @@ def get_sims(input_ids):
     pre_real, pre_shuf, post_real, post_shuf = {}, {}, {}, {}
     for layer_idx in LAYERS:
         q_pre  = pre_raw[layer_idx]                          # [h, seq, d]
-        q_post = get_post_rope_q(layer_idx, q_pre, seq_len)  # [h, seq, d]
+        q_post = get_post_rope_q(q_pre, seq_len)  # [h, seq, d]
 
         perm = torch.randperm(q_pre.shape[1])
 
