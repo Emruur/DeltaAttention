@@ -295,31 +295,6 @@ EXPERIMENT_DEFINITIONS = {
             "dense_window_size": args.dense_window_size,
         }
     },
-
-    # Regular prefill attention + delta-compressed KV cache for decoding only
-    "decode_only_delta": {
-        "grid": {
-            "window_size": [100],
-            "row_thresh": [15],
-            "row_sim": ["euclidean"],
-        },
-        "arg_builder": lambda p: [
-            "--window_size", str(p["window_size"]),
-            "--row_thresh", str(p["row_thresh"]),
-            "--row_sim", str(p["row_sim"]),
-        ],
-        "injector": lambda args: {
-            "delta_decode": True,
-            "window_size": args.window_size,
-            "row_delta_threshold": args.row_thresh,
-            "row_similarity_metric": args.row_sim,
-            "delta_pf_key_on": 0,
-            "flash": True,
-            "delta_type": "row",
-            "divide_to": 0,
-            "chunk_size": 512,
-        }
-    },
 }
 
 # ==========================================

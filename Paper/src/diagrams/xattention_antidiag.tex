@@ -1,0 +1,85 @@
+\begin{figure}[h]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tikzpicture}
+  \def\cell{0.28}
+  \colorlet{hilight}{orange!55}
+  \colorlet{plain}{gray!15}
+
+  %--- Stride indicator: bracket on left of Q spanning 4 rows ---
+  \draw[thick] ({-0.2*\cell},0) -- ({-0.7*\cell},0)
+               -- ({-0.7*\cell},{-4*\cell})
+               -- ({-0.2*\cell},{-4*\cell});
+  \node[left, font=\scriptsize] at ({-0.7*\cell},{-2*\cell}) {stride 4};
+
+  %--- Full Q (cols 0-1, rows 0-15) ---
+  \foreach \r in {0,...,15} {
+    \pgfmathtruncatemacro{\isH}{mod(\r,4)}
+    \foreach \c in {0,1} {
+      \ifnum\isH=0 \fill[hilight] \else \fill[plain] \fi
+        ({\c*\cell},{-\r*\cell}) rectangle ({(\c+1)*\cell},{(-\r-1)*\cell});
+      \draw ({\c*\cell},{-\r*\cell}) rectangle ({(\c+1)*\cell},{(-\r-1)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({1*\cell}, 0.1)             {$Q$};
+  \node[below, font=\scriptsize]     at ({1*\cell},{-16*\cell-0.05}) {$B \times d$};
+
+  %--- Full K (cols 3-4, rows 0-15) ---
+  \foreach \r in {0,...,15} {
+    \pgfmathtruncatemacro{\isH}{mod(\r,4)}
+    \foreach \c in {0,1} {
+      \ifnum\isH=0 \fill[hilight] \else \fill[plain] \fi
+        ({(3+\c)*\cell},{-\r*\cell}) rectangle ({(4+\c)*\cell},{(-\r-1)*\cell});
+      \draw ({(3+\c)*\cell},{-\r*\cell}) rectangle ({(4+\c)*\cell},{(-\r-1)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({4*\cell}, 0.1)             {$K$};
+  \node[below, font=\scriptsize]     at ({4*\cell},{-16*\cell-0.05}) {$B \times d$};
+
+  %--- Arrow from Q/K to compressed versions ---
+  \draw[-{Stealth}] ({5.3*\cell},{-8*\cell}) -- ({7.7*\cell},{-8*\cell});
+
+  %--- Compressed Q̃ (cols 8-9, rows 6-9, centered) ---
+  \foreach \r in {0,...,3} {
+    \foreach \c in {0,1} {
+      \fill[hilight] ({(8+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(9+\c)*\cell},{-(7+\r)*\cell});
+      \draw          ({(8+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(9+\c)*\cell},{-(7+\r)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({9*\cell},{-6*\cell})       {$\tilde{Q}$};
+  \node[below, font=\scriptsize]     at ({9*\cell},{-10*\cell-0.05}) {$\frac{B}{S} \times d$};
+
+  %--- ⊗ between Q̃ and K̃ ---
+  \node[font=\large] at ({11*\cell},{-8*\cell}) {$\otimes$};
+
+  %--- Compressed K̃ (cols 12-13, rows 6-9, centered) ---
+  \foreach \r in {0,...,3} {
+    \foreach \c in {0,1} {
+      \fill[hilight] ({(12+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(13+\c)*\cell},{-(7+\r)*\cell});
+      \draw          ({(12+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(13+\c)*\cell},{-(7+\r)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({13*\cell},{-6*\cell})       {$\tilde{K}$};
+  \node[below, font=\scriptsize]     at ({13*\cell},{-10*\cell-0.05}) {$\frac{B}{S} \times d$};
+
+  %--- = ---
+  \node[font=\large] at ({15.5*\cell},{-8*\cell}) {$=$};
+
+  %--- 16×16 antidiagonal block (starts at col 17, rows 0-15) ---
+  \foreach \r in {0,...,15} {
+    \foreach \c in {0,...,15} {
+      \pgfmathtruncatemacro{\ad}{\r+\c}
+      \pgfmathtruncatemacro{\rem}{mod(\ad,4)}
+      \ifnum\rem=0 \fill[hilight] \else \fill[plain] \fi
+        ({(17+\c)*\cell},{-\r*\cell}) rectangle ({(18+\c)*\cell},{(-\r-1)*\cell});
+      \draw ({(17+\c)*\cell},{-\r*\cell}) rectangle ({(18+\c)*\cell},{(-\r-1)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({25*\cell}, 0.1)             {Approximate scores};
+  \node[below, font=\scriptsize]     at ({25*\cell},{-16*\cell-0.05}) {antidiagonal positions};
+
+\end{tikzpicture}
+}
+\caption{XAttention antidiagonal scoring. Every $S$-th row is sampled from $Q$ and $K$ (orange), producing compressed $\tilde{Q}$ and $\tilde{K}$. Their product gives scores at the antidiagonal positions (orange) of the $B \times B$ attention block, at cost $O(B^2/S)$ instead of $O(B^2)$.}
+\label{fig:xattention_antidiag}
+\end{figure}

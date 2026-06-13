@@ -1,0 +1,202 @@
+Want me to cut the justification and leave just the factual description?\section{Results}
+
+\subsection{RULER}
+
+Table~\ref{tab:ruler} reports RULER accuracy on LLaMA-3.1 8B Instruct across context lengths from 4K to 128K tokens. All methods are run using the XAttention codebase and their RULER setup, so the MInference result is the XAttention authors' implementation. DeltaAttention is slightly below XAttention, but the gap is small. Both XAttention and DeltaAttention degrade at 64K and 128K tokens, while MInference retains accuracy at those lengths. MInference outperforms XAttention in our evaluation, which differs from the results reported in the original XAttention paper~\cite{xu2025xattention}; we attribute this to dataset versioning differences in the RULER benchmark. Overall, DeltaAttention achieves comparable accuracy to the state-of-the-art methods while reducing KV loads by 49.4\%.
+
+\begin{table}[h]
+\centering
+\caption{RULER accuracy (\%) on LLaMA-3.1 8B Instruct (100 samples, 13 tasks). Higher is better. KV Red is the average fraction of KV loads saved relative to full attention.}
+\label{tab:ruler}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
+\midrule
+Full attention            & 96.21 & 93.78 & 93.30 & 90.69 & 86.27 & 74.27 & 89.09 & 0\%    \\
+MInference                & 96.11 & 94.10 & 93.51 & 90.65 & 86.00 & 74.42 & 89.13 & --     \\
+XAttention                & 95.59 & 93.98 & 92.95 & 90.44 & 81.75 & 71.01 & 87.62 & --     \\
+DeltaAttention (cos083)   & 95.56 & 93.07 & 91.68 & 89.02 & 82.35 & 71.08 & 87.13 & 49.4\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ablation: threshold metric}
+
+Table~\ref{tab:ablation_threshold} compares Euclidean distance and cosine similarity as the threshold metric in the pre-processing stage, evaluated on the proxy setup on LLaMA-3.1 8B Instruct. Pairs of rows are matched by KV reduction level: low (~30\%), medium (~50\%), and high (~65\%). Both metrics perform similarly at low compression, but cosine is consistently better at higher compression, most visibly at 128K tokens where it retains 66.57\% accuracy versus 60.57\% for Euclidean at 65\% KV reduction. Cosine is the better metric overall.
+
+At 50\% KV reduction (cos083), DeltaAttention achieves minimal accuracy degradation relative to the baseline. The 50\% reduction means the inner loop iterates over half as many packed key blocks, and loads half the KV data, which in principle translates to a 2x reduction in attention compute in long-context regimes where attention dominates latency. At 30\% KV reduction accuracy is almost fully retained, but the reduction is too small to yield significant speedup in practice. The 65\% reduction scheme incurs more accuracy loss and is better suited for resource-constrained settings where a lighter, lossier setup is acceptable.
+
+\begin{table}[h]
+\centering
+\caption{RULER accuracy (\%) comparing Euclidean and cosine thresholds (proxy run: 30 samples, 9 tasks). Pairs are matched by KV reduction.}
+\label{tab:ablation_threshold} 
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
+\midrule
+Full attention              & 99.31 & 97.41 & 96.52 & 93.65 & 88.16 & 74.35 & 91.57 & 0\%    \\
+\midrule
+Euclidean t13               & 99.11 & 96.63 & 95.63 & 92.31 & 86.96 & 75.19 & 90.97 & 32.0\% \\
+Cosine cos088               & 99.38 & 97.54 & 96.70 & 92.31 & 86.73 & 72.82 & 90.91 & 29.5\% \\
+\midrule
+Euclidean t15               & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
+Cosine cos083               & 99.27 & 96.99 & 95.11 & 90.79 & 83.94 & 71.43 & 89.59 & 50.9\% \\
+\midrule
+Euclidean t17               & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
+Cosine cos078               & 99.01 & 97.12 & 94.07 & 86.99 & 81.27 & 66.57 & 87.50 & 65.8\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ablation: design choices}
+
+All runs use the proxy setup on LLaMA-3.1 8B Instruct with Euclidean thresholds at three compression levels (t13~32\%, t15~50\%, t17~65\% KV reduction).
+
+\subsubsection{Count-weighted softmax}
+
+Count-weighted softmax is theoretically necessary for correctness: without it, an anchor representing many tokens receives the same attention weight as one representing a single token, which underestimates its contribution. With it, the result is equivalent to exact attention where each anchor key is repeated for every token it covers (Section~\ref{sec:self_attention_compressed}).
+
+Table~\ref{tab:ablation_count} shows that removing count-weighted softmax has almost no effect on accuracy across all three compression levels. The differences are small. A likely explanation is that the per-anchor counts are similar across anchors in practice, so the scaling barely shifts the softmax distribution. Dropping count-weighting loses no accuracy. We keep it because it maintains theoretical correctness.
+
+\begin{table}[h]
+\centering
+\caption{RULER accuracy (\%) with and without count-weighted softmax (proxy run: 30 samples, 9 tasks).}
+\label{tab:ablation_count}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
+\midrule
+Full attention                 & 99.31 & 97.41 & 96.52 & 93.65 & 88.16 & 74.35 & 91.57 & 0\%    \\
+\midrule
+DeltaAttention t13             & 99.11 & 96.63 & 95.63 & 92.31 & 86.96 & 75.19 & 90.97 & 32.0\% \\
+DeltaAttention t15             & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
+DeltaAttention t17             & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
+\midrule
+w/o count-weighted softmax t13 & 98.90 & 97.31 & 95.32 & 94.25 & 86.62 & 75.31 & 91.29 & 30.9\% \\
+w/o count-weighted softmax t15 & 98.68 & 95.52 & 95.00 & 91.43 & 81.55 & 69.74 & 88.65 & 48.8\% \\
+w/o count-weighted softmax t17 & 98.62 & 96.05 & 94.04 & 89.72 & 79.00 & 67.04 & 87.41 & 64.7\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Critical diagonal}
+
+The diagonal band of the attention matrix carries the majority of attention mass, as each token attends most strongly to its immediate neighbors (Section~\ref{sec:local_attention_window}). Phase 2 of the FlashAttention adaptation switches to exact uncompressed attention for the tiles covering this band, so those neighbor interactions are computed precisely (Section~\ref{sec:flash_attention_adaptation}).
+
+Table~\ref{tab:ablation_diag} shows that removing phase 2 causes a catastrophic accuracy drop across all compression levels. At t13 the average falls from 90.97\% to 57.90\%, and at t17 it collapses to 15.19\%. Phase 2 is a critical component of DeltaAttention.
+
+\begin{table}[h]
+\centering
+\caption{RULER accuracy (\%) with and without phase 2 (critical diagonal) (proxy run: 30 samples, 9 tasks).}
+\label{tab:ablation_diag}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
+\midrule
+Full attention                    & 99.31 & 97.41 & 96.52 & 93.65 & 88.16 & 74.35 & 91.57 & 0\%    \\
+\midrule
+DeltaAttention t13                & 99.11 & 96.63 & 95.63 & 92.31 & 86.96 & 75.19 & 90.97 & 32.0\% \\
+DeltaAttention t15                & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
+DeltaAttention t17                & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
+\midrule
+w/o phase 2 (critical diag.) t13  & 74.16 & 64.04 & 61.70 & 58.39 & 50.36 & 38.75 & 57.90 & 35.7\% \\
+w/o phase 2 (critical diag.) t15  & 54.75 & 45.15 & 42.72 & 37.41 & 35.44 & 19.85 & 39.22 & 55.0\% \\
+w/o phase 2 (critical diag.) t17  & 17.19 & 18.44 & 19.82 & 17.07 & 11.85 &  6.79 & 15.19 & 71.3\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Phase 2 only}
+
+In this ablation all phase 1 iterations are skipped. Only the diagonal band tiles are computed exactly. Tokens attend only to their immediate neighbors and have no access to the compressed history from phase 1. Table~\ref{tab:ablation_phase2only} shows accuracy collapse, confirming that the compressed history carried by phase 1 is essential.
+
+The small accuracy increase from t13 to t17 is an artifact of how the critical diagonal is determined. Phase 2 starts as soon as a packed key block's reach overlaps with the current query block's span. At higher thresholds each anchor represents a longer range, so packed blocks reach further into the sequence and the critical diagonal is entered earlier. This means phase 2 computes more exact tiles near the diagonal at higher thresholds, giving a slight accuracy boost. This is a useful property of the algorithm: higher compression thresholds naturally expand the exact local window, partially compensating for the coarser compressed history.
+
+\begin{table}[h]
+\centering
+\caption{RULER accuracy (\%) for phase 2 only (local diagonal, no compressed history) (proxy run: 30 samples, 9 tasks).}
+\label{tab:ablation_phase2only}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
+\midrule
+Full attention                   & 99.31 & 97.41 & 96.52 & 93.65 & 88.16 & 74.35 & 91.57 & 0\%    \\
+\midrule
+DeltaAttention t13               & 99.11 & 96.63 & 95.63 & 92.31 & 86.96 & 75.19 & 90.97 & 32.0\% \\
+DeltaAttention t15               & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
+DeltaAttention t17               & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
+\midrule
+phase 2 only t13                 & 12.97 & 11.01 &  6.62 &  3.32 &  3.53 &  1.98 &  6.57 & 40.2\% \\
+phase 2 only t15                 & 14.17 & 10.62 &  8.59 &  4.63 &  3.86 &  1.85 &  7.29 & 56.0\% \\
+phase 2 only t17                 & 17.27 & 10.44 &  8.84 &  5.10 &  3.78 &  2.10 &  7.92 & 67.9\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Non-adaptive baselines}
+
+The phase 2 only ablation showed that the compressed history is essential for retrieval. Here we check whether DeltaAttention's content-adaptive key selection is what makes it effective, or whether any compression scheme at the same reduction works. Random packing randomly drops key vectors to reach a target compression. Periodic packing keeps every $n$th token and drops the rest, with $n=2$ giving 50\% reduction and $n=3$ giving 65\% reduction. These match the KV reductions of DeltaAttention t15 and t17 for direct comparison.
+
+Both baselines retain some performance, but DeltaAttention is consistently better. At 50\% reduction, periodic packing is surprisingly competitive at 87.46\% versus 88.81\% for DeltaAttention, while random packing falls to 84.22\%. At 65\% reduction the gap widens: DeltaAttention holds at 86.85\%, periodic drops to 81.85\%, and random to 75.12\%. The content-adaptive selection becomes more important at higher compression.
+
+\begin{table}[h]
+\centering
+\caption{RULER accuracy (\%) comparing DeltaAttention against non-adaptive packing baselines at matched KV reduction (proxy run: 30 samples, 9 tasks).}
+\label{tab:ablation_packing}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
+\midrule
+Full attention              & 99.31 & 97.41 & 96.52 & 93.65 & 88.16 & 74.35 & 91.57 & 0\%    \\
+\midrule
+DeltaAttention t15          & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
+periodic packing (kr=50\%)  & 97.53 & 95.01 & 92.80 & 90.90 & 81.62 & 66.91 & 87.46 & 50.0\% \\
+random packing (kr=50\%)    & 97.17 & 92.51 & 91.22 & 83.83 & 75.72 & 64.88 & 84.22 & 50.0\% \\
+\midrule
+DeltaAttention t17          & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
+periodic packing (kr=35\%)  & 92.12 & 91.02 & 86.57 & 83.19 & 75.15 & 63.06 & 81.85 & 66.7\% \\
+random packing (kr=35\%)    & 89.62 & 86.61 & 80.26 & 73.81 & 68.08 & 52.37 & 75.12 & 65.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{DeltaXAttention}
+
+Table~\ref{tab:deltaxattn} evaluates DeltaAttention applied on top of XAttention as described in Section~\ref{sec:xattention_adaptation}. Applying delta packing to all tiles XAttention selects results in severe accuracy degradation: 51.39\% at dt=13 and 12.81\% at dt=17. This mirrors the critical diagonal finding in Section~\ref{sec:flash_attention_adaptation}: packing the diagonal tiles approximates the neighbor interactions that carry the most attention mass. Computing diagonal tiles exactly recovers accuracy dramatically, as seen in the diag kept rows.
+
+Adding a second accuracy guard, computing the top 10\% of off-diagonal tiles exactly as well, recovers additional accuracy. At dt=15 this configuration achieves 87.06\% with 45.6\% KV reduction relative to XAttention, a loss of 3.0 percentage points against the XAttention baseline.
+
+The key question is whether XAttention could have achieved the same KV reduction natively by skipping more tiles. At matched reductions, DeltaXAttn tw10 consistently outperforms XAttention tile skipping by a small margin: 88.95\% vs 87.51\% at ~37\% reduction, 87.06\% vs 85.98\% at ~46\%, and 85.14\% vs 84.43\% at ~57\%. However, skipped tiles in XAttention translate directly to fewer FlashAttention iterations, which is straightforward to realize as speedup. DeltaXAttention saves KV loads within each iteration, which is harder to exploit in practice since it does not reduce the number of tiles. We conclude that DeltaAttention can further optimize block-sparse attention methods with minimal accuracy degradation, but its practical value here is limited: XAttention can achieve similar reductions through tile skipping with similar accuracy and a more direct path to speedup.
+
+
+
+\begin{table}[h]
+\centering
+\caption{RULER accuracy (\%) for DeltaXAttention ablation on LLaMA-3.1 8B Instruct (proxy run: 30 samples, 9 tasks). KV Red is relative to standard XAttention.}
+\label{tab:deltaxattn}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
+\midrule
+XAttention                    & 98.14 & 97.37 & 96.62 & 92.84 & 84.01 & 71.49 & 90.08 & 0\%    \\
+\midrule
+XAttn tile skip dr=40\%       & 98.47 & 95.56 & 92.63 & 89.51 & 81.26 & 67.64 & 87.51 & 37.4\% \\
+XAttn tile skip dr=50\%       & 98.72 & 94.20 & 91.05 & 89.43 & 78.67 & 63.81 & 85.98 & 48.4\% \\
+XAttn tile skip dr=60\%       & 97.48 & 93.86 & 89.53 & 88.05 & 76.83 & 60.83 & 84.43 & 57.6\% \\
+\midrule
+DeltaXAttn all packed dt=13   & 68.00 & 62.83 & 59.12 & 53.72 & 42.00 & 22.69 & 51.39 & 38.8\% \\
+DeltaXAttn all packed dt=15   & 55.53 & 48.63 & 40.59 & 33.95 & 28.27 & 23.86 & 38.47 & 54.8\% \\
+DeltaXAttn all packed dt=17   & 19.17 & 17.14 & 15.06 & 12.01 & 10.04 &  3.46 & 12.81 & 70.1\% \\
+\midrule
+DeltaXAttn diag kept dt=13    & 97.64 & 95.68 & 94.01 & 91.75 & 77.75 & 67.61 & 87.41 & 36.2\% \\
+DeltaXAttn diag kept dt=15    & 96.24 & 93.38 & 92.15 & 88.63 & 75.74 & 61.95 & 84.68 & 50.5\% \\
+DeltaXAttn diag kept dt=17    & 95.06 & 93.46 & 90.65 & 84.47 & 65.72 & 51.53 & 80.15 & 63.5\% \\
+\midrule
+DeltaXAttn tw10 dt=13         & 97.90 & 96.36 & 95.21 & 91.73 & 82.62 & 69.90 & 88.95 & 32.3\% \\
+DeltaXAttn tw10 dt=15         & 97.99 & 95.04 & 94.22 & 89.57 & 80.27 & 65.28 & 87.06 & 45.6\% \\
+DeltaXAttn tw10 dt=17         & 97.54 & 95.19 & 92.48 & 87.15 & 75.62 & 62.89 & 85.14 & 57.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+

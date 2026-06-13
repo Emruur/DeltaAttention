@@ -1,0 +1,23 @@
+\section{Experimental Setup}
+
+\subsection{Benchmarks}
+
+\subsubsection{Needle in a Haystack and RULER}
+
+Benchmarks for long-context transformers are a big research area by themselves. The original Needle in a Haystack (NIAH) test inserts a distinctive sentence at a random position in a long text and asks the model to retrieve it. NIAH only tests retrieval and is a limited evaluation method on its own. Models that do well on NIAH can still fail on real-world tasks~\cite{kuratov2024babilong}.
+
+RULER~\cite{hsieh2024ruler} is the modern extension of NIAH, expanding it to 13 more complex tasks such as multi-hop variable tracking and question answering over long contexts. RULER has become the standard benchmark in the field, with MInference~\cite{jiang2024minference}, FlexPrefill~\cite{lai2025flexprefill}, and XAttention~\cite{xu2025xattention} all reporting results on it.
+
+RULER evaluates models at a range of context lengths, typically from 4K to 128K tokens. A model's effective context length is defined as the longest context where accuracy stays above 85\%. The RULER paper shows that only 4 out of 10 models that claim a 32K context window actually maintain that threshold at 32K. DeltaAttention is evaluated on RULER for a direct comparison with existing methods.
+
+\textbf{Full RULER setup.} The full evaluation follows the standard RULER protocol: 100 samples per task across all 13 tasks at context lengths 4K, 8K, 16K, 32K, 64K, and 128K. This setup is used to report the final accuracy numbers compared against other methods in Table~\ref{tab:ruler}.
+
+\textbf{Proxy RULER setup.} Running the full evaluation for every ablation configuration is expensive. For ablation studies we use a reduced proxy setup: 30 samples per task across 9 tasks (niah\_single\_1/2/3, niah\_multikey\_1/2/3, vt, cwe, fwe) at the same six context lengths. All ablation results in Tables~\ref{tab:ablation_threshold} and~\ref{tab:ablation_design} use this proxy setup.
+
+\subsubsection{LongBench}
+
+LongBench~\cite{bai2024longbench} is another standard benchmark used in the field. Unlike RULER, which uses synthetic tasks, LongBench uses real-world documents. It covers 21 datasets across six task categories: single-document QA, multi-document QA, summarization, few-shot learning, synthetic retrieval, and code completion. This makes it a good complement to RULER, since it tests whether a method holds up on the kinds of tasks models are actually used for. DeltaAttention is also evaluated on LongBench.
+
+\subsection{Speedup Experiment}
+
+To measure raw attention speedup, we run an isolated prefill test independent of any downstream task, following the latency evaluation in MInference~\cite{jiang2024minference}. The model is fed a randomly sampled sequence from WikiText-103 at context lengths from 4K to 512K tokens. We measure the time to first token, which covers the full prefill stage. DeltaAttention is compared against PyTorch SDPA, which dispatches to a FlashAttention 2 kernel, as the dense baseline.

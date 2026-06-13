@@ -98,24 +98,36 @@ for a, b in combinations(VARIANTS.keys(), 2):
 
 # ── 3. Mean similarity per layer (averaged over heads) ───────────────────────
 
-fig, axes = plt.subplots(1, n_layers, figsize=(n_layers * 2.5, 3), sharey=True,
-                         gridspec_kw={"wspace": 0.12})
+HATCHES = ["", "//", "", "//", "xx"]
+variant_names = list(VARIANTS.keys())
+n_variants    = len(variant_names)
+
+fig, axes = plt.subplots(1, n_layers, figsize=(n_layers * 2.5, 3.5), sharey=True,
+                         gridspec_kw={"wspace": 0.10})
 
 for c, (layer_idx, ax) in enumerate(zip(LAYERS, axes)):
-    means = {name: VARIANTS[name][0][c].mean() for name in VARIANTS}
-    colors = [VARIANTS[n][1] for n in means]
-    hatches = ["", "//", "", "//"]
-    bars = ax.bar(range(len(means)), list(means.values()),
-                  color=colors, hatch=None, edgecolor="white", width=0.6)
-    for bar, h in zip(bars, hatches):
+    means  = [VARIANTS[name][0][c].mean() for name in variant_names]
+    colors = [VARIANTS[name][1]           for name in variant_names]
+    bars   = ax.bar(range(n_variants), means, color=colors,
+                    edgecolor="white", width=0.65)
+    for bar, h in zip(bars, HATCHES):
         bar.set_hatch(h)
-    ax.set_xticks(range(len(means)))
-    ax.set_xticklabels([n.replace(" ", "\n") for n in means], fontsize=5.5)
+    ax.set_xticks(range(n_variants))
+    ax.set_xticklabels([str(i+1) for i in range(n_variants)], fontsize=8)
     ax.set_title(f"Layer {layer_idx}", fontsize=8)
     ax.set_ylim(0, 1)
     ax.grid(True, axis="y", alpha=0.3)
     if c == 0:
         ax.set_ylabel("Mean adj. cos sim", fontsize=8)
+
+# shared legend below
+legend_labels = [f"{i+1}. {name}" for i, name in enumerate(variant_names)]
+handles = [plt.Rectangle((0,0),1,1, color=VARIANTS[n][1],
+           hatch=HATCHES[i], edgecolor="white")
+           for i, n in enumerate(variant_names)]
+fig.legend(handles, legend_labels, loc="lower center", ncol=3,
+           fontsize=7, framealpha=0.9,
+           bbox_to_anchor=(0.5, -0.18))
 
 fig.suptitle("Mean adjacent cosine similarity per layer (avg over all heads)", fontsize=9)
 plt.savefig(f"{OUT_DIR}/ks_mean_by_layer.png", dpi=160, bbox_inches="tight")
@@ -161,8 +173,9 @@ mat_flat = mat.reshape(4, -1)  # [4, L*H]
 xlabels = [f"L{l}H{h}" for l in LAYERS for h in range(n_heads)]
 
 fig, ax = plt.subplots(figsize=(n_layers * n_heads * 0.55, 2.5))
+n_variants = len(VARIANTS)
 im = ax.imshow(mat_flat, aspect="auto", cmap="RdYlGn", vmin=0, vmax=1)
-ax.set_yticks(range(4))
+ax.set_yticks(range(n_variants))
 ax.set_yticklabels(list(VARIANTS.keys()), fontsize=8)
 ax.set_xticks(range(len(xlabels)))
 ax.set_xticklabels(xlabels, fontsize=6, rotation=45, ha="right")

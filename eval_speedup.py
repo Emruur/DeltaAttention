@@ -219,6 +219,7 @@ def collect_overhead_profile(model, tokens, seq_lengths, device):
             reset_timing()
             set_row_delta(time_internal=True)
             run_prefill_e2e(model, ids, device, setup_fn=None)
+            glob_set.resolve_latency_events()
             stats = getattr(globVR, "latency_stats", {})
             for key in OVERHEAD_KEYS:
                 val = stats.get(key, {}).get("time_ms", float("nan"))

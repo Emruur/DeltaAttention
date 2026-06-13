@@ -1,0 +1,15 @@
+\section{Implementation Details}
+
+\subsection{Pre-processing}
+
+A Python implementation of the pre-processing step (Section~\ref{sec:preprocessing}) results in extreme overhead because each similarity comparison requires loading key vectors from the GPU to the CPU. Such an implementation also misses parallelism over the batch and head dimensions. We implement it as a custom Triton~\cite{tillet2019triton} kernel that solves both problems: all computation stays on the GPU with no CPU-GPU transfers, and the computation is parallelized over batch and head dimensions.
+
+Crucially, the sequential comparison is performed over chunks of 512 tokens. The sequence is divided into non-overlapping chunks and each chunk is processed in parallel. The first token of each chunk is treated as an anchor, which breaks the sequential dependency between chunks and allows them to be processed in parallel. The launch grid of the kernel is therefore 2D: $(\text{batch} \times \text{heads},\ \text{num\_chunks})$.
+
+\subsection{Packing}
+
+After the keep mask is produced (Section~\ref{sec:packing}), a prefix sum is computed over it to assign each kept token a destination index in the packed array. A second Triton kernel then scatter-writes the kept key and value vectors along with their original sequence positions into a contiguous packed array, fully on the GPU.
+
+\subsection{Delta FlashAttention}
+
+The FlashAttention adaptation described in Section~\ref{sec:flash_attention_integration} is implemented as a Triton~\cite{tillet2019triton} kernel. A program is executed per query block of size 128, batch, and head. Each program implements the two-phase algorithm from Section~\ref{sec:flash_attention_integration}: phase 1 loads blocks from the packed KV cache while phase 2 loads blocks from the original KV. Both phases share the same online softmax state.

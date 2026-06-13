@@ -19,10 +19,6 @@
             "time_get_row_delta": 0.6017395852366463,
             "time_delta_mm_pattern": 3.782729931084905,
             "time_prefill_forward_total": 7.398903392832726,
-            "time_baseline_decode_cache_update": 0.07880922574622673,
-            "time_baseline_decode_attn_calc": 0.4154325094744702,
-            "time_baseline_decode_inner_total": 0.42389242647045444,
-            "time_decode_forward_total": 0.7396804439529443
         }
     },
     "metrics": {

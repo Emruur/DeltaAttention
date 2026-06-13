@@ -128,6 +128,21 @@ Figure~\ref{fig:exact_window} shows this for two layers of LLaMA 3.2. Both layer
 
 This observation motivates computing the attention exactly for tokens in the critical diagonal in prefill acceleration methods. \citet{jiang2024minference} have their A-shape attention pattern. \citet{qi2024deltallm} maintain an exact window for the most recent tokens while compressing the rest via delta key vectors. DeltaAttention follows the same principle: the critical diagonal is processed with the full uncompressed keys and values.
 
+\subsection{xAttention}
+\label{sec:xattention}
+
+XAttention~\citep{xu2025xattention} builds on the FlashAttention tiling structure. The key observation is that many tiles contribute little to the final attention output and can be skipped. XAttention predicts which tiles matter before any full attention is computed, producing a binary block mask,that passed to a block-sparse FlashAttention kernel, which skips the zero entries entirely.
+
+Tile importance is estimated using the antidiagonal of the attention score tile. For a query block $Q_i$ and key block $K_j$, XAttention samples elements along the antidiagonals of the $B \times B$ score tile at a stride $S$, without computing the full tile. In mplementation, each QK block is reshaped by taking every $S$-th row, reducing $Q_i$ and $K_j$ from $B \times d$ to $(B/S) \times d$. The approximate score tile is the product of these compressed representations, at cost $O(B^2/S)$ instead of $O(B^2)$. Figure~\ref{fig:xattention_antidiag} shows which positions are sampled within a block.
+
+\input{diagrams/xattention_antidiag}
+
+The approximate scores for each query block are normalized with softmax to produce tile weights. Tiles are then selected greedily in decreasing order of weight until the cumulative weight exceeds a threshold $\tau$. The result is a binary mask over the $\lceil N/B \rceil \times \lceil N/B \rceil$ grid of tiles. $\tau$ is determined per attention head.
+
+XAttention outperforms both MInference~\citep{jiang2024minference} and FlexPrefill~\citep{lai2025flexprefill} on RULER and LongBench while achieving up to $13.5\times$ speedup in attention computation during prefill, with accuracy comparable to full attention.
+
+
+
 
 
 
