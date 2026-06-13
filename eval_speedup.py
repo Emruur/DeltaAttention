@@ -23,7 +23,7 @@ from modeling_llama import LlamaForCausalLM, LlamaConfig
 AutoConfig.register("llama", LlamaConfig, exist_ok=True)
 AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
 
-MODEL_ID = "gradientai/Llama-3-8b-Instruct-Gradient-1048k"
+MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
 SEQ_LENGTHS = [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144]
 

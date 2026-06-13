@@ -24,6 +24,7 @@ export HF_HOME=$SHARED_SCRATCH
 export HUGGINGFACE_HUB_CACHE=$SHARED_SCRATCH
 export TRANSFORMERS_CACHE=$SHARED_SCRATCH
 
-source "$(dirname "${BASH_SOURCE[0]}")/.env.sh"
+ENV_SH="$(dirname "${BASH_SOURCE[0]}")/.env.sh"
+[ -f "$ENV_SH" ] && source "$ENV_SH"
 
 python eval_speedup.py --n_warmup 1 --n_runs 3
