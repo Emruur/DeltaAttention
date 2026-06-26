@@ -1,5 +1,7 @@
 \section{Observations}
 
+\subsection{Key Similarity}
+
 High cosine similarity between adjacent key states has been observed and studied in KVMerger~\citep{wang2024kvmerger}.
 They derive a theoretical lower bound on the cosine similarity between key vectors at positions $n$ and $m$ of $\cos(n - m)$, which puts the minimum similarity of any adjacent pair at $\cos(1) \approx 0.54$.
 As the distance between tokens grows, the bound decreases toward zero.
@@ -42,3 +44,17 @@ After RoPE is on the shuffled keys, the similarity recovers to nearly the level 
 RoPE raises the similarity of adjacent positions regardless of the underlying content order.
 
 Key similarity at the token level is therefore a combination of three factors: the key projection creates a high global similarity floor, semantic content raises similarity further for adjacent tokens in natural text, and RoPE contributes a positional adjacency structure on top of that.
+
+\subsection{Query Similarity}
+
+The same analysis on query states shows that the query projection has the same properties as the key projection.
+Query vectors show high cosine similarity regardless of token order, which means the projection itself pushes queries into a narrow region of the query space.
+In later layers, similarity is higher for real sequences than for shuffled ones, suggesting that query vectors pick up contextual information and adjacent tokens in natural text end up closer together.
+RoPE recovers adjacent similarity for shuffled sequences, contributing a positional structure on top of the content signal.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{../assets/query_similarity_mean_by_layer.png}
+    \caption{Mean adjacent query cosine similarity per layer (averaged over all heads) for LLaMA-3 8B Instruct at layers 0, 8, 16, and 23, under four configurations: pre-RoPE real, pre-RoPE shuffled, post-RoPE real, and post-RoPE shuffled.}
+    \label{fig:query_similarity}
+\end{figure}

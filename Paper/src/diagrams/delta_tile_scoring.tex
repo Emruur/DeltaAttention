@@ -1,0 +1,123 @@
+\begin{figure}[h]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tikzpicture}
+  \def\cell{0.28}
+  \colorlet{hilightA}{blue!55}
+  \colorlet{hilightFocus}{blue!80!black}
+  \colorlet{plain}{gray!15}
+
+  % Q anchors: rows 0, 3, 7, 11   (4 of 16)
+  % K anchors: rows 0, 2, 5, 8, 11, 14  (6 of 16)
+
+  %--- Full Q (16 rows × 2 cols) — anchor rows in orange ---
+  \foreach \r in {0,...,15} {
+    \pgfmathtruncatemacro{\isanchor}{
+      (((\r==0)+(\r==3)+(\r==7)+(\r==11))>0) ? 1 : 0
+    }
+    \foreach \c in {0,1} {
+      \ifnum\isanchor=1 \fill[hilightA] \else \fill[plain] \fi
+        ({\c*\cell},{-\r*\cell}) rectangle ({(\c+1)*\cell},{(-\r-1)*\cell});
+      \draw ({\c*\cell},{-\r*\cell}) rectangle ({(\c+1)*\cell},{(-\r-1)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({1*\cell}, 0.1)             {$Q$};
+  \node[below, font=\scriptsize]     at ({1*\cell},{-16*\cell-0.05}) {$B \times l$};
+
+  %--- Full K (16 rows × 2 cols) — different anchor pattern ---
+  \foreach \r in {0,...,15} {
+    \pgfmathtruncatemacro{\isanchor}{
+      (((\r==0)+(\r==2)+(\r==5)+(\r==8)+(\r==11)+(\r==14))>0) ? 1 : 0
+    }
+    \foreach \c in {0,1} {
+      \ifnum\isanchor=1 \fill[hilightA] \else \fill[plain] \fi
+        ({(3+\c)*\cell},{-\r*\cell}) rectangle ({(4+\c)*\cell},{(-\r-1)*\cell});
+      \draw ({(3+\c)*\cell},{-\r*\cell}) rectangle ({(4+\c)*\cell},{(-\r-1)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({4*\cell}, 0.1)             {$K$};
+  \node[below, font=\scriptsize]     at ({4*\cell},{-16*\cell-0.05}) {$B \times l$};
+
+  %--- Delta-select arrow ---
+  \draw[-{Stealth}] ({5.4*\cell},{-8*\cell}) -- ({7.6*\cell},{-8*\cell});
+  \node[above, font=\scriptsize] at ({6.5*\cell},{-8*\cell}) {$\delta$ select};
+
+  %--- Q^δ (4 rows × 2 cols, centred at rows 6–9) ---
+  \foreach \r in {0,...,3} {
+    \foreach \c in {0,1} {
+      \fill[hilightA]
+        ({(8+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(9+\c)*\cell},{-(7+\r)*\cell});
+      \draw ({(8+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(9+\c)*\cell},{-(7+\r)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({9*\cell},{-6*\cell})       {$Q^\delta$};
+  \node[below, font=\scriptsize]     at ({9*\cell},{-10*\cell-0.05}) {$\alpha B \times l$};
+
+  %--- ⊗ ---
+  \node[font=\large] at ({11*\cell},{-8*\cell}) {$\otimes$};
+
+  %--- K^δ (6 rows × 2 cols, centred at rows 5–10) — taller than Q^δ ---
+  \foreach \r in {0,...,5} {
+    \foreach \c in {0,1} {
+      \fill[hilightA]
+        ({(12+\c)*\cell},{-(5+\r)*\cell}) rectangle ({(13+\c)*\cell},{-(6+\r)*\cell});
+      \draw ({(12+\c)*\cell},{-(5+\r)*\cell}) rectangle ({(13+\c)*\cell},{-(6+\r)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({13*\cell},{-5*\cell})       {$K^\delta$};
+  \node[below, font=\scriptsize]     at ({13*\cell},{-11*\cell-0.05}) {$\beta B \times l$};
+
+  %--- = ---
+  \node[font=\large] at ({15.5*\cell},{-8*\cell}) {$=$};
+
+  %--- (αB)×(βB) result matrix: 4 rows × 6 cols, centred at rows 6–9 ---
+  \foreach \r in {0,...,3} {
+    \foreach \c in {0,...,5} {
+      \pgfmathtruncatemacro{\isFocus}{(\r==0)*(\c==0)}
+      \ifnum\isFocus=1
+        \fill[hilightFocus]
+      \else
+        \fill[plain]
+      \fi
+        ({(17+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(18+\c)*\cell},{-(7+\r)*\cell});
+      \draw ({(17+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(18+\c)*\cell},{-(7+\r)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({20*\cell},{-6*\cell})       {$Q^\delta{K^\delta}^\top$};
+  \node[below, font=\scriptsize]     at ({20*\cell},{-10*\cell-0.05}) {$(\alpha B)\times(\beta B)$};
+
+  %--- Arrow from result cell (0,0) to B×B position (0,0) ---
+  \draw[-{Stealth}, thick, blue!70!black]
+      ({17.5*\cell},{-6.5*\cell})
+      to[out=70, in=210]
+      ({25.5*\cell},{-0.5*\cell});
+
+  %--- 16×16 full score matrix ---
+  \foreach \r in {0,...,15} {
+    \foreach \c in {0,...,15} {
+      \pgfmathtruncatemacro{\isHL}{
+        (((\r==0)+(\r==3)+(\r==7)+(\r==11))>0) *
+        (((\c==0)+(\c==2)+(\c==5)+(\c==8)+(\c==11)+(\c==14))>0)
+      }
+      \pgfmathtruncatemacro{\isFocus}{(\r==0)*(\c==0)}
+      \ifnum\isFocus=1
+        \fill[hilightFocus]
+      \else
+        \ifnum\isHL=1
+          \fill[hilightA]
+        \else
+          \fill[plain]
+        \fi
+      \fi
+        ({(25+\c)*\cell},{-\r*\cell}) rectangle ({(26+\c)*\cell},{(-\r-1)*\cell});
+      \draw ({(25+\c)*\cell},{-\r*\cell}) rectangle ({(26+\c)*\cell},{(-\r-1)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({33*\cell}, 0.1)             {Approximate scores};
+  \node[below, font=\scriptsize]     at ({33*\cell},{-16*\cell-0.05}) {individual $(q_i,\,k_j)$ pairs};
+
+\end{tikzpicture}
+}
+\caption{Delta-based tile scoring. Delta pre-processing selects content-adaptive anchors (blue) from $Q$ and $K$ independently, producing $Q^\delta$ and $K^\delta$ of potentially different sizes — no dimension expansion. Their product gives an $(\alpha B)\times(\beta B)$ score matrix; each entry (highlighted cell, arrow) corresponds to a single dot product at one position in the full $B\times B$ score tile.}
+\label{fig:delta_tile_scoring}
+\end{figure}

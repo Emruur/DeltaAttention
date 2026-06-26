@@ -1,13 +1,20 @@
 \section{Methodology}
 
+This section describes the three methods. We first introduce Delta-KV compression, the core mechanism that compresses the key and value matrices before attention (Section~\ref{sec:delta_kv}). We then layer this mechanism on top of a block-sparse method to give DeltaXAttention (Section~\ref{sec:xattention_adaptation}), and finally repurpose it as a tile importance estimator for delta-based tile scoring (Section~\ref{sec:delta_tile_scoring}).
+
+\subsection{Delta-KV Compression}
+\label{sec:delta_kv}
+
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.65\textwidth]{../assets/delta_attention.jpeg}
-    \caption{...}
+    \caption{The three stages of Delta-KV compression. Stage 1 (pre-processing) computes row-wise deltas of $K$ and thresholds them into a keep mask. Stage 2 (packing) drops the masked rows to form $\hat{K}$ and $\hat{V}$ of length $m < n$, along with $\text{packed\_counts}$, the run length of each anchor. Stage 3 (self-attention) multiplies $Q$ against $\hat{K}$, applies count-weighted softmax, and multiplies by $\hat{V}$ to give the $n \times l$ output.}
     \label{fig:delta_attention}
 \end{figure}
 
-\subsection{(1) Pre-processing}
+Delta-KV compression runs in three stages: pre-processing analyzes the key matrix to decide which rows to keep, packing drops the rest to produce the compressed matrices, and self-attention computes the output against the compressed matrices. We then adapt FlashAttention 2 to realize the method on long context.
+
+\subsubsection{Stage 1: Pre-processing}
 \label{sec:preprocessing}
 
 The pre-processing stage takes the key matrix $K$ as input and outputs a binary keep mask of length $n$. It analyzes $K$ row by row to decide which rows to keep and which to drop (steps 1.1 and 1.2 in Figure~\ref{fig:delta_attention}).
@@ -25,7 +32,9 @@ We initialize a keep mask of length $n$ to all ones, meaning all rows are initia
 
 The output keep mask has a 1 at each anchor position and a 0 at each dropped position.
 
-\subsection{(2) Packing}
+Crucially, the sequential comparison is performed over chunks of 512 tokens. The sequence is divided into non-overlapping chunks and each chunk is processed in parallel. The first token of each chunk is treated as an anchor, which breaks the sequential dependency between chunks and allows them to be processed in parallel.
+
+\subsubsection{Stage 2: Packing}
 \label{sec:packing}
 
 The packing stage takes the keep mask from stage (1) as input and outputs compressed key and value matrices $\hat{K}$ and $\hat{V}$, and a vector $\text{packed\_counts}$ (step 2.1 in Figure~\ref{fig:delta_attention}).
@@ -34,7 +43,7 @@ We drop all rows of $K$ and $V$ where the keep mask is 0, keeping only the ancho
 
 We also compute $\text{packed\_counts}$ of length $m$, where $\text{packed\_counts}[j]$ is the run length of anchor $j$, the number of rows it represents including itself.
 
-\subsection{(3) Self-Attention}
+\subsubsection{Stage 3: Self-Attention}
 \label{sec:self_attention_compressed}
 
 The final stage takes the original query matrix $Q$ and the packed matrices $\hat{K}$, $\hat{V}$, and $\text{packed\_counts}$ from stage (2) as input, and outputs the attention output of shape $n \times l$. It follows the same steps as standard self-attention (Section~\ref{sec:self_attention}), with two differences: $Q$ is multiplied against the compressed $\hat{K}$ and $\hat{V}$ instead of the full matrices, and the softmax is weighted by $\text{packed\_counts}$.
@@ -60,10 +69,10 @@ The final stage takes the original query matrix $Q$ and the packed matrices $\ha
     The compressed sequence dimension $m$ disappears after this multiplication, giving an output of shape $n \times l$ ,identical in shape to the output of standard self-attention.
 \end{enumerate}
 
-\subsection{Flash Attention Adaptation}
+\subsubsection{FlashAttention Adaptation}
 \label{sec:flash_attention_adaptation}
 
-To test DeltaAttention on long context tasks we modified Flash Attention 2 to operate on the compressed $\hat{K}$ and $\hat{V}$ matrices. The kernel follows the same structure as FlashAttention 2 (Section~\ref{sec:flashattention_algorithm}): an outer loop over query blocks, with each kernel program handling one query block independently. The inner loop is modified to operate in two phases.
+To test Delta-KV compression on long context tasks we modified Flash Attention 2 to operate on the compressed $\hat{K}$ and $\hat{V}$ matrices. The kernel follows the same structure as FlashAttention 2 (Section~\ref{sec:flashattention_algorithm}): an outer loop over query blocks, with each kernel program handling one query block independently. The inner loop is modified to operate in two phases.
 
 Alongside $\hat{K}$, $\hat{V}$, and $\text{packed\_counts}$, we store a $\texttt{packed\_timestamps}$ vector of length $m$. Entry $j$ holds the index in the original sequence of the last token that anchor $j$ represents. For example, if anchor $j$ represents tokens 5, 6, and 7 from the original sequence, then $\texttt{packed\_timestamps}[j] = 7$. This vector can be computed as a cumulative sum of $\text{packed\_counts}$, minus one. It lets the kernel track how far into the original sequence each anchor's coverage extends.
 
@@ -77,10 +86,10 @@ If the reach falls inside or past the critical diagonal, the first phase stops. 
 
 \textbf{Phase 2: Critical diagonal.} The second phase switches to the original uncompressed $K$ and $V$. Starting from just after the last safe anchor's reach and going up to the end of the current query block, it runs standard FlashAttention over the exact token vectors.
 
-\subsection{xAttention Adaptation}
+\subsection{DeltaXAttention}
 \label{sec:xattention_adaptation}
 
-Block-sparse attention methods such as XAttention~\citep{xu2025xattention}, MInference~\citep{jiang2024minference}, FlexPrefill~\citep{lai2025flexprefill}, and SpargeAttention~\citep{zhang2025spargeattn} are orthogonal to DeltaAttention: one reduces the number of tiles computed, the other reduces the cost of each tile. The two can be combined to decrease both computation and data movement. We implement DeltaAttention on top of XAttention as it is the current state of the art for block-sparse prefill.
+Block-sparse attention methods such as XAttention~\citep{xu2025xattention} and SpargeAttention~\citep{zhang2025spargeattn} are orthogonal to Delta-KV compression: one reduces the number of tiles computed, the other reduces the cost of each tile. The two can be combined to decrease both computation and data movement. We implement Delta-KV compression on top of XAttention, a strong recent block-sparse prefill method, and call the result DeltaXAttention.
 
 XAttention produces a binary tile mask before the attention computation (Section~\ref{sec:xattention}). For tiles the mask selects, the standard approach loads the full uncompressed $K$ and $V$ blocks. In our adaptation, we instead load the compressed $\hat{K}$ and $\hat{V}$ blocks and compute the attention output using count-weighted softmax as described in Section~\ref{sec:self_attention_compressed}.
 
@@ -96,13 +105,28 @@ For off-diagonal tiles, we additionally keep the top 10\% by XAttention tile imp
 
 We measure the effect of this approach using a KV reduction metric computed per attention head. KV reduction is the decrease in total KV loads relative to standard XAttention. If a fraction $f$ of tiles are computed with packed KV and the packing reduces those KV matrices to a fraction $p$ of their original size, then the KV reduction is $f(1-p)$. For example, if half the tiles use packed KV and delta packing halves the KV size, the KV reduction is $0.5 \times 0.5 = 25\%$.
 
-\subsection{Ablation}
+\subsubsection{Ablation}
 \label{sec:xattention_ablation}
 
 XAttention can reduce KV loads without delta compression by simply skipping more tiles. Concretely, for a target KV reduction of $\alpha$\%, we skip the $\alpha$\% least important off-diagonal tiles that XAttention would otherwise compute. This gives the same KV reduction as a DeltaXAttention configuration tuned to $\alpha$\%, but through tile skipping alone rather than key compression.
 
 We compare the two approaches at matched KV reduction. If XAttention tile skipping preserves more accuracy than DeltaXAttention at the same reduction, then applying delta compression on top of XAttention adds no value. This serves as a direct check on whether the combination is meaningful.
 
+\subsection{Delta-Based Tile Scoring (DPXA)}
+\label{sec:delta_tile_scoring}
 
+XAttention estimates tile importance by compressing $Q$ and $K$ into $\tilde{Q}$ and $\tilde{K}$ of shape $(B/S) \times Sl$ using a fixed stride $S$ (Section~\ref{sec:xattention}, Figure~\ref{fig:xattention_antidiag}). Groups of $S$ consecutive tokens are concatenated along the head dimension, so the scoring cost is $O(B^2/S)$, a factor of $1/S$ of the full tile. For stride $S=8$ this is $12.5\%$ of full tile cost.
 
+Delta compression offers a content-adaptive alternative. Rather than sampling every $S$-th token by fixed stride, we apply delta pre-processing (Section~\ref{sec:preprocessing}) independently to $Q$ and $K$ to select anchors, giving $Q^\delta$ and $K^\delta$ of shapes $(\alpha B) \times l$ and $(\beta B) \times l$, where $\alpha$ and $\beta$ are the keep ratios of $Q$ and $K$ respectively (Figure~\ref{fig:delta_tile_scoring}). Crucially, no dimension expansion is performed: the head dimension stays at $l$. Their product $Q^\delta {K^\delta}^\top$ has shape $(\alpha B) \times (\beta B)$ and costs a fraction $\alpha \beta$ of the full tile. We call this the \textbf{scoring ratio}. It has a second, equivalent reading: since each entry of $Q^\delta {K^\delta}^\top$ is a single cell of the full $B \times B$ attention tile, $\alpha\beta$ is also the fraction of the tile's cells that are sampled to estimate its importance.
 
+This differs from the XAttention approach in two ways. First, $Q^\delta$ and $K^\delta$ can have different numbers of anchors, since $Q$ and $K$ are compressed independently (Figure~\ref{fig:delta_tile_scoring}). Second, each entry of $Q^\delta {K^\delta}^\top$ corresponds to a single dot product between one $Q$ anchor and one $K$ anchor, a single position in the full $B \times B$ score tile, rather than a sum over an $S \times S$ sub-block as in XAttention.
+
+Each entry of the resulting score matrix is exponentiated and summed to produce a tile importance score, which feeds into the same greedy threshold selection as standard XAttention to produce the binary block mask. The attention itself is then computed using the same block-sparse kernel.
+
+Running delta compression on both $Q$ and $K$ with cosine similarity threshold $0.75$ gives keep ratios of $\alpha \approx 0.20$ and $\beta \approx 0.20$, yielding a scoring ratio of $\approx 4\%$. This is below XAttention at both stride $S=8$ ($12.5\%$) and stride $S=16$ ($6.25\%$), while selecting anchors adaptively based on content rather than at a fixed stride.
+
+As shown in Figure~\ref{fig:delta_tile_scoring} and Figure~\ref{fig:xattention_antidiag}, delta-based scoring uses a different sampling pattern from XAttention. It looks more like grid sampling on the attention score matrix. We want to isolate the effect of content-adaptive sampling from this grid sampling pattern. To do this we add two ablation configurations: naive subsampling at stride 3 and stride 4. By naive we mean no expansion along the head dimension, just sampling every $S$-th token of $Q$ and $K$ and discarding the rest. This produces a regular grid on the score matrix, similar in shape to delta-based scoring but with a fixed period instead of content-adaptive anchors.
+
+Naive stride 3 gives a scoring ratio of $1/9 \approx 11.1\%$. This is close to XAttention at stride $S=8$ ($12.5\%$) and delta with cos $0.78$ ($8.8\%$), so we use these three together as one comparison group. Naive stride 4 gives $1/16 = 6.25\%$, the same as XAttention at stride $S=16$ and close to delta with cos $0.75$ ($5.7\%$), even though the delta scoring ratio is a bit lower.
+
+\input{diagrams/delta_tile_scoring}
