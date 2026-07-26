@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union, TypedDict
 
 import torch
 import torch.utils.checkpoint
