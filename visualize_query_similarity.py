@@ -4,20 +4,19 @@ Compare pre-RoPE vs post-RoPE adjacent query cosine similarity distributions.
 Same structure as visualize_key_similarity.py but for Q instead of K.
 Pre-RoPE Q: hooked from q_proj output.
 Post-RoPE Q: captured by monkey-patching apply_rotary_pos_emb during forward.
+
+Runs against stock HuggingFace transformers (venv_xattn) — no dependency on
+DeltaLLM's modeling_llama / globVR. The similarity analysis does not use any
+delta-attention machinery, so a plain LlamaForCausalLM is sufficient.
 """
 
-import os, sys
 import torch
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 from datasets import load_dataset
-from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import globVR
-import modeling_llama as _ml
-from modeling_llama import LlamaForCausalLM, LlamaConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers.models.llama import modeling_llama as hf_llama
 
 # ─────────────────────────────────────────────
 # CONFIG
@@ -30,13 +29,6 @@ SEED     = 42
 OUT_PATH = "Paper/assets/query_similarity.png"
 # ─────────────────────────────────────────────
 
-AutoConfig.register("llama", LlamaConfig, exist_ok=True)
-AutoModelForCausalLM.register(LlamaConfig, LlamaForCausalLM, exist_ok=True)
-
-globVR.delta_pf_key_on = 0
-globVR.flash           = False
-globVR.delta_decode    = False
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print("Loading model…")
@@ -48,7 +40,7 @@ model.eval()
 
 num_heads    = model.config.num_attention_heads
 num_kv_heads = model.config.num_key_value_heads
-head_dim     = model.config.hidden_size // num_heads
+head_dim     = getattr(model.config, "head_dim", None) or model.config.hidden_size // num_heads
 
 print("Loading wikitext…")
 ds   = load_dataset("wikitext", "wikitext-103-raw-v1", split="test", trust_remote_code=True)
@@ -80,24 +72,24 @@ def get_sims(input_ids):
         h = model.model.layers[layer_idx].self_attn.q_proj.register_forward_hook(_hook)
         hooks.append(h)
 
-    # post-RoPE Q by patching apply_rotary_pos_emb in modeling_llama
-    _orig_rope = _ml.apply_rotary_pos_emb
+    # post-RoPE Q by patching apply_rotary_pos_emb in transformers' llama module
+    _orig_rope = hf_llama.apply_rotary_pos_emb
 
-    def _capturing_rope(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
-        q_rot, k_rot = _orig_rope(q, k, cos, sin, position_ids, unsqueeze_dim)
+    def _capturing_rope(q, k, cos, sin, *args, **kwargs):
+        q_rot, k_rot = _orig_rope(q, k, cos, sin, *args, **kwargs)
         captured_qs.append(q_rot.detach().float())  # [1, heads, seq, d]
         return q_rot, k_rot
 
-    _ml.apply_rotary_pos_emb = _capturing_rope
+    hf_llama.apply_rotary_pos_emb = _capturing_rope
 
     with torch.no_grad():
         _ = model(input_ids=input_ids, use_cache=False)
 
-    _ml.apply_rotary_pos_emb = _orig_rope
+    hf_llama.apply_rotary_pos_emb = _orig_rope
     for h in hooks:
         h.remove()
 
-    # captured_qs[i] = post-RoPE Q for layer i (all 32 layers in order)
+    # captured_qs[i] = post-RoPE Q for layer i (all layers in order)
     pre_real, pre_shuf, post_real, post_shuf = {}, {}, {}, {}
     for layer_idx in LAYERS:
         q_pre  = pre_raw[layer_idx]              # [h, seq, d]
