@@ -48,7 +48,19 @@ try:
 except ImportError:
     ALL_LAYERNORM_LAYERS = []
 
-from transformers.utils import auto_docstring, can_return_tuple, logging
+try:
+    from transformers.utils import auto_docstring, can_return_tuple, logging
+except ImportError:
+    from transformers.utils import logging
+    def auto_docstring(*args, **kwargs):
+        # Usable as both @auto_docstring and @auto_docstring(...)
+        if len(args) == 1 and callable(args[0]) and not kwargs:
+            return args[0]
+        def _decorator(func):
+            return func
+        return _decorator
+    def can_return_tuple(func):
+        return func
 
 try:
     from transformers.utils import LossKwargs
