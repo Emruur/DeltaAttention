@@ -1,4 +1,5 @@
 \section{Observations}
+\label{sec:observations}
 
 \subsection{Key Similarity}
 
@@ -17,10 +18,10 @@ We repeat this for five configurations:
     \item \textbf{pre-RoPE shuffled}: key states before RoPE, token positions randomly shuffled
     \item \textbf{post-RoPE real}: key states after RoPE, original token order
     \item \textbf{post-RoPE content-shuffled}: input sequence shuffled before keys are computed, RoPE applied in natural positional order
-    \item \textbf{post-RoPE key-shuffled}: pre-RoPE key vectors shuffled, RoPE then applied
+    \item \textbf{post-RoPE key-shuffled}: key states after RoPE, token positions randomly shuffled
 \end{enumerate}
 
-\begin{figure}[h]
+\begin{figure}[!ht]
     \centering
     \includegraphics[width=\linewidth]{../assets/cos_analysis.png}
     \caption{Average cosine similarity of adjacent key states under five configurations for LLaMA-3 8B Instruct at layers 0, 8, 16, and 23.}
@@ -40,8 +41,10 @@ When content is in natural order, applying RoPE does not significantly change ad
 
 Configuration 4 in Figure~\ref{fig:cos_analysis} shows a different picture.
 The input content is shuffled before keys are computed, so the key states lack content-driven adjacency.
-After RoPE is on the shuffled keys, the similarity recovers to nearly the level of configuration 3.
+After RoPE is applied, the similarity recovers to nearly the level of configuration 3.
 RoPE raises the similarity of adjacent positions regardless of the underlying content order.
+
+Configuration 5 in Figure~\ref{fig:cos_analysis} (post-RoPE key-shuffled) shows what happens if we break positional adjacency after RoPE is applied. The similarity drops back down, confirming that RoPE's contribution relies on evaluating adjacent positions sequentially.
 
 Key similarity at the token level is therefore a combination of three factors: the key projection creates a high global similarity floor, semantic content raises similarity further for adjacent tokens in natural text, and RoPE contributes a positional adjacency structure on top of that.
 
@@ -50,11 +53,11 @@ Key similarity at the token level is therefore a combination of three factors: t
 The same analysis on query states shows that the query projection has the same properties as the key projection.
 Query vectors show high cosine similarity regardless of token order, which means the projection itself pushes queries into a narrow region of the query space.
 In later layers, similarity is higher for real sequences than for shuffled ones, suggesting that query vectors pick up contextual information and adjacent tokens in natural text end up closer together.
-RoPE recovers adjacent similarity for shuffled sequences, contributing a positional structure on top of the content signal.
+As with keys, applying RoPE to shuffled sequences (post-RoPE content-shuffled) recovers adjacent similarity, contributing a positional structure on top of the content signal. Furthermore, breaking the positional adjacency after RoPE (post-RoPE Q-shuffled) drops the similarity back down.
 
-\begin{figure}[h]
+\begin{figure}[!ht]
     \centering
     \includegraphics[width=\linewidth]{../assets/query_similarity_mean_by_layer.png}
-    \caption{Mean adjacent query cosine similarity per layer (averaged over all heads) for LLaMA-3 8B Instruct at layers 0, 8, 16, and 23, under four configurations: pre-RoPE real, pre-RoPE shuffled, post-RoPE real, and post-RoPE shuffled.}
+    \caption{Mean adjacent query cosine similarity per layer (averaged over all heads) for LLaMA-3 8B Instruct at layers 0, 8, 16, and 23, under five configurations: pre-RoPE real, pre-RoPE shuffled, post-RoPE real, post-RoPE content-shuffled, and post-RoPE Q-shuffled.}
     \label{fig:query_similarity}
 \end{figure}

@@ -27,7 +27,7 @@ SEQ_LEN  = 512
 LAYERS   = [0, 8, 16, 23]
 HEADS    = [0, 2, 5, 7]
 SEED     = 42
-OUT_PATH = "query_similarity.png"
+OUT_PATH = "Paper/assets/query_similarity.png"
 # ─────────────────────────────────────────────
 
 AutoConfig.register("llama", LlamaConfig, exist_ok=True)
@@ -115,8 +115,26 @@ def get_sims(input_ids):
 
 torch.manual_seed(SEED)
 
-print("Forward pass…")
+print("Forward pass – real tokens…")
 pre_real, pre_shuf, post_real, post_shuf = get_sims(ids)
+
+print("Forward pass – content-shuffled tokens…")
+content_shuf_data = get_sims(shuffled_ids)
+# We only need the post-RoPE real from this run (content shuffled, positions sequential)
+post_content_shuf = content_shuf_data[2]
+
+print("Saving raw values to query_similarity_data.npz...")
+np.savez(
+    "query_similarity_data.npz",
+    pre_real=np.stack([pre_real[l] for l in LAYERS]),
+    pre_shuf=np.stack([pre_shuf[l] for l in LAYERS]),
+    post_real=np.stack([post_real[l] for l in LAYERS]),
+    post_content_shuf=np.stack([post_content_shuf[l] for l in LAYERS]),
+    post_shuf=np.stack([post_shuf[l] for l in LAYERS]),
+    layers=np.array(LAYERS),
+    seq_len=np.array(ids.shape[1]),
+)
+print("Saved raw values → query_similarity_data.npz")
 
 # ── Plot ──────────────────────────────────────────────────────────────────────
 n_layers = len(LAYERS)
@@ -130,10 +148,11 @@ fig, axes = plt.subplots(
 )
 
 STYLES = [
-    (pre_real,  "pre-RoPE real",        "steelblue", "-",  1.4),
-    (pre_shuf,  "pre-RoPE Q-shuffled",  "steelblue", "--", 1.0),
-    (post_real, "post-RoPE real",       "tomato",    "-",  1.4),
-    (post_shuf, "post-RoPE Q-shuffled", "tomato",    "--", 1.0),
+    (pre_real,          "pre-RoPE real",              "steelblue", "-",  1.4),
+    (pre_shuf,          "pre-RoPE Q-shuffled",        "steelblue", "--", 1.0),
+    (post_real,         "post-RoPE real",             "tomato",    "-",  1.4),
+    (post_content_shuf, "post-RoPE content-shuffled", "tomato",    "-.", 1.2),
+    (post_shuf,         "post-RoPE Q-shuffled",       "tomato",    "--", 1.0),
 ]
 
 for r, head_idx in enumerate(HEADS):
@@ -161,7 +180,7 @@ for r, head_idx in enumerate(HEADS):
 axes[0, 0].legend(fontsize=6.5, loc="upper left", framealpha=0.8)
 
 fig.suptitle(
-    "Adjacent query cosine similarity · pre/post-RoPE × real/Q-shuffled\n"
+    "Adjacent query cosine similarity · pre/post-RoPE × real/Q-shuffled/content-shuffled\n"
     f"LLaMA 3.1-8B-Instruct  ·  {ids.shape[1]} tokens from WikiText-103",
     fontsize=10, y=1.01,
 )
@@ -171,12 +190,12 @@ print(f"Saved → {OUT_PATH}")
 
 # ── Bar chart: mean adjacent cosine similarity per layer ──────────────────────
 BAR_VARIANTS = [
-    ("pre-RoPE real",     pre_real,  "#E6A817", ""),
-    ("pre-RoPE shuffled", pre_shuf,  "#E6A817", "//"),
-    ("post-RoPE real",    post_real, "#6B6B6B", ""),
-    ("post-RoPE shuffled",post_shuf, "#6B6B6B", "xx"),
+    ("pre-RoPE real",              pre_real,          "#E6A817", ""),
+    ("pre-RoPE shuffled",          pre_shuf,          "#E6A817", "//"),
+    ("post-RoPE real",             post_real,         "#6B6B6B", ""),
+    ("post-RoPE content-shuffled", post_content_shuf, "#6B6B6B", "//"),
+    ("post-RoPE Q-shuffled",       post_shuf,         "#6B6B6B", "xx"),
 ]
-HATCHES = ["", "//", "", "xx"]
 
 fig2, axes2 = plt.subplots(1, n_layers, figsize=(n_layers * 2.5, 3.5), sharey=True,
                             gridspec_kw={"wspace": 0.10})
@@ -199,10 +218,10 @@ for c, (layer_idx, ax) in enumerate(zip(LAYERS, axes2)):
 legend_labels = [f"{i+1}. {name}" for i, (name, _, _, _) in enumerate(BAR_VARIANTS)]
 handles = [plt.Rectangle((0,0), 1, 1, color=col, hatch=h, edgecolor="white")
            for _, _, col, h in BAR_VARIANTS]
-fig2.legend(handles, legend_labels, loc="lower center", ncol=2,
-            fontsize=7, framealpha=0.9, bbox_to_anchor=(0.5, -0.18))
+fig2.legend(handles, legend_labels, loc="lower center", ncol=3,
+            fontsize=7, framealpha=0.9, bbox_to_anchor=(0.5, -0.22))
 
 fig2.suptitle("Mean adjacent query cosine similarity per layer (avg over all heads)", fontsize=9)
-bar_path = "query_similarity_mean_by_layer.png"
+bar_path = "Paper/assets/query_similarity_mean_by_layer.png"
 plt.savefig(bar_path, dpi=160, bbox_inches="tight")
 print(f"Saved → {bar_path}")
