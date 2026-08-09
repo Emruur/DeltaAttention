@@ -2,10 +2,10 @@
 
 \subsection{Transformer Overview}
 
-\begin{figure}[h]
+\begin{figure}[!ht]
     \centering
     \includegraphics[width=\textwidth]{../assets/transformer_overview.jpeg}
-    \caption{Overview of a Transformer language model. Text is tokenized, each token is looked up in the embedding table, and the resulting vectors pass through $N$ layers, each consisting of an attention module and an MLP. The final embedding of the last token is projected to logits over the vocabulary, a token is sampled, and the process repeats.}
+    \caption{Overview of a Transformer language model}
     \label{fig:transformer_overview}
 \end{figure}
 
@@ -31,14 +31,14 @@ This section explains the inner workings of the attention block shown in Figure~
 \subsubsection{Self-Attention}
 \label{sec:self_attention}
 
-\begin{figure}[h]
+\begin{figure}[!ht]
     \centering
     \includegraphics[width=0.75\textwidth]{../assets/Self_Attention.png}
-    \caption{Self-attention mechanism. The input is projected to queries $Q$, keys $K$, and values $V$. The dot product $QK^\top$ gives attention scores, which are normalized by softmax to produce attention weights. The output is a weighted sum of the value vectors.}
+    \caption{Self-attention mechanism.}
     \label{fig:self_attention}
 \end{figure}
 
-Self-attention is the operation inside each head (Figure~\ref{fig:self_attention}).
+Self-attention is the operation inside each attention block (Figure~\ref{fig:self_attention}).
 The input hidden state matrix of shape $n \times d$ is projected to three matrices, queries $Q$, keys $K$, and values $V$, each of shape $n \times l$, using learned projection matrices.
 
 The attention scores are computed as:
@@ -46,7 +46,7 @@ The attention scores are computed as:
     \text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{l}}\right) V
 \end{equation}
 
-The $QK^\top$ product gives an $n \times n$ matrix where entry $(a, b)$ is the dot product of token $a$'s query vector with token $b$'s key vector.
+The $QK^\top$ product gives an $n \times n$ scores matrix where entry $(a, b)$ is the dot product of token $a$'s query vector with token $b$'s key vector.
 Intuitively, the query of a token encodes what it is looking for, and the key of a token encodes what it has to offer.
 Their dot product measures how relevant token $b$ is to token $a$.
 Dividing by $\sqrt{l}$ keeps the dot products from growing too large before the softmax.
@@ -54,14 +54,14 @@ Dividing by $\sqrt{l}$ keeps the dot products from growing too large before the 
 Applying softmax row-wise turns each row into a probability distribution, the attention weights, which say how much each token attends to every other token.
 
 The attention weights are then multiplied with the value matrix $V$ to produce the attention output: each token's output is a weighted sum of all value vectors, where the weights come from its row of the attention matrix.
-Intuitively, the value vector of a token encodes the information it contributes to other tokens, and the attention weight determines how much of that contribution is picked up.
+Intuitively, the value vector of a token encodes the information it contributes to other tokens, and the attention weight determines how much of that contribution is applied. As shown in Figure~\ref{fig:transformer_overview}, this attention output is then added back to the input hidden state via a residual connection.
 
 \subsubsection{Multi-Head Attention}
 
-\begin{figure}[h]
+\begin{figure}[!ht]
     \centering
-    \includegraphics[width=\textwidth]{../assets/mha.jpeg}
-    \caption{Multi-head attention. The input matrix of shape $n \times d$ is projected by $h$ independent heads, each mapping the full input to a smaller subspace of width $l = d/h$ to produce per-head queries, keys, and values of shape $n \times l$. Each head runs self-attention independently. The outputs are concatenated along the embedding dimension to recover the original $n \times d$ shape.}
+    \includegraphics[width=0.7\textwidth]{../assets/mha.jpeg}
+    \caption{Multi-head attention.}
     \label{fig:mha}
 \end{figure}
 
@@ -77,11 +77,11 @@ The output of each head has the same shape $n \times l$, and the $h$ outputs are
 
 Materializing the full $n \times n$ attention scores matrix has two critical problems.
 
-The first is memory capacity. The matrix grows quadratically with sequence length: at 10k tokens it is roughly 200 MB per head, at 100k tokens it is around 20 GB per head, and at 1 million tokens it exceeds 2 TB per head. MHA runs $h$ heads in parallel, so these numbers scale by $h$, a model like Llama 3 8B uses 32 heads. An H100 has 80 GB of HBM, so at long sequences the scores matrices alone exhaust GPU memory by a large factor.
+The first is memory capacity. The matrix grows quadratically with sequence length: at 10k tokens it is roughly 200 MB per head, at 100k tokens it is around 20 GB per head, and at 1 million tokens it exceeds 2 TB per head. MHA runs $h$ heads in parallel, so these numbers scale by $h$; a model like LLaMA-3.1 8B uses 32 heads. An H100 has 80 GB of HBM, so at long sequences the scores matrices alone exhaust GPU memory by a large factor.
 
 The second problem is memory bandwidth. Even when the matrix fits, standard attention is bottlenecked by repeated data movement between HBM and the small on-chip SRAM. Computing attention requires multiple passes over the scores: write scores to HBM, read them back for softmax, write the result, read it again for the matmul with $V$. Each of these round trips is slow, and they dominate the runtime at long sequences.
 
-FlashAttention~\cite{dao2022flashattention} solves both problems by computing attention in tiles that fit in SRAM. Within each tile, the score computation, softmax, and matmul with $V$ are fused into a single pass, so intermediate results are newer written to HBM. This requires an incremental softmax update to accumulate the correct result across tiles without materializing the full scores matrix. The peak memory footprint drops from $O(n^2)$ to $O(n)$, and the intermediate HBM read/writes are eliminated.
+FlashAttention~\cite{dao2022flashattention} solves both problems by computing attention in tiles that fit in SRAM. Within each tile, the score computation, softmax, and matmul with $V$ are fused into a single pass, so intermediate results are never written to HBM. This requires an incremental softmax update to accumulate the correct result across tiles without materializing the full scores matrix. The peak memory footprint drops from $O(n^2)$ to $O(n)$, and the intermediate HBM read/writes are eliminated.
 
 \subsubsection{FlashAttention Algorithm}
 \label{sec:flashattention_algorithm}
@@ -98,7 +98,7 @@ For each ($Q$ block, $K$/$V$ block) pair, three steps happen in SRAM:
 
 Once all $K$/$V$ blocks have been processed, the running accumulator holds the sum of all partial contributions. It is rescaled by the final softmax normalizer from the online softmax and written back to HBM as the attention output for this $Q$ block.
 
-FlashAttention~1 parallelizes this computation over the batch and head dimensions. FlashAttention~2~\cite{dao2023flashattention2} additionally parallelizes over $Q$ blocks: each kernel instance handles one $Q$ block independently, iterating over all $K$ and $V$ blocks on its own. Since there are no dependencies between $Q$ blocks, this is feasible and enables significantly more parallelism.
+FlashAttention-1 parallelizes this computation over the batch and head dimensions. FlashAttention-2~\cite{dao2023flashattention2} additionally parallelizes over $Q$ blocks: each kernel instance handles one $Q$ block independently, iterating over all $K$ and $V$ blocks on its own. Since there are no dependencies between $Q$ blocks, this is feasible and enables significantly more parallelism.
 
 \subsubsection{FlashAttention Demonstration}
 
@@ -117,34 +117,53 @@ After all $K$/$V$ blocks have been processed, $O_2$ holds the correct attention 
 
 Attention in LLMs is empirically sparse: tokens strongly attend to their neighbors and a few distant tokens. \citet{xiao2023streamingllm} identified two regions that receive strong attention. The first is a narrow band along the diagonal, the \textbf{critical diagonal}, meaning tokens attend mostly to their neighbors. The second is the first few tokens of the sequence, the attention sink.
 
-Figure~\ref{fig:exact_window} shows this for two layers of LLaMA 3.2. Both layers show the same structure: high attention weights on the  diagonal and on the initial token.
+Figure~\ref{fig:exact_window} shows this across an early, middle, and late layer of Qwen1.5-0.5B. Every layer shows the same structure: high attention weights on the diagonal, and a vertical band on the first tokens (the attention sink) that grows stronger in the deeper layers.
 
-\begin{figure}[h]
+\begin{figure}[!ht]
     \centering
-    \includegraphics[width=0.65\textwidth]{../assets/exact_window}
-    \caption{Heatmap of attention scores in two layers of LLaMA 3.2 during prefill. Figure reproduced from \citet{qi2024deltallm}.}
+    \setlength{\fboxsep}{3pt}%
+    \setlength{\fboxrule}{0.4pt}%
+    \begin{subfigure}[b]{0.30\textwidth}
+        \centering
+        \fbox{\includegraphics[width=\linewidth]{../assets/attn_window_early}}
+        \caption{Early layer}
+    \end{subfigure}
+    \hspace{0.02\textwidth}%
+    \begin{subfigure}[b]{0.30\textwidth}
+        \centering
+        \fbox{\includegraphics[width=\linewidth]{../assets/attn_window_mid}}
+        \caption{Middle layer}
+    \end{subfigure}
+    \hspace{0.02\textwidth}%
+    \begin{subfigure}[b]{0.30\textwidth}
+        \centering
+        \fbox{\includegraphics[width=\linewidth]{../assets/attn_window_late}}
+        \caption{Late layer}
+    \end{subfigure}
+    \caption{Attention score heatmaps for one head in an early, middle, and late layer of Qwen1.5-0.5B during prefill on a 512-token sequence. Darker means higher attention. Every layer has a strong band along the critical diagonal, where each token attends to its neighbors.}
     \label{fig:exact_window}
 \end{figure}
 
-This observation motivates computing the attention exactly for tokens in the critical diagonal in prefill acceleration methods. \citet{jiang2024minference} have their A-shape attention pattern. \citet{qi2024deltallm} maintain an exact window for the most recent tokens while compressing the rest via delta key vectors. DeltaAttention follows the same principle: the critical diagonal is processed with the full uncompressed keys and values.
+This observation motivates computing the attention exactly for tokens in the critical diagonal in prefill acceleration methods. \citet{jiang2024minference} have their A-shape attention pattern. \citet{qi2024deltallm} compute the attention value in the diagonal band exactly while compressing the rest via delta key vectors. Delta-KV and DeltaXAttention follow the same principle: the critical diagonal is processed with the full uncompressed keys and values.
 
-\subsection{xAttention}
+\subsection{XAttention}
 \label{sec:xattention}
+
+\input{diagrams/xattention_3part}
 
 XAttention~\citep{xu2025xattention} builds on the FlashAttention tiling structure. The key observation is that many tiles contribute little to the final attention output and can be skipped. XAttention predicts which tiles matter before any full attention is computed, producing a binary block mask that is passed to a block-sparse FlashAttention kernel, which skips the zero entries entirely.
 
-Tile importance is estimated using the antidiagonal of the attention score tile. For a query block $Q_i$ and key block $K_j$, XAttention samples elements along the antidiagonals of the $B \times B$ score tile at a stride $S$, without computing the full tile. In implementation, the $B$ tokens of each block are partitioned into $B/S$ groups of $S$ consecutive tokens. Within each group, the $S$ per-head token vectors of dimension $l$ are concatenated along the head dimension, producing a single packed vector of dimension $Sl$ (with block size $B=128$, stride $S=8$, and head dimension $l=128$, the packed dimension is $1024$). This yields the compressed query representation $\tilde{Q}_i$ of shape $(B/S) \times Sl$, shown in Figure~\ref{fig:xattention_antidiag}. For $K_j$, tokens within each group are concatenated in reverse order, giving $\tilde{K}_j$ of the same shape.
+Figure~\ref{fig:xattention_3part} illustrates the process. On the left, we have the full attention matrix divided into 9 tiles. For each tile, we compute a tile importance score. This yields the block selection matrix in the middle. We then select the tiles with high importance scores (the teal blocks in this case), computing attention fully only for those and skipping the others.
+
+Tile importance is estimated using the antidiagonal of the attention score tile (Figure~\ref{fig:xattention_antidiag}). For a query block $Q_i$ and key block $K_j$, XAttention divides the $B \times B$ score tile into $S \times S$ sub-blocks and samples elements along the antidiagonal of each sub-block, avoiding the computation of the full tile (rightmost matrix in Figure~\ref{fig:xattention_antidiag}). In implementation, the $B$ tokens of each block are partitioned into $B/S$ groups of $S$ consecutive tokens. Within each group, the $S$ per-head token vectors of dimension $l$ are concatenated along the head dimension, producing a single packed vector of dimension $Sl$ (with block size $B=128$, stride $S=8$, and head dimension $l=128$, the packed dimension is $1024$). This yields the compressed query representation $\tilde{Q}_i$ of shape $(B/S) \times Sl$, also shown in Figure~\ref{fig:xattention_antidiag}. For $K_j$, tokens within each group are concatenated in reverse order, giving $\tilde{K}_j$ of the same shape.
 
 Their product $\tilde{Q}_i \tilde{K}_j^\top$ has shape $(B/S) \times (B/S)$, where each entry equals the sum of the $S$ scores along the antidiagonal of the corresponding $S \times S$ sub-block of the full score tile (Figure~\ref{fig:xattention_antidiag}). The exponentials of these approximate scores are summed to produce a single tile importance score, estimating the total attention mass the tile would contribute if computed fully. The total cost is $O(B^2/S)$, rather than $O(B^2/S^2)$ for naive subsampling (taking every $S$-th token without concatenation along the head dimension) or $O(B^2)$ for the full tile.
 
 \input{diagrams/xattention_antidiag}
 
-The tile scores are normalized with softmax across all key blocks for each query block, producing tile weights. Tiles are then selected greedily in decreasing order of weight until the cumulative weight exceeds a threshold $\tau$, yielding a binary mask over the $\lceil N/B \rceil \times \lceil N/B \rceil$ grid of tiles. The threshold $\tau$ is tuned per attention head.
+The tile scores are normalized with softmax across all key blocks for each query block, producing tile weights. Tiles are then selected greedily in decreasing order of weight until the cumulative weight exceeds a threshold $p$ (top-$p$ selection), yielding a binary mask over the $\lceil N/B \rceil \times \lceil N/B \rceil$ grid of tiles. The threshold $p$ is tuned per attention head.
 
-Since tile scores are a proxy for true attention mass, $\tau$ cannot be set analytically; the same $\tau$ value would retain different fractions of true mass in different heads. XAttention calibrates $\tau$ independently per head: a small set of sample sequences is run through the model, and for each head $\tau$ is chosen so that the selected tiles cover a target fraction $r$ of the true attention mass. XAttention reports results at stride $S=8$ and $S=16$, each with a $32 \times 32$ calibrated threshold table covering all layers and heads.
-
-
-XAttention outperforms both MInference~\citep{jiang2024minference} and FlexPrefill~\citep{lai2025flexprefill} on RULER and LongBench while achieving up to $13.5\times$ speedup in attention computation during prefill, with accuracy comparable to full attention.
+Since tile scores are a proxy for true attention mass, $p$ cannot be set analytically; the same $p$ value would retain different fractions of true mass in different heads. XAttention calibrates $p$ independently per head: a small set of sample sequences is run through the model, and for each head $p$ is chosen so that the selected tiles cover a target fraction $r$ of the true attention mass (XAttention sets $r=0.9$, corresponding to 90\% recall). XAttention reports results at stride $S=8$ and $S=16$, each with a $32 \times 32$ calibrated threshold table covering all layers and heads.
 
 
 

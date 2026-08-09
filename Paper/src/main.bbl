@@ -1,0 +1,162 @@
+\begin{thebibliography}{21}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bai et~al.(2024)Bai, Lv, Zhang, Lyu, Tang, Huang, Du, Liu, Zeng, Hou,
+  Dong, Tang, and Li]{bai2024longbench}
+Yushi Bai, Xin Lv, Jiajie Zhang, Hongchang Lyu, Jiankai Tang, Zhidian Huang,
+  Zhengxiao Du, Xiao Liu, Aohan Zeng, Lei Hou, Yuxiao Dong, Jie Tang, and
+  Juanzi Li.
+\newblock {LongBench}: A bilingual, multitask benchmark for long context
+  understanding.
+\newblock In \emph{Proceedings of the 62nd Annual Meeting of the Association
+  for Computational Linguistics}, 2024.
+
+\bibitem[Brown et~al.(2020)Brown, Mann, Ryder, Subbiah, Kaplan, Dhariwal,
+  Neelakantan, Shyam, Sastry, Askell, et~al.]{brown2020gpt3}
+Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared~D. Kaplan,
+  Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda
+  Askell, et~al.
+\newblock Language models are few-shot learners.
+\newblock \emph{Advances in Neural Information Processing Systems},
+  33:\penalty0 1877--1901, 2020.
+
+\bibitem[Child et~al.(2019)Child, Gray, Radford, and
+  Sutskever]{child2019generating}
+Rewon Child, Scott Gray, Alec Radford, and Ilya Sutskever.
+\newblock Generating long sequences with sparse transformers.
+\newblock \emph{arXiv preprint arXiv:1904.10509}, 2019.
+
+\bibitem[Dao(2024)]{dao2023flashattention2}
+Tri Dao.
+\newblock {FlashAttention-2}: Faster attention with better parallelism and work
+  partitioning.
+\newblock In \emph{International Conference on Learning Representations}, 2024.
+
+\bibitem[Dao et~al.(2022)Dao, Fu, Ermon, Rudra, and
+  R{\'e}]{dao2022flashattention}
+Tri Dao, Dan Fu, Stefano Ermon, Atri Rudra, and Christopher R{\'e}.
+\newblock {FlashAttention}: Fast and memory-efficient exact attention with
+  {IO}-awareness.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~35, pages 16344--16359, 2022.
+
+\bibitem[{DeepSeek-AI}(2024)]{deepseekai2024deepseekv2}
+{DeepSeek-AI}.
+\newblock {DeepSeek-V2}: A strong, economical, and efficient mixture-of-experts
+  language model.
+\newblock \emph{arXiv preprint arXiv:2405.04434}, 2024.
+
+\bibitem[Ding et~al.(2024)Ding, Zhang, Zhang, Xu, Shang, Xu, Yang, and
+  Yang]{ding2024longrope}
+Yiran Ding, Li~Lyna Zhang, Chengruidong Zhang, Yuanyuan Xu, Ning Shang, Jiahang
+  Xu, Fan Yang, and Mao Yang.
+\newblock {LongRoPE}: Extending {LLM} context window beyond 2 million tokens.
+\newblock \emph{arXiv preprint arXiv:2402.13753}, 2024.
+
+\bibitem[Fu et~al.(2025)Fu, Dai, Luo, Li, Ren, Zhang, Wang, Zhou, Shen, Zhang,
+  Chen, Li, Lin, Zhao, Li, Xu, Zheng, Chen, Ji, and Sun]{fu2024videomme}
+Chaoyou Fu, Yuhan Dai, Yongdong Luo, Lei Li, Shuhuai Ren, Renrui Zhang, Zihan
+  Wang, Chenyu Zhou, Yunhang Shen, Mengdan Zhang, Peixian Chen, Yanwei Li,
+  Shaohui Lin, Sirui Zhao, Ke~Li, Tong Xu, Xiawu Zheng, Enhong Chen, Rongrong
+  Ji, and Xing Sun.
+\newblock Video-{MME}: The first-ever comprehensive evaluation benchmark of
+  multi-modal {LLMs} in video analysis.
+\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision
+  and Pattern Recognition (CVPR)}, 2025.
+
+\bibitem[Hsieh et~al.(2024)Hsieh, Sun, Kriman, Acharya, Rekesh, Jia, Zhang, and
+  Ginsburg]{hsieh2024ruler}
+Cheng-Ping Hsieh, Simeng Sun, Samuel Kriman, Shantanu Acharya, Dima Rekesh, Fei
+  Jia, Yang Zhang, and Boris Ginsburg.
+\newblock {RULER}: What's the real context size of your long-context language
+  models?
+\newblock In \emph{Proceedings of the First Conference on Language Modeling},
+  2024.
+
+\bibitem[Jiang et~al.(2024)Jiang, Li, Zhang, Wu, Luo, Ahn, Han, Abdi, Li, Lin,
+  Yang, and Qiu]{jiang2024minference}
+Huiqiang Jiang, Yucheng Li, Chengruidong Zhang, Qianhui Wu, Xufang Luo, Surin
+  Ahn, Zhenhua Han, Amir~H. Abdi, Dongsheng Li, Chin-Yew Lin, Yuqing Yang, and
+  Lili Qiu.
+\newblock {MI}nference 1.0: Accelerating pre-filling for long-context {LLMs}
+  via dynamic sparse attention.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2024.
+
+\bibitem[Kuratov et~al.(2024)Kuratov, Bulatov, Anokhin, Rodkin, Sorokin,
+  Sorokin, and Burtsev]{kuratov2024babilong}
+Yuri Kuratov, Aydar Bulatov, Petr Anokhin, Ivan Rodkin, Dmitry Sorokin, Artyom
+  Sorokin, and Mikhail Burtsev.
+\newblock {BABILong}: Testing the limits of {LLMs} with long context
+  reasoning-in-a-haystack.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2024.
+
+\bibitem[Lai et~al.(2025)Lai, Lu, Luo, Ma, and Zhou]{lai2025flexprefill}
+Xunhao Lai, Jianqiao Lu, Yao Luo, Yiyuan Ma, and Xun Zhou.
+\newblock {FlexPrefill}: A context-aware sparse attention mechanism for
+  efficient long-sequence inference.
+\newblock In \emph{International Conference on Learning Representations}, 2025.
+
+\bibitem[Peng et~al.(2023)Peng, Quesnelle, Fan, and Shippole]{peng2023yarn}
+Bowen Peng, Jeffrey Quesnelle, Honglu Fan, and Enrico Shippole.
+\newblock {YaRN}: Efficient context window extension of large language models.
+\newblock \emph{arXiv preprint arXiv:2309.00071}, 2023.
+
+\bibitem[Qi et~al.(2024)Qi, Gao, Ren, and Chen]{qi2024deltallm}
+Jiawen Qi, Chang Gao, Zhaochun Ren, and Qinyu Chen.
+\newblock {DeltaLLM}: A training-free framework exploiting temporal sparsity
+  for efficient edge {LLM} inference.
+\newblock \emph{TODO: add arXiv ID or venue}, 2024.
+
+\bibitem[Saxena et~al.(2024)Saxena, Saha, Choudhary, and
+  Roy]{saxena2024eigenattention}
+Utkarsh Saxena, Gobinda Saha, Sakshi Choudhary, and Kaushik Roy.
+\newblock Eigen attention: Attention in low-rank space for {KV} cache
+  compression.
+\newblock In \emph{Findings of the Association for Computational Linguistics:
+  {EMNLP} 2024}, 2024.
+
+\bibitem[Su et~al.(2024)Su, Ahmed, Lu, Pan, Bo, and Liu]{su2024rope}
+Jianlin Su, Murtadha Ahmed, Yu~Lu, Shengfeng Pan, Wen Bo, and Yunfeng Liu.
+\newblock {RoFormer}: Enhanced transformer with rotary position embedding.
+\newblock \emph{Neurocomputing}, 568:\penalty0 127063, 2024.
+
+\bibitem[Vaswani et~al.(2017)Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez,
+  Kaiser, and Polosukhin]{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones,
+  Aidan~N. Gomez, {\L}ukasz Kaiser, and Illia Polosukhin.
+\newblock Attention is all you need.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~30, 2017.
+
+\bibitem[Wang et~al.(2024)Wang, Jin, Yu, and Zhang]{wang2024kvmerger}
+Zheng Wang, Boxiao Jin, Zhongzhi Yu, and Minjia Zhang.
+\newblock Model tells you where to merge: Adaptive {KV} cache merging for
+  {LLMs} on long-context tasks.
+\newblock \emph{arXiv preprint arXiv:2407.08454}, 2024.
+
+\bibitem[Xiao et~al.(2024)Xiao, Tian, Chen, Han, and
+  Lewis]{xiao2023streamingllm}
+Guangxuan Xiao, Yuandong Tian, Beidi Chen, Song Han, and Mike Lewis.
+\newblock Efficient streaming language models with attention sinks.
+\newblock In \emph{International Conference on Learning Representations}, 2024.
+
+\bibitem[Xu et~al.(2025)Xu, Xiao, Huang, Guo, and Han]{xu2025xattention}
+Ruyi Xu, Guangxuan Xiao, Haofeng Huang, Junxian Guo, and Song Han.
+\newblock {XAttention}: Block sparse attention with antidiagonal scoring.
+\newblock \emph{arXiv preprint arXiv:2503.16428}, 2025.
+
+\bibitem[Zhang et~al.(2025)Zhang, Xiang, Huang, Wei, Xi, Zhu, and
+  Chen]{zhang2025spargeattn}
+Jintao Zhang, Chendong Xiang, Haofeng Huang, Jia Wei, Haocheng Xi, Jun Zhu, and
+  Jianfei Chen.
+\newblock {SpargeAttention}: Accurate and training-free sparse attention
+  accelerating any model inference.
+\newblock In \emph{Proceedings of the 42nd International Conference on Machine
+  Learning}, volume 267 of \emph{Proceedings of Machine Learning Research}.
+  PMLR, 2025.
+
+\end{thebibliography}

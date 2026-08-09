@@ -1,15 +1,56 @@
 \section{Conclusion}
 
-This thesis applied a single observation, that adjacent query and key vectors are highly similar, to three prefill acceleration methods. We summarize what each one showed.
+This thesis applied a single observation, that adjacent query and key vectors are highly similar, to three prefill acceleration methods: Delta-KV compression, DeltaXAttention, and delta-based tile scoring (DPXA). We summarize what each one showed.
 
-Delta-KV compression halves the KV with cos083 thresholding while retaining accuracy at a competitive level. The Triton kernels realize an end-to-end speedup, but the speedup is not dramatic. The theoretical maximum is 2x, and we cannot fully reach even that at the sequence lengths we tested. The method demonstrates the strengths of delta packing, but in this direct form the speedup is dominated by existing work. MInference reaches far higher speedups, up to 10x at one million tokens~\citep[Figure~1b]{jiang2024minference}, while the most Delta-KV compression can reach in this setup is 2x. This makes it impractical as a standalone method in this form.
+\subsection{Delta-KV Compression}
+Delta-KV compression halves the KV with cosine thresholding at 0.83 while retaining accuracy at a competitive level. The Triton kernels realize an end-to-end speedup, but the speedup is not dramatic. The theoretical maximum is 2x, and we cannot fully reach even that at the sequence lengths we tested. The method demonstrates the strengths of delta packing, but in this direct form the speedup is dominated by existing work. MInference reaches far higher speedups, up to 10x at one million tokens~\citep[Figure~1b]{jiang2024minference}, while the most Delta-KV compression can reach in this setup is 2x. This makes it impractical as a standalone method in this form.
 
+\subsection{DeltaXAttention}
 DeltaXAttention halves the KV operations of XAttention while trading some accuracy. However, XAttention can reach the same KV reductions natively, with a similar accuracy trade-off. XAttention translates these reductions directly into speedup because it skips entire blocks. DeltaXAttention does not realize speedups as easily: it does not reduce the number of tiles, which is what XAttention does natively, but instead reduces the number of KV loads and multiplications within each tile. In theory this can lower KV loading and multiplication time, but there is little motivation to build an implementation where these savings turn into real speedup.
 
-DPXA shows the most promising results. The first two methods explore the capabilities of delta compression, and DPXA applies it in a setting where it fits naturally. At 128K tokens DPXA matches the speedup of XAttention while retaining much more accuracy on RULER and matching it on LongBench, and it does so at higher sparsity. Together with the fact that DPXA needs fewer samples from each attention tile, this shows it is a higher quality tile importance estimator. XAttention positions itself as the state of the art in training-free sparse attention, so outperforming it places DPXA in a strong position.
+\subsection{DPXA}
 
-Compared with the other methods, DPXA's realized speedup is lower than SpargeAttn, FlexPrefill, and MInference. SpargeAttn cannot retain much accuracy, so it is not a strong competitor. MInference reaches about 1.25x more speedup than DPXA at 128K but cannot match its RULER accuracy. In fact DPXA dominates every other method in our RULER setup. FlexPrefill reaches about 1.5x more speedup than DPXA, but it suffers multi-hop accuracy degradation on 2WikiMultiHopQA. These results place DPXA in a strong position in sparse attention research: it leads on accuracy retention, beating the other methods overall. Where it falls behind is realized end-to-end speedup against FlexPrefill and MInference, and the cause is the scoring overhead. DPXA operates at high sparsity, and the isolated attention timings show that its attention computation is dramatically reduced, but the tile importance scoring overhead remains prominent. In theory it samples very few points of each attention tile, around 4\%, but the current implementation cannot realize these theoretical numbers because of the dynamic matrix shapes produced by delta packing.
+Among the baselines we tested, there is no silver bullet. Each method trades speed against accuracy and generalization in a different way.
+
+The shape-oriented methods (MInference and FlexPrefill) excel in speedup, yet FlexPrefill struggles with model generalization and MInference realizes its speedup late.
+
+MInference reaches exceptional speedups at very long contexts (256K to 512K), but it rises late and is slower than the baseline up to 128K. This shows up on video, where the longest clips sit around 32K tokens and MInference is much slower than full attention (0.42$\times$ to 0.62$\times$). It holds up accuracy and generalizes to models well. However, its RULER accuracy degrades at 128K on LLaMA (63.73 versus 74.46 for full attention). Overall, its solid performance proves its place in production.
+
+FlexPrefill has a much smoother speedup curve. It delivers speedups at shorter contexts, reflected in its leading video speedups, even though it cannot reach the dramatic 512K speedup of MInference. Although it is competitive on speed, it suffers accuracy degradation on LLaMA RULER (87.45 versus 89.07) and especially on LongBench (44.78 versus 47.53), driven by the multi-hop tasks 2WikiMultiHopQA (38.53 versus 47.97) and MuSiQue (28.73 versus 34.88). More importantly, its accuracy breaks on every Qwen text benchmark (RULER 53.50 versus 90.33), which points to a cross-model generalization failure.
+
+The block-sparse methods (XAttention and DPXA) retain accuracy better across the benchmarks, yet they cannot reach the impressive speedups of the shape-oriented methods.
+
+XAttention generally has solid accuracy retention and cleanly generalizes to different models and modalities. On the Qwen RULER benchmark it scores considerably higher than DPXA (90.25 versus 88.12--88.89), but it falls back on LLaMA compared to DPXA (88.02 versus 89.02 on RULER). Its overall accuracy is tied with DPXA on video, yet on the long bucket DPXA has an advantage (52.6 versus 51.7).
+
+DPXA shows that delta packing fits naturally as a tile importance estimator, and it gains a strong position in the training-free sparse attention arena.
+
+It generally excels at accuracy retention and shows solid model and modality generalization. The one exception is the Qwen RULER aggregation tasks (variable tracking and common word extraction), where its accuracy degrades, though this does not carry over to the real-world LongBench benchmark.
+
+It is the best method for accuracy retention on LLaMA and in long video understanding (excluding MInference on long video, since it runs about 2$\times$ slower than full attention there). Compared to XAttention, at all configurations and sequence lengths, it either matches or beats XAttention's speedup due to its much lighter scoring phase. The only reason we cannot say it dominates XAttention is the Qwen RULER aggregation degradation.
+
+Overall, this thesis shows that adjacent token similarity is still largely unexplored in prefill acceleration. Delta-KV and DeltaXAttention demonstrate the potential but do not reach competitive results with the state of the art. DPXA applies the idea in a context where it naturally shines, and places itself in a competitive position among the state-of-the-art methods.
+
+
+
+
+
 
 \subsection{Future Work}
 
-% TODO
+Several directions could push DPXA further. The thresholding itself is the most immediate one. Q and K may benefit from separate thresholds, and later layers may tolerate more aggressive thresholding, since adjacent tokens are more similar there (Section~\ref{sec:observations}).
+
+A second direction is to combine DPXA with the shape-oriented methods. On their block-sparse heads, FlexPrefill and MInference rank tiles by mean pooling, a fast but coarse importance estimator. DPXA's delta-based scoring could replace it as a sharper ranker while keeping their finer-grained sparsity and higher speedups.
+
+A third direction is score normalization. Some tiles may score higher simply because they have more samples, rather than because they are more important. Count-weighting was designed to correct exactly this, but it hurt performance in our experiments, and we do not fully understand the theoretical mechanism behind that. A better normalization scheme for the tile scores, and a proper account of why the un-weighted score works so well, are left to future work.
+
+
+
+\subsection{Strengths \& Limitations}
+
+\paragraph{Strengths.}
+Every method is run from its own codebase with its default configuration, so the comparison is fair to all of them. The baselines cover most of the strong work in the plug-and-play sparse attention domain, which places DPXA clearly against the current state of the art. All speedups are measured end-to-end rather than on isolated kernels, so no method benefits from a cherry-picked metric.
+
+\paragraph{Limitations.}
+There are a few things we did not cover. We did not test on InfiniteBench, which would add another long-context benchmark to the evaluation. We also skipped the longer RULER buckets (256K and 512K) because they are too expensive to run, though skipping these lengths is common in related work. Our Video-MME evaluation only uses the no-subtitles setting, so subtitled video understanding is left untested. Finally, we only evaluated understanding tasks, so video and image generation are left untested.
+
+

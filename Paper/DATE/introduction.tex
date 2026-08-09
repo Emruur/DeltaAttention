@@ -1,0 +1,25 @@
+\section{Introduction}
+
+
+
+
+Long-context inference has become a critical and impactful application for Large Language Models (LLMs)~\cite{dubey2024llama3, qwen25, Qwen2-VL, reid2024gemini, liu2023ring}. For instance, coding agents~\cite{yang2024sweagent} ingest entire codebases to reason about them, while other systems analyze extensive documents such as legal contracts, research papers, and financial reports. Furthermore, Retrieval-Augmented Generation (RAG)~\cite{lewis2020retrieval} integrates retrieved documents directly into the model context, grounding LLM responses in external knowledge. However, all these applications share a common bottleneck.
+
+
+LLM inference consists of two stages: the prefill stage, which processes the entire input prompt in a single forward pass, and the decoding stage, which generates output tokens one by one. During the prefill stage, computing self-attention performs a computation that is quadratic in complexity, as each token must communicate with every other token.
+\begin{figure}[t]
+    \centering
+    \input{diagrams/dts_3part.tex}
+    \caption{DTS four-stage process: Compress queries and keys into $\hat{Q}$ and $\hat{K}$ and multiply them to estimate sparse attention scores during delta scoring. These individual scores are then summed to yield a single importance score for each tile. Finally, the highest-scoring tiles are selected to undergo block sparse attention.}
+    \label{fig:dts_flow}
+\end{figure}
+
+As context length grows, the quadratic complexity of attention makes prefill increasingly expensive.
+Memory was the original wall; FlashAttention~\cite{dao2022flashattention, dao2023flashattention2, shah2024flashattention3} and PagedAttention~\cite{kwon2023efficient} removed it but did not address the time complexity: computing attention on long contexts is slow.
+
+A large body of work aims to accelerate attention for long context tasks by exploiting the empirical sparsity of the attention matrix: most tokens only attend strongly to a small local window and a few distant positions, so many token pair interactions do not need to be computed at all.
+Early work used fixed sparse patterns~\cite{child2019generating, Beltagy2020Longformer, zaheer2020bigbird}; more recent methods determine the pattern dynamically based on the input~\cite{jiang2024minference, lai2025flexprefill, xu2025xattention}.
+
+This paper exploits the insight that adjacent tokens have similar key vectors, with high cosine similarity between neighboring keys. This redundancy in $K$ is already documented in prior work~\cite{wang2024kvmerger, qi2024deltallm}. We show that the same holds for query vectors: adjacent queries are also highly similar. 
+
+We apply this insight as a tile importance estimator for block-sparse attention, choosing which tiles to compute while sampling far less of each tile than existing estimators.

@@ -1,0 +1,12 @@
+\section{Observations}
+\label{sec:observations}
+
+High cosine similarity between adjacent key states has been previously observed~\cite{wang2024kvmerger}.
+
+In this section, we extend this analysis to both key and query states. We feed LLaMA-3.1 8B Instruct a sequence of 512 tokens sampled from WikiText-103 and record the states at layers 0, 8, 16, and 23. At each layer, we compute the average cosine similarity between all adjacent token pairs, averaged over heads.
+We compare two configurations: (1) \textbf{Natural Order (post-RoPE)}: states computed with the original token sequence, and (2) \textbf{Shuffled Order}: states computed after randomly shuffling the token positions, breaking positional adjacency.
+
+Comparing the shuffled and natural orders allows us to isolate the source of the similarity. As shown in Figure~\ref{fig:combined_similarity}, both key and query states exhibit high adjacent cosine similarity in their natural order. When the token order is shuffled, the similarity drops significantly for both keys and queries. This confirms that the high adjacent similarity is not solely an artifact of the projection matrices or positional encodings, but is strongly driven by the inherent semantic and structural redundancy of adjacent tokens in natural text.
+Crucially, query states exhibit the same high local redundancy as key states, motivating a compression strategy that exploits both.
+
+\input{diagrams/combined_similarity_bars}

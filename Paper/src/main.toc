@@ -1,0 +1,66 @@
+\contentsline {section}{\numberline {1}Introduction}{3}{section.1}%
+\contentsline {section}{\numberline {2}Preliminaries}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Transformer Overview}{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Attention Block}{5}{subsection.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.1}Self-Attention}{5}{subsubsection.2.2.1}%
+\contentsline {subsubsection}{\numberline {2.2.2}Multi-Head Attention}{6}{subsubsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.3}FlashAttention}{6}{subsection.2.3}%
+\contentsline {subsubsection}{\numberline {2.3.1}FlashAttention Algorithm}{7}{subsubsection.2.3.1}%
+\contentsline {subsubsection}{\numberline {2.3.2}FlashAttention Demonstration}{7}{subsubsection.2.3.2}%
+\contentsline {subsection}{\numberline {2.4}Local Attention Window}{8}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}XAttention}{9}{subsection.2.5}%
+\contentsline {section}{\numberline {3}Observations}{10}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Key Similarity}{10}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Query Similarity}{11}{subsection.3.2}%
+\contentsline {section}{\numberline {4}Related Work}{12}{section.4}%
+\contentsline {paragraph}{Attention complexity and FlashAttention.}{12}{section*.11}%
+\contentsline {paragraph}{Sparse attention for prefill.}{12}{section*.12}%
+\contentsline {paragraph}{KV cache compression for decoding.}{13}{section*.13}%
+\contentsline {paragraph}{Delta-based prefill acceleration.}{13}{section*.14}%
+\contentsline {section}{\numberline {5}Methodology}{14}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Delta-KV Compression}{14}{subsection.5.1}%
+\contentsline {subsubsection}{\numberline {5.1.1}Stage 1: Pre-processing}{14}{subsubsection.5.1.1}%
+\contentsline {subsubsection}{\numberline {5.1.2}Stage 2: Packing}{15}{subsubsection.5.1.2}%
+\contentsline {subsubsection}{\numberline {5.1.3}Stage 3: Self-Attention}{16}{subsubsection.5.1.3}%
+\contentsline {subsubsection}{\numberline {5.1.4}FlashAttention Adaptation}{16}{subsubsection.5.1.4}%
+\contentsline {subsection}{\numberline {5.2}DeltaXAttention}{17}{subsection.5.2}%
+\contentsline {subsubsection}{\numberline {5.2.1}Preserving accuracy}{17}{subsubsection.5.2.1}%
+\contentsline {subsubsection}{\numberline {5.2.2}Ablation}{17}{subsubsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.3}Delta-Based Tile Scoring (DPXA)}{18}{subsection.5.3}%
+\contentsline {section}{\numberline {6}Experimental Setup}{20}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Benchmarks}{20}{subsection.6.1}%
+\contentsline {subsubsection}{\numberline {6.1.1}Needle in a Haystack and RULER}{20}{subsubsection.6.1.1}%
+\contentsline {subsubsection}{\numberline {6.1.2}LongBench}{20}{subsubsection.6.1.2}%
+\contentsline {subsubsection}{\numberline {6.1.3}Video-MME}{21}{subsubsection.6.1.3}%
+\contentsline {subsection}{\numberline {6.2}Speedup Experiment}{21}{subsection.6.2}%
+\contentsline {section}{\numberline {7}Results}{21}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Delta-KV Compression}{21}{subsection.7.1}%
+\contentsline {subsubsection}{\numberline {7.1.1}RULER}{21}{subsubsection.7.1.1}%
+\contentsline {subsubsection}{\numberline {7.1.2}Speedup analysis}{22}{subsubsection.7.1.2}%
+\contentsline {subsubsection}{\numberline {7.1.3}Ablations}{23}{subsubsection.7.1.3}%
+\contentsline {paragraph}{Threshold metric.}{23}{section*.21}%
+\contentsline {paragraph}{Count-weighted softmax.}{24}{section*.23}%
+\contentsline {paragraph}{Critical diagonal.}{24}{section*.25}%
+\contentsline {paragraph}{Phase 2 only.}{25}{section*.27}%
+\contentsline {paragraph}{Non-adaptive baselines.}{25}{section*.29}%
+\contentsline {subsection}{\numberline {7.2}DeltaXAttention}{26}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Delta-Based Tile Scoring (DPXA)}{27}{subsection.7.3}%
+\contentsline {subsubsection}{\numberline {7.3.1}RULER}{27}{subsubsection.7.3.1}%
+\contentsline {subsubsection}{\numberline {7.3.2}LongBench}{27}{subsubsection.7.3.2}%
+\contentsline {subsubsection}{\numberline {7.3.3}Speedup and discussion}{28}{subsubsection.7.3.3}%
+\contentsline {subsubsection}{\numberline {7.3.4}Cosine threshold ablation}{31}{subsubsection.7.3.4}%
+\contentsline {subsubsection}{\numberline {7.3.5}Cross-Model Generalization: Qwen2.5-7B}{31}{subsubsection.7.3.5}%
+\contentsline {paragraph}{RULER.}{32}{section*.39}%
+\contentsline {paragraph}{LongBench.}{33}{section*.43}%
+\contentsline {paragraph}{Speedup.}{34}{section*.45}%
+\contentsline {subsubsection}{\numberline {7.3.6}Video Understanding: Qwen2-VL}{34}{subsubsection.7.3.6}%
+\contentsline {paragraph}{Benchmark.}{34}{section*.47}%
+\contentsline {paragraph}{Ablations.}{35}{section*.49}%
+\contentsline {section}{\numberline {8}Conclusion}{36}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Delta-KV Compression}{37}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}DeltaXattention}{37}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}DPXA}{37}{subsection.8.3}%
+\contentsline {subsection}{\numberline {8.4}Future Work}{38}{subsection.8.4}%
+\contentsline {subsection}{\numberline {8.5}Strengths \& Limitations}{38}{subsection.8.5}%
+\contentsline {paragraph}{Strengths.}{38}{section*.51}%
+\contentsline {paragraph}{Limitations.}{38}{section*.52}%

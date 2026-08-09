@@ -1,0 +1,9 @@
+\begin{abstract}
+Long-context prefill is dominated by the cost of attention, which grows quadratically with sequence length. Most training-free work speeds this up by exploiting the sparsity of the attention matrix. We start from a different observation: adjacent query and key vectors are highly similar at the token level, so the $Q$ and $K$ matrices can be compressed along the sequence dimension.
+
+We apply this single idea in three ways. Delta-KV applies it as a standalone optimization, packing the key and value matrices along the sequence dimension to halve the attention operations while keeping accuracy competitive and reaching up to a 2$\times$ prefill speedup. DeltaXAttention applies the same packing inside the tiles that XAttention selects. Delta-based tile scoring (DPXA) uses the delta representation to estimate tile importance cheaply for block-sparse attention.
+
+DPXA is the strongest of the three. On LLaMA-3.1 8B Instruct it is essentially lossless on RULER and competitive on LongBench, it holds up on Qwen2.5-7B, and it transfers to long video understanding on Qwen2-VL. On Llama it produces a higher-quality tile-importance signal than XAttention at a fraction of the scoring cost, and across both models it matches or beats XAttention's speedup at every setting we test. Its one weakness is a drop on the Qwen aggregation tasks, which does not carry over to the real-world LongBench benchmark. Overall this places DPXA in a competitive position among training-free sparse attention methods.
+
+These results show that adjacency redundancy in $Q$ and $K$ is a useful and largely unexplored area for accelerating long-context attention.
+\end{abstract}

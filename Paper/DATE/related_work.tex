@@ -1,0 +1,16 @@
+\section{Related Work}
+
+The dominant strategy in attention acceleration is exploiting the fact that attention matrices are empirically sparse: most tokens attend strongly to only a small fraction of others.
+Child et al.~\cite{child2019generating}, along with subsequent works like Longformer~\cite{Beltagy2020Longformer} and BigBird~\cite{zaheer2020bigbird}, were among the first to demonstrate this, observing that trained Transformer attention matrices concentrate on local windows and a few distant positions.
+They proposed fixed sparse patterns (local windows combined with strided or fixed summary positions) to approximate full attention with fewer FLOPs.
+The limitation is that a fixed pattern cannot adapt to the content of a given input. This motivated a shift to dynamic sparse attention, where the sparsity pattern is determined on the fly. These methods generally fall into two categories: attention shape methods and block-sparse attention methods.
+
+\textbf{Block-sparse attention methods} dynamically skip attention tiles that are estimated to be unimportant. SpargeAttn~\cite{zhang2025spargeattn} selects a representative per block using mean pooling and scores tiles based on the block representatives. XAttention~\cite{xu2025xattention} uses the sum of antidiagonal values within each attention block as a lightweight proxy for tile importance. Both methods then compute attention only for the tiles scored as important.
+
+\textbf{Attention shape methods}, in contrast, identify and exploit the specific attention pattern a head exhibits. For example, MInference~\cite{jiang2024minference}---a foundational and widely deployed approach---observes that LLM attention heads follow consistent structural patterns (A-shape, Vertical-Slash, and Block-Sparse) across inputs. It assigns each head its dominant pattern offline and builds sparse indices accordingly at inference time. Crucially, Block-Sparse heads lack a fixed, exploitable shape; for these, MInference falls back to block-sparse attention. Similar to SpargeAttn, it mean-pools each query and key block into a single representative and uses the resulting attention scores to select important tiles.
+
+FlexPrefill~\cite{lai2025flexprefill} extends MInference by making it content-adaptive. Instead of assigning a shape to a head offline, FlexPrefill decides at inference time whether to treat a head as Vertical-Slash or block-sparse, based on the Jensen-Shannon divergence between the head's attention and each candidate pattern. It also differs in how tiles are selected.
+
+
+
+Our Delta-based tile scoring (DTS) is most closely related to XAttention~\cite{xu2025xattention} and SpargeAttn~\cite{zhang2025spargeattn}. All three methods compute a cheap importance score to identify which tiles require exact computation. While XAttention sums the antidiagonal values of each block and SpargeAttn mean-pools blocks into single representatives, DTS compresses $Q$ and $K$ to perform a lightweight attention that captures tile importance. Furthermore, unlike XAttention's reliance on rigid strides, DTS's tile scoring remains fully content-adaptive.

@@ -1,0 +1,179 @@
+            <!-- Slide 12.5: Methodology: DPXA -->
+            <section class="slide" id="methodology-dpxa-slide" style="padding-top: 1rem; padding-bottom: 1rem;">
+                <div class="slide-header" style="margin-bottom: 0.5rem;">
+                    <h2>Methodology: DPXA</h2>
+                </div>
+                <div class="slide-content" style="display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6rem; padding: 0 2rem;">
+                    
+                    <!-- Q Matrix Container -->
+                    <div class="k-matrix-container">
+                        <div style="display: flex; flex-direction: row; justify-content: flex-start; gap: 8px;">
+                            <h3 style="margin-bottom: 0.25rem; font-size: 1.5rem; color: #1E8E3E; width: 30px; text-align: center;">&Delta;</h3>
+                            <div style="width: 20px;"></div>
+                            <h3 style="margin-bottom: 0.25rem; font-size: 1.5rem; color: #1A73E8; width: 44px; text-align: center;">Q</h3>
+                        </div>
+                        <div style="display: flex; flex-direction: row; gap: 8px;">
+                            <!-- Delta Q Matrix Column -->
+                            <div class="k-matrix" id="dpxa-delta-q-matrix">
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                            </div>
+                            <!-- Space -->
+                            <div style="width: 20px;"></div>
+                            <!-- Q Matrix Column -->
+                            <div class="k-matrix" id="dpxa-q-matrix">
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q0</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q1</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q2</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q3</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q4</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q5</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q6</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q7</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q8</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q9</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q10</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q11</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q12</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q13</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q14</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>q15</span></div></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- K Matrix Container -->
+                    <div class="k-matrix-container">
+                        <div style="display: flex; flex-direction: row; justify-content: flex-start; gap: 8px;">
+                            <h3 style="margin-bottom: 0.25rem; font-size: 1.5rem; color: #1E8E3E; width: 30px; text-align: center;">&Delta;</h3>
+                            <div style="width: 20px;"></div>
+                            <h3 style="margin-bottom: 0.25rem; font-size: 1.5rem; color: #1A73E8; width: 44px; text-align: center;">K</h3>
+                        </div>
+                        <div style="display: flex; flex-direction: row; gap: 8px;">
+                            <!-- Delta K Matrix Column -->
+                            <div class="k-matrix" id="dpxa-delta-k-matrix">
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                            </div>
+                            <!-- Space -->
+                            <div style="width: 20px;"></div>
+                            <!-- K Matrix Column -->
+                            <div class="k-matrix" id="dpxa-k-matrix">
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k0</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k1</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k2</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k3</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k4</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k5</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k6</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k7</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k8</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k9</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k10</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k11</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k12</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k13</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k14</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k15</span></div></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Animation container -->
+                    <div id="dpxa-anim-data" style="display: none;">
+                        <div class="dpxa-step animate-on-click" data-action="init-anchors"></div>
+                        <div class="dpxa-step animate-on-click" data-action="eval-step-1"></div>
+                        <div class="dpxa-step animate-on-click" data-action="eval-step-2"></div>
+                        <div class="dpxa-step animate-on-click" data-action="eval-step-3"></div>
+                    </div>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const slide = document.getElementById('methodology-dpxa-slide');
+                            const steps = slide.querySelectorAll('.dpxa-step');
+                            const qCells = slide.querySelectorAll('#dpxa-delta-q-matrix .v-cell');
+                            const kCells = slide.querySelectorAll('#dpxa-delta-k-matrix .v-cell');
+                            
+                            // final delta values for K
+                            const finalValsK = [
+                                1, 0, 1, 1,
+                                1, 0, 1, 1,
+                                1, 1, 0, 0,
+                                1, 0, 1, 0
+                            ];
+                            // final delta values for Q
+                            const finalValsQ = [
+                                1, 1, 1, 0,
+                                1, 0, 0, 1,
+                                1, 1, 0, 0,
+                                1, 0, 1, 0
+                            ];
+
+                            const updateAnimation = () => {
+                                if(!slide.classList.contains('active')) return;
+                                
+                                let currentStep = -1;
+                                steps.forEach((s, idx) => {
+                                    if(s.classList.contains('visible')) currentStep = idx;
+                                });
+                                
+                                // Helper
+                                const setCell = (cells, row, val) => {
+                                    cells[row].innerHTML = val;
+                                    if(val === 1) {
+                                        cells[row].style.background = '#444';
+                                        cells[row].style.color = '#fff';
+                                    } else {
+                                        cells[row].style.background = '#fff';
+                                        cells[row].style.color = '#111';
+                                    }
+                                };
+
+                                // Set initial populated state for all cells
+                                for (let r = 0; r < 16; r++) {
+                                    setCell(qCells, r, finalValsQ[r]);
+                                    setCell(kCells, r, finalValsK[r]);
+                                }
+
+                                if (currentStep < 0) return;
+
+                                // Future animation steps can be added here
+                            };
+                            
+                            const observer = new MutationObserver(updateAnimation);
+                            steps.forEach(s => observer.observe(s, {attributes: true, attributeFilter: ['class']}));
+                            new MutationObserver(updateAnimation).observe(slide, {attributes: true, attributeFilter: ['class']});
+                            updateAnimation();
+                        });
+                    </script>
+                </div>
+            </section>
+

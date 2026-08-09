@@ -1,0 +1,20 @@
+\section{Conclusion}
+
+
+Among the baselines we tested, there is no silver bullet. Each method trades speed against accuracy and generalization in a different way. The shape-oriented methods (MInference and FlexPrefill) excel in speedup, yet FlexPrefill struggles with model generalization and MInference realizes its speedup late.
+
+MInference reaches exceptional speedups at very long contexts (256K to 512K), but it rises late and is slower than the baseline up to 128K on Qwen2.5. This shows up on video, where the longest clips sit around 32K tokens and MInference is much slower than full attention (0.42$\times$ to 0.62$\times$). It holds up accuracy and generalizes to models well. However, its RULER accuracy degrades at 128K on LLaMA (63.73 versus 74.46 for full attention). Overall, its solid performance proves its place in production.
+
+FlexPrefill has a smoother speedup curve. It delivers speedups at shorter contexts even though it cannot reach the dramatic 512K speedup of MInference. Although it is competitive on speed, it suffers accuracy degradation on LLaMA RULER's 128K (74.23 versus 74.46) and on LongBench average (44.78 versus 47.53). More importantly, its accuracy breaks on every Qwen text benchmark (RULER 53.50 versus 90.33), which points to a cross-model generalization failure.
+
+The block-sparse methods (XAttention and DTS) retain accuracy better across the benchmarks, yet they cannot reach the impressive speedups of the shape-oriented methods.
+
+XAttention generally has solid accuracy retention and cleanly generalizes to different models and modalities. On the Qwen RULER benchmark it scores considerably higher than DTS (90.25 versus 88.12--88.89), but it falls back on LLaMA compared to DTS (88.02 versus 89.02 on RULER). Its overall accuracy is tied with DTS on video, yet on the long bucket DTS has an advantage (52.6 versus 51.7) while providing higher speedup (1.33$\times$ versus 1.18$\times$).
+
+
+Overall DTS generally excels at accuracy retention and shows solid model and modality generalization. The one exception is the Qwen RULER aggregation tasks (variable tracking and common word extraction), where its accuracy degrades, though this does not carry over to the real-world LongBench benchmark. It is the best method for accuracy retention on LLaMA and in long video understanding. Compared to XAttention, at all configurations and sequence lengths, it either matches or beats XAttention's speedup due to its much lighter scoring phase. The only reason we cannot say it dominates XAttention is the Qwen RULER aggregation degradation.
+
+
+\subsection{Future Work}
+
+Several directions could push DTS further. First, thresholding can be refined by applying separate limits to $Q$ and $K$, or using more aggressive thresholds in later layers. Second, DTS currently lacks a tile normalization scheme, meaning that some tiles inherently score higher simply because they contain more unpruned vectors. Finally, future work will evaluate DTS on larger models, test it on the InfiniBench benchmark, and apply it to image and video generation tasks.

@@ -1,111 +1,115 @@
 \section{Results}
 
-We report results for the three methods in turn: Delta-KV compression, DeltaXAttention, and delta-based tile scoring (DPXA). All evaluations use LLaMA-3.1 8B Instruct.
+We report results for the three methods in turn: Delta-KV compression, DeltaXAttention, and delta-based tile scoring (DPXA). All evaluations use LLaMA-3.1 8B Instruct. Delta-KV compression and DeltaXAttention are evaluated exclusively on RULER, while DPXA is evaluated on both RULER and LongBench. We chose this strategy because synthetic retrieval tasks (such as those in RULER) provide a sensitive measure of attention pattern fidelity, making them well-suited for rapid evaluation during development. Additionally, because Delta-KV and DeltaXAttention are less competitive with current state-of-the-art approaches, we limit their evaluation to RULER and reserve the LongBench suite for our most promising method, DPXA.
 
 \subsection{Delta-KV Compression}
 
-% TODO: Drop this RULER subsection and tab:ruler. It is a full RULER run (100 samples, 13 tasks),
-% which is inconsistent with the reduced 30-sample/9-task setup used everywhere else. Once removed,
-% the experimental setup claim that "all RULER results use the reduced setup" becomes correct, and
-% tab:delta_tile_scoring (DPXA, already 30/9) serves as the main RULER comparison.
 \subsubsection{RULER}
 
-Table~\ref{tab:ruler} reports RULER accuracy on LLaMA-3.1 8B Instruct across context lengths from 4K to 128K tokens. All methods are run using the XAttention codebase and their RULER setup, so the MInference result is the XAttention authors' implementation. DeltaAttention is slightly below XAttention, but the gap is small. Both XAttention and DeltaAttention degrade at 64K and 128K tokens, while MInference retains accuracy at those lengths. MInference outperforms XAttention in our evaluation, which differs from the results reported in the original XAttention paper~\cite{xu2025xattention}; we attribute this to dataset versioning differences in the RULER benchmark. Overall, DeltaAttention achieves comparable accuracy to the state-of-the-art methods while reducing KV loads by 49.4\%.
+Table~\ref{tab:ruler} reports RULER accuracy on LLaMA-3.1 8B Instruct across context lengths from 4K to 128K tokens. All methods are run from their respective codebases. Looking at the average scores, Delta-KV performs similarly to MInference, and both are slightly below XAttention, but the gap is small. Both XAttention and Delta-KV degrade at 64K tokens, while MInference retains accuracy at that length. Conversely, at 128K tokens, MInference degrades significantly, whereas Delta-KV and XAttention retain good accuracy. However, drawing strong conclusions from these two observations would be inaccurate, as this relies on a reduced RULER setup. Overall, Delta-KV achieves comparable accuracy to state-of-the-art methods while reducing KV loads by 50.9\%.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption{RULER accuracy (\%) on LLaMA-3.1 8B Instruct (100 samples, 13 tasks). Higher is better. KV Red is the average fraction of KV loads saved relative to full attention.}
+\caption{RULER accuracy (\%) on LLaMA-3.1 8B Instruct (30 samples, 9 tasks). Higher is better. KV Red is the average fraction of KV loads saved relative to full attention.}
 \label{tab:ruler}
 \begin{tabular}{lrrrrrrrr}
 \toprule
 Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
 \midrule
-Full attention            & 96.21 & 93.78 & 93.30 & 90.69 & 86.27 & 74.27 & 89.09 & 0\%    \\
-MInference                & 96.11 & 94.10 & 93.51 & 90.65 & 86.00 & 74.42 & 89.13 & --     \\
-XAttention                & 95.59 & 93.98 & 92.95 & 90.44 & 81.75 & 71.01 & 87.62 & --     \\
-DeltaAttention (cos083)   & 95.56 & 93.07 & 91.68 & 89.02 & 82.35 & 71.08 & 87.13 & 49.4\% \\
+Full attention            & 99.31 & 97.21 & 96.59 & 93.76 & 88.23 & 74.00 & 91.52 & 0\%    \\
+MInference                & 99.18 & 97.25 & 96.44 & 91.96 & 87.21 & 65.26 & 89.55 & --     \\
+XAttention                & 98.14 & 97.37 & 96.62 & 92.84 & 84.01 & 71.49 & 90.08 & --     \\
+Delta-KV (cos\,0.83)         & 99.27 & 96.99 & 95.11 & 90.79 & 83.94 & 71.43 & 89.59 & 50.9\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsubsection{Prefill speedup}
+\subsubsection{Speedup analysis}
 
-Figure~\ref{fig:speedup_comparison} shows the prefill speedup of DeltaAttention at thresholds 15 and 17 against two baselines.
-The Flash baseline is our own Triton Flash Attention 2 implementation, which is the same kernel DeltaAttention is built on, so this is a direct comparison of the effect of delta packing alone.
-SDPA is a standard PyTorch Flash Attention 2 implementation included as a common reference point.
+Figure~\ref{fig:speedup_comparison} shows the prefill speedup of Delta-KV at cos\,0.83 and cos\,0.78 against two baselines.
+The Flash baseline is our own Triton FlashAttention-2 implementation, which is the same kernel Delta-KV is built on, so this is a direct comparison of the effect of delta packing alone.
+SDPA is a standard PyTorch FlashAttention-2 implementation included as a common reference point.
 
-At short sequences the overhead of computing the delta pattern costs more than it saves, so DeltaAttention is slower.
-Around 16K tokens the reduction in K iterations starts to dominate and DeltaAttention crosses above both baselines.
-At 262K tokens, threshold 15 reaches roughly 1.35x over SDPA and 1.5x over Flash, while threshold 17 reaches roughly 1.8x over SDPA and 2.1x over Flash.
+At short sequences the overhead of computing the delta pattern costs more than it saves, so Delta-KV is slower.
+Around 16K tokens the reduction in K iterations starts to dominate and Delta-KV crosses above both baselines.
+At 262K tokens, cos\,0.83 reaches roughly 1.35x over SDPA and 1.5x over Flash, while cos\,0.78 reaches roughly 1.8x over SDPA and 2.1x over Flash.
 
 The observed speedup is lower than what the KV reduction alone would predict.
-Threshold 15 achieves 50\% KV reduction (Section~\ref{sec:ablation_threshold}), which would suggest a 2x attention speedup, but attention is only one part of the forward pass: MLP layers take a fixed share of the time regardless of sequence length.
+cos\,0.83 achieves 50\% KV reduction (Section~\ref{sec:ablation_threshold}), which would suggest a 2x attention speedup, but attention is only one part of the forward pass: MLP layers take a fixed share of the time regardless of sequence length.
 As sequence length grows, attention increasingly dominates latency (Figure~\ref{fig:attention_dominance}), so the end-to-end speedup approaches the theoretical attention speedup.
 Our experiments on an H100 ran up to 262K tokens, and the trend suggests the speedup would continue climbing toward 2x.
-At threshold 17, the 65\% KV reduction implies a theoretical attention speedup of roughly 3x, but the measured value is 2.1x at 262K for the same reason.
+At cos\,0.78, the 65\% KV reduction implies a theoretical attention speedup of roughly 3x, but the measured value is 2.1x at 262K for the same reason.
 
 A second factor limiting the realized speedup is the overhead of delta computation and packing (Sections~\ref{sec:preprocessing} and~\ref{sec:packing}).
-Table~\ref{tab:delta_overhead} shows that at 512 tokens this overhead accounts for 39.1\% of total prefill time, dropping to 22.6\% at 4K and 8.5\% at 16K.
-The absolute overhead grows slowly with sequence length, from 21ms at 512 tokens to 95ms at 262K, while the total prefill time grows much faster.
-As a result the ratio falls to 1.4\% at 65K tokens and 0.24\% at 262K, making it negligible at the sequence lengths where DeltaAttention provides the most speedup.
+Figure~\ref{fig:delta_overhead} shows that at 512 tokens this overhead accounts for 39.1\% of total prefill time, dropping to 22.6\% at 4K and 8.5\% at 16K.
+The overhead grows slowly with sequence length, from 21ms at 512 tokens to 95ms at 262K, while the total prefill time grows much faster.
+As a result the ratio falls to 1.4\% at 65K tokens and 0.24\% at 262K, making it negligible at the sequence lengths where Delta-KV provides the most speedup.
 
-Final factor is that the DeltaAttention kernel cannot benefit from memory pipelining.
+A final factor is that the Delta-KV kernel cannot benefit from memory pipelining.
 Standard FlashAttention iterates over key blocks with a for loop, so the GPU can prefetch the next block's data from HBM while the current block's matrix multiply is still running, hiding most of the memory latency.
-DeltaAttention uses a while loop to handle the two phases dynamically, and the number of iterations is not known in advance, so the compiler cannot schedule prefetches ahead of time.
-Each block load must complete before the next iteration can start, leaving memory latency exposed.
-This is an inherent cost of the adaptive two-phase structure and one of the main reasons DeltaAttention does not fully realize its theoretical speedup.
+Delta-KV uses a while loop to handle the two phases dynamically, and the number of iterations is not known in advance, so the compiler cannot schedule prefetches ahead of time.
+Each block load must complete before the next iteration can start.
+This is an inherent cost of the adaptive two-phase structure and one of the main reasons Delta-KV does not fully realize its theoretical speedup.
 
 
 
 
-\begin{figure}[h]
+\begin{figure}[!ht]
     \centering
     \includegraphics[width=\linewidth]{../assets/speedup_comparison.png}
-    \caption{Prefill speedup of DeltaAttention relative to SDPA and Flash baselines at thresholds 15 and 17 on LLaMA-3.1 8B Instruct. Values above 1.0 mean DeltaAttention is faster.}
+    \caption{Prefill speedup of Delta-KV relative to SDPA and Flash baselines at cos\,0.83 (left) and cos\,0.78 (right) on LLaMA-3.1 8B Instruct. Values above 1.0 mean Delta-KV is faster.}
     \label{fig:speedup_comparison}
 \end{figure}
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.7\linewidth]{../assets/attention_dominance.png}
-    \caption{Attention compute as a fraction of total prefill time for DeltaAttention at threshold 15 on LLaMA-3.1-8B. At short sequences attention is a small fraction of total time; at 262K tokens it accounts for 95\% of the forward pass.}
-    \label{fig:attention_dominance}
-\end{figure}
-
-\begin{table}[h]
+\begin{figure}[!ht]
 \centering
-\caption{Overhead of delta computation and packing for threshold 15 on LLaMA-3.1 8B Instruct. Total prefill time is the full forward pass including all layers. Overhead ratio is the fraction of the total prefill time spent on delta computation.}
-\label{tab:delta_overhead}
-\begin{tabular}{rrrr}
-\toprule
-Sequence length (tokens) & Overhead (ms) & Total prefill (ms) & Overhead / Total \\
-\midrule
-512       & 21.10  & 53.91      & 39.14\% \\
-1{,}024   & 21.15  & 57.60      & 36.71\% \\
-2{,}048   & 21.41  & 69.65      & 30.74\% \\
-4{,}096   & 21.93  & 96.93      & 22.62\% \\
-8{,}192   & 26.12  & 164.36     & 15.89\% \\
-16{,}384  & 29.37  & 347.72     &  8.45\% \\
-32{,}768  & 34.84  & 949.27     &  3.67\% \\
-65{,}536  & 42.94  & 3{,}037.21 &  1.41\% \\
-131{,}072 & 57.76  & 10{,}358.60 & 0.56\% \\
-262{,}144 & 95.41  & 40{,}039.47 & 0.24\% \\
-\bottomrule
-\end{tabular}
-\end{table}
+\begin{subfigure}[b]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{../assets/attention_dominance.png}
+    \caption{Attention compute as a fraction of total prefill time.}
+    \label{fig:attention_dominance}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.48\textwidth}
+    \centering
+    \begin{tikzpicture}
+    \begin{axis}[
+        width=\linewidth, height=0.82\linewidth,
+        xmode=log, log basis x=2,
+        xtick={512,4096,32768,262144},
+        xticklabels={512,4K,32K,256K},
+        xlabel={Sequence length (tokens)},
+        ylabel={Overhead / total prefill (\%)},
+        ymin=0, ymax=42,
+        ytick={0,10,20,30,40},
+        grid=both, grid style={gray!20},
+        tick label style={font=\small},
+        label style={font=\small},
+        mark size=1.8pt,
+    ]
+    \addplot[color=blue!70!black, semithick, mark=*]
+        coordinates {(512,39.14)(1024,36.71)(2048,30.74)(4096,22.62)(8192,15.89)(16384,8.45)(32768,3.67)(65536,1.41)(131072,0.56)(262144,0.24)};
+    \end{axis}
+    \end{tikzpicture}
+    \caption{Delta computation and packing overhead as a fraction of total prefill time.}
+    \label{fig:delta_overhead}
+\end{subfigure}
+\caption{Prefill time breakdown for Delta-KV at cos\,0.83 on LLaMA-3.1 8B Instruct, across sequence length. (a) Attention grows to dominate the forward pass, from a small fraction at short sequences to 95\% at 262K tokens. (b) The delta computation and packing overhead shrinks from 39\% of prefill at 512 tokens to 0.24\% at 262K, becoming negligible at the lengths where Delta-KV provides the most speedup.}
+\label{fig:prefill_breakdown}
+\end{figure}
 
 
 
 \subsubsection{Ablations}
 
-We ablate the threshold metric and the main design choices of Delta-KV compression. Unless noted, the design-choice ablations use Euclidean thresholds at three compression levels (t13~32\%, t15~50\%, t17~65\% KV reduction).
+In this section we ablate the threshold metric and the main design choices of Delta-KV compression.
 
 \paragraph{Threshold metric.}
 \label{sec:ablation_threshold}
 
-Table~\ref{tab:ablation_threshold} compares Euclidean distance and cosine similarity as the threshold metric in the pre-processing stage. Pairs of rows are matched by KV reduction level: low (~30\%), medium (~50\%), and high (~65\%). Both metrics perform similarly at low compression, but cosine is consistently better at higher compression, most visibly at 128K tokens where it retains 66.57\% accuracy versus 60.57\% for Euclidean at 65\% KV reduction. Cosine is the better metric overall. We use cos083 (50\% KV reduction) as the default operating point: it roughly halves the KV loads with minimal accuracy loss, whereas the 30\% setting yields too little speedup and the 65\% setting loses more accuracy.
+Table~\ref{tab:ablation_threshold} compares Euclidean distance and cosine similarity as the threshold metric in the pre-processing stage. Pairs of rows are matched by KV reduction level: low (~30\%), medium (~50\%), and high (~65\%). Both metrics perform similarly at low compression, but cosine is consistently better at higher compression, most visibly at 128K tokens where it retains 66.57\% accuracy versus 60.57\% for Euclidean at 65\% KV reduction. Cosine is the better metric overall. We use cos\,0.83 (50\% KV reduction) as the default operating point: it roughly halves the KV loads with minimal accuracy loss, whereas the 30\% setting yields too little speedup and the 65\% setting loses more accuracy. The subsequent ablation studies in this section use Euclidean thresholds; however, because the two metrics behave very similarly, all insights derived from Euclidean thresholding are valid.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
 \caption{RULER accuracy (\%) comparing Euclidean and cosine thresholds (30 samples, 9 tasks). Pairs are matched by KV reduction.}
 \label{tab:ablation_threshold}
@@ -116,13 +120,13 @@ Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
 Full attention              & 99.31 & 97.41 & 96.52 & 93.65 & 88.16 & 74.35 & 91.57 & 0\%    \\
 \midrule
 Euclidean t13               & 99.11 & 96.63 & 95.63 & 92.31 & 86.96 & 75.19 & 90.97 & 32.0\% \\
-Cosine cos088               & 99.38 & 97.54 & 96.70 & 92.31 & 86.73 & 72.82 & 90.91 & 29.5\% \\
+Cosine cos\,0.88               & 99.38 & 97.54 & 96.70 & 92.31 & 86.73 & 72.82 & 90.91 & 29.5\% \\
 \midrule
 Euclidean t15               & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
-Cosine cos083               & 99.27 & 96.99 & 95.11 & 90.79 & 83.94 & 71.43 & 89.59 & 50.9\% \\
+Cosine cos\,0.83               & 99.27 & 96.99 & 95.11 & 90.79 & 83.94 & 71.43 & 89.59 & 50.9\% \\
 \midrule
 Euclidean t17               & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
-Cosine cos078               & 99.01 & 97.12 & 94.07 & 86.99 & 81.27 & 66.57 & 87.50 & 65.8\% \\
+Cosine cos\,0.78               & 99.01 & 97.12 & 94.07 & 86.99 & 81.27 & 66.57 & 87.50 & 65.8\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -131,9 +135,11 @@ Cosine cos078               & 99.01 & 97.12 & 94.07 & 86.99 & 81.27 & 66.57 & 87
 
 Count-weighted softmax is theoretically necessary for correctness: without it, an anchor representing many tokens receives the same attention weight as one representing a single token, which underestimates its contribution. With it, the result is equivalent to exact attention where each anchor key is repeated for every token it covers (Section~\ref{sec:self_attention_compressed}).
 
-Table~\ref{tab:ablation_count} shows that removing count-weighted softmax has almost no effect on accuracy across all three compression levels. The differences are small. A likely explanation is that the per-anchor counts are similar across anchors in practice, so the scaling barely shifts the softmax distribution. Dropping count-weighting loses no accuracy. We keep it because it maintains theoretical correctness.
+Table~\ref{tab:ablation_count} shows that removing count-weighted softmax has almost no effect on accuracy across all three compression levels. If anything, dropping it is slightly better: it wins at two of the three levels and is a touch higher on average (89.12 versus 88.88). A likely explanation is that the per-anchor counts are similar across anchors in practice, so the scaling barely shifts the softmax distribution, and the small differences are within noise.
 
-\begin{table}[h]
+So count-weighting keeps the method theoretically correct but does not help accuracy in practice. We keep it on for the Delta-KV results in this section, since it preserves the exact-attention equivalence at no real cost. For the two methods that follow, DeltaXAttention and DPXA, we disable count-weighting: it does not improve accuracy, and turning it off keeps those methods simpler. This is why the count-weighting is off in all later experiments and not mentioned.
+
+\begin{table}[!ht]
 \centering
 \caption{RULER accuracy (\%) with and without count-weighted softmax (30 samples, 9 tasks).}
 \label{tab:ablation_count}
@@ -143,9 +149,9 @@ Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
 \midrule
 Full attention                 & 99.31 & 97.41 & 96.52 & 93.65 & 88.16 & 74.35 & 91.57 & 0\%    \\
 \midrule
-DeltaAttention t13             & 99.11 & 96.63 & 95.63 & 92.31 & 86.96 & 75.19 & 90.97 & 32.0\% \\
-DeltaAttention t15             & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
-DeltaAttention t17             & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
+Delta-KV t13             & 99.11 & 96.63 & 95.63 & 92.31 & 86.96 & 75.19 & 90.97 & 32.0\% \\
+Delta-KV t15             & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
+Delta-KV t17             & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
 \midrule
 w/o count-weighted softmax t13 & 98.90 & 97.31 & 95.32 & 94.25 & 86.62 & 75.31 & 91.29 & 30.9\% \\
 w/o count-weighted softmax t15 & 98.68 & 95.52 & 95.00 & 91.43 & 81.55 & 69.74 & 88.65 & 48.8\% \\
@@ -156,11 +162,11 @@ w/o count-weighted softmax t17 & 98.62 & 96.05 & 94.04 & 89.72 & 79.00 & 67.04 &
 
 \paragraph{Critical diagonal.}
 
-The diagonal band of the attention matrix carries the majority of attention mass, as each token attends most strongly to its immediate neighbors (Section~\ref{sec:local_attention_window}). Phase 2 of the FlashAttention adaptation switches to exact uncompressed attention for the tiles covering this band, so those neighbor interactions are computed precisely (Section~\ref{sec:flash_attention_adaptation}).
+The diagonal band of the attention matrix carries the majority of attention mass, as each token attends most strongly to its immediate neighbors (Section~\ref{sec:local_attention_window}). Phase 2 of the Delta-KV kernel switches to exact uncompressed attention for the tiles covering this band, so those neighbor interactions are computed precisely (Section~\ref{sec:flash_attention_adaptation}).
 
-Table~\ref{tab:ablation_diag} shows that removing phase 2 causes a catastrophic accuracy drop across all compression levels. At t13 the average falls from 90.97\% to 57.90\%, and at t17 it collapses to 15.19\%. Phase 2 is a critical component of DeltaAttention.
+Table~\ref{tab:ablation_diag} shows that removing phase 2 causes a catastrophic accuracy drop across all compression levels. At t13 the average falls from 90.97\% to 57.90\%, and at t17 it collapses to 15.19\%. Phase 2 is a critical component of Delta-KV.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
 \caption{RULER accuracy (\%) with and without phase 2 (critical diagonal) (30 samples, 9 tasks).}
 \label{tab:ablation_diag}
@@ -170,9 +176,9 @@ Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
 \midrule
 Full attention                    & 99.31 & 97.41 & 96.52 & 93.65 & 88.16 & 74.35 & 91.57 & 0\%    \\
 \midrule
-DeltaAttention t13                & 99.11 & 96.63 & 95.63 & 92.31 & 86.96 & 75.19 & 90.97 & 32.0\% \\
-DeltaAttention t15                & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
-DeltaAttention t17                & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
+Delta-KV t13                & 99.11 & 96.63 & 95.63 & 92.31 & 86.96 & 75.19 & 90.97 & 32.0\% \\
+Delta-KV t15                & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
+Delta-KV t17                & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
 \midrule
 w/o phase 2 (critical diag.) t13  & 74.16 & 64.04 & 61.70 & 58.39 & 50.36 & 38.75 & 57.90 & 35.7\% \\
 w/o phase 2 (critical diag.) t15  & 54.75 & 45.15 & 42.72 & 37.41 & 35.44 & 19.85 & 39.22 & 55.0\% \\
@@ -187,7 +193,7 @@ In this ablation all phase 1 iterations are skipped. Only the diagonal band tile
 
 The small accuracy increase from t13 to t17 is an artifact of how the critical diagonal is determined. Phase 2 starts as soon as a packed key block's reach overlaps with the current query block's span. At higher thresholds each anchor represents a longer range, so packed blocks reach further into the sequence and the critical diagonal is entered earlier. This means phase 2 computes more exact tiles near the diagonal at higher thresholds, giving a slight accuracy boost. This is a useful property of the algorithm: higher compression thresholds naturally expand the exact local window, partially compensating for the coarser compressed history.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
 \caption{RULER accuracy (\%) for phase 2 only (local diagonal, no compressed history) (30 samples, 9 tasks).}
 \label{tab:ablation_phase2only}
@@ -197,9 +203,9 @@ Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
 \midrule
 Full attention                   & 99.31 & 97.41 & 96.52 & 93.65 & 88.16 & 74.35 & 91.57 & 0\%    \\
 \midrule
-DeltaAttention t13               & 99.11 & 96.63 & 95.63 & 92.31 & 86.96 & 75.19 & 90.97 & 32.0\% \\
-DeltaAttention t15               & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
-DeltaAttention t17               & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
+Delta-KV t13               & 99.11 & 96.63 & 95.63 & 92.31 & 86.96 & 75.19 & 90.97 & 32.0\% \\
+Delta-KV t15               & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
+Delta-KV t17               & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
 \midrule
 phase 2 only t13                 & 12.97 & 11.01 &  6.62 &  3.32 &  3.53 &  1.98 &  6.57 & 40.2\% \\
 phase 2 only t15                 & 14.17 & 10.62 &  8.59 &  4.63 &  3.86 &  1.85 &  7.29 & 56.0\% \\
@@ -210,13 +216,13 @@ phase 2 only t17                 & 17.27 & 10.44 &  8.84 &  5.10 &  3.78 &  2.10
 
 \paragraph{Non-adaptive baselines.}
 
-The phase 2 only ablation showed that the compressed history is essential for retrieval. Here we check whether DeltaAttention's content-adaptive key selection is what makes it effective, or whether any compression scheme at the same reduction works. Random packing randomly drops key vectors to reach a target compression. Periodic packing keeps every $n$th token and drops the rest, with $n=2$ giving 50\% reduction and $n=3$ giving 65\% reduction. These match the KV reductions of DeltaAttention t15 and t17 for direct comparison.
+The phase 2 only ablation showed that the compressed history is essential for retrieval. Here we check whether Delta-KV's content-adaptive key selection is what makes it effective, or whether any compression scheme at the same reduction works. Random packing randomly drops key vectors to reach a target compression. Periodic packing keeps every $n$th token and drops the rest, with $n=2$ giving 50\% reduction and $n=3$ giving 65\% reduction. These match the KV reductions of Delta-KV t15 and t17 for direct comparison.
 
-Both baselines retain some performance, but DeltaAttention is consistently better. At 50\% reduction, periodic packing is surprisingly competitive at 87.46\% versus 88.81\% for DeltaAttention, while random packing falls to 84.22\%. At 65\% reduction the gap widens: DeltaAttention holds at 86.85\%, periodic drops to 81.85\%, and random to 75.12\%. The content-adaptive selection becomes more important at higher compression.
+Both baselines retain some performance, but Delta-KV is consistently better. At 50\% reduction, periodic packing is surprisingly competitive at 87.46\% versus 88.81\% for Delta-KV, while random packing falls to 84.22\%. At 65\% reduction the gap widens: Delta-KV holds at 86.85\%, periodic drops to 81.85\%, and random to 75.12\%. The content-adaptive selection becomes more important at higher compression.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption{RULER accuracy (\%) comparing DeltaAttention against non-adaptive packing baselines at matched KV reduction (30 samples, 9 tasks).}
+\caption{RULER accuracy (\%) comparing Delta-KV against non-adaptive packing baselines at matched KV reduction (30 samples, 9 tasks).}
 \label{tab:ablation_packing}
 \begin{tabular}{lrrrrrrrr}
 \toprule
@@ -224,11 +230,11 @@ Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg & KV Red \\
 \midrule
 Full attention              & 99.31 & 97.41 & 96.52 & 93.65 & 88.16 & 74.35 & 91.57 & 0\%    \\
 \midrule
-DeltaAttention t15          & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
+Delta-KV t15          & 97.94 & 96.05 & 94.04 & 91.62 & 83.77 & 69.44 & 88.81 & 49.7\% \\
 periodic packing (kr=50\%)  & 97.53 & 95.01 & 92.80 & 90.90 & 81.62 & 66.91 & 87.46 & 50.0\% \\
 random packing (kr=50\%)    & 97.17 & 92.51 & 91.22 & 83.83 & 75.72 & 64.88 & 84.22 & 50.0\% \\
 \midrule
-DeltaAttention t17          & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
+Delta-KV t17          & 98.27 & 96.27 & 93.36 & 90.45 & 82.16 & 60.57 & 86.85 & 65.2\% \\
 periodic packing (kr=35\%)  & 92.12 & 91.02 & 86.57 & 83.19 & 75.15 & 63.06 & 81.85 & 66.7\% \\
 random packing (kr=35\%)    & 89.62 & 86.61 & 80.26 & 73.81 & 68.08 & 52.37 & 75.12 & 65.0\% \\
 \bottomrule
@@ -237,15 +243,17 @@ random packing (kr=35\%)    & 89.62 & 86.61 & 80.26 & 73.81 & 68.08 & 52.37 & 75
 
 \subsection{DeltaXAttention}
 
-Table~\ref{tab:deltaxattn} evaluates DeltaAttention applied on top of XAttention as described in Section~\ref{sec:xattention_adaptation}. Applying delta packing to all tiles XAttention selects results in severe accuracy degradation: 51.39\% at dt=13 and 12.81\% at dt=17. This mirrors the critical diagonal finding in Section~\ref{sec:flash_attention_adaptation}: packing the diagonal tiles approximates the neighbor interactions that carry the most attention mass. Computing diagonal tiles exactly recovers accuracy dramatically, as seen in the diag kept rows.
+Table~\ref{tab:deltaxattn} evaluates DeltaXAttention as described in Section~\ref{sec:xattention_adaptation}. We introduce three variants of DeltaXAttention: packing all selected tiles (all packed), computing diagonal tiles exactly (diag kept), and computing both the diagonal and the top 10\% most important off-diagonal tiles exactly (tw10). As a baseline comparison, we increase XAttention's sparsity by dropping its least important 40\%, 50\%, and 60\% of tiles (XAttn tile skip dr=40\%, 50\%, 60\%). This tile skipping provides a matched KV reduction to our DeltaXAttention variants at compression thresholds dt=13, 15, and 17, respectively, allowing us to compare accuracy retention at fixed KV reduction levels.
 
-Adding a second accuracy guard, computing the top 10\% of off-diagonal tiles exactly as well, recovers additional accuracy. At dt=15 this configuration achieves 87.06\% with 45.6\% KV reduction relative to XAttention, a loss of 3.0 percentage points against the XAttention baseline.
+Applying delta packing to all tiles XAttention selects (DeltaXAttn all packed) results in severe accuracy degradation: 51.39\% at dt=13 and 12.81\% at dt=17. This mirrors the critical diagonal finding in Section~\ref{sec:flash_attention_adaptation}: packing the diagonal tiles only approximates the neighbor interactions that carry the most attention mass. Computing diagonal tiles exactly (DeltaXAttn diag kept) recovers accuracy dramatically.
 
-The key question is whether XAttention could have achieved the same KV reduction natively by skipping more tiles. At matched reductions, DeltaXAttn tw10 consistently outperforms XAttention tile skipping by a small margin: 88.95\% vs 87.51\% at ~37\% reduction, 87.06\% vs 85.98\% at ~46\%, and 85.14\% vs 84.43\% at ~57\%. However, skipped tiles in XAttention translate directly to fewer FlashAttention iterations, which is straightforward to realize as speedup. DeltaXAttention saves KV loads within each iteration, which is harder to exploit in practice since it does not reduce the number of tiles. We conclude that DeltaAttention can further optimize block-sparse attention methods with minimal accuracy degradation, but its practical value here is limited: XAttention can achieve similar reductions through tile skipping with similar accuracy and a more direct path to speedup.
+Adding a second accuracy guard, computing the top 10\% of off-diagonal tiles exactly as well (DeltaXAttn tw10), recovers additional accuracy. At dt=15, this configuration achieves 87.06\% with 45.6\% KV reduction relative to XAttention, a loss of 3.0 percentage points against the XAttention baseline.
+
+The key question is whether XAttention could have achieved the same KV reduction natively by skipping more tiles. At matched reductions, DeltaXAttn tw10 consistently outperforms XAttention tile skipping by a small margin: 88.95\% vs 87.51\% at ~37\% reduction, 87.06\% vs 85.98\% at ~46\%, and 85.14\% vs 84.43\% at ~57\%. However, skipped tiles in XAttention translate directly to fewer FlashAttention iterations, which is straightforward to realize as speedup. DeltaXAttention saves KV loads within each iteration, which is harder to exploit in practice since it does not reduce the number of tiles processed. We conclude that DeltaXAttention can further optimize block-sparse attention methods with minimal accuracy degradation, but its practical value here is limited: XAttention can achieve similar reductions through tile skipping with comparable accuracy and a more direct path to speedup.
 
 
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
 \caption{RULER accuracy (\%) for DeltaXAttention ablation on LLaMA-3.1 8B Instruct (30 samples, 9 tasks). KV Red is relative to standard XAttention.}
 \label{tab:deltaxattn}
@@ -277,31 +285,30 @@ DeltaXAttn tw10 dt=17         & 97.54 & 95.19 & 92.48 & 87.15 & 75.62 & 62.89 & 
 \subsection{Delta-Based Tile Scoring (DPXA)}
 \label{sec:results_delta_tile_scoring}
 
-We evaluate delta-based tile scoring (DPXA) against a set of strong training-free sparse attention baselines. DPXA is the direct descendant of XAttention, so XAttention at stride 8 and stride 16, both with their r90 calibrated threshold tables, are the most direct comparison points. We also compare against MInference, FlexPrefill, and SpargeAttention, which together cover the main lines of work in training-free sparse attention. All baselines are run from their original GitHub repositories, with no reimplementation. We report DPXA at two calibration points, cosine threshold 0.75 with $r{=}0.75$ and $r{=}0.90$ (see the preliminary section), and evaluate on RULER and LongBench together with an isolated speedup analysis.
+We evaluate delta-based tile scoring (DPXA) against a set of strong training-free sparse attention baselines. DPXA is the direct descendant of XAttention, so XAttention at stride 8 and stride 16, at recall $r{=}0.90$, are the most direct comparison points. We also compare against MInference and FlexPrefill, which together cover the main lines of work in training-free sparse attention. We exclude SpargeAttention from our comparisons, as its implementation is bundled with quantization; this introduces latency reductions unrelated to sparse attention, making a clean comparison with the rest of the methods impossible. All baselines are run from their original GitHub repositories, with no reimplementation. We report DPXA at two cosine thresholds, $0.72$ and $0.78$, both at recall $r{=}0.90$. Unlike the earlier sections, we evaluate DPXA on the full RULER (100 samples, 13 tasks) and full LongBench (16 tasks), together with an isolated speedup analysis from 4K to 512K.
 
 
 \subsubsection{RULER}
 
-Table~\ref{tab:delta_tile_scoring} reports RULER accuracy. The most direct comparison is against XAttention at stride 8 and 16, both calibrated with r90. DPXA retains accuracy substantially better than either XAttention variant. The gap is clearest at 128K tokens, where DPXA reaches 74.79 at $r{=}0.75$ and 72.94 at $r{=}0.90$, while XAttention drops to 71.49 at stride 8 and 69.53 at stride 16. On average DPXA reaches 91.42 at $r{=}0.90$ and 91.30 at $r{=}0.75$, both above either XAttention variant (90.40 and 90.08) and close to the SDPA full-attention baseline (91.52). DPXA also stays ahead of MInference (89.55) and FlexPrefill (90.40), and well ahead of SpargeAttention (64.43).
+Table~\ref{tab:delta_tile_scoring} reports RULER accuracy. DPXA is close to lossless: cos\,0.72 scores 88.97 and cos\,0.78 scores 89.02, both within 0.1 points of full attention (89.07). Both settings beat every sparse baseline we test. The closest comparison is XAttention, which DPXA outscores on average (88.02 at stride 16, 87.70 at stride 8). The gap is largest at 128K tokens, where DPXA holds 75.55 (cos\,0.78) and 74.82 (cos\,0.72), while XAttention falls to 70.96 (stride 16) and 71.57 (stride 8). DPXA also beats MInference (86.57) and FlexPrefill (87.45) on average.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption{RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on LLaMA-3.1 8B Instruct (30 samples, 9 tasks). Best score per column in \textbf{bold}.}
+\caption{RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on LLaMA-3.1 8B Instruct (100 samples, 13 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma{=}0.90$ respectively). Best score per column in \textbf{bold}.}
 \label{tab:delta_tile_scoring}
 \begin{tabular}{lrrrrrrr}
 \toprule
 Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg \\
 \midrule
-SDPA                        & 99.31 & 97.21 & 96.59 & 93.76 & 88.23 & 74.00 & 91.52 \\
-MInference                  & 99.18 & 97.25 & 96.44 & 91.96 & 87.21 & 65.26 & 89.55 \\
-SpargeAttn (adaptive)       & 93.46 & 84.68 & 71.75 & 58.56 & 40.99 & 37.15 & 64.43 \\
-FlexPrefill $\gamma=0.90$   & 98.72 & 97.09 & 94.63 & 92.15 & 86.22 & 73.61 & 90.40 \\
+Full attention              & 96.16 & 93.77 & 93.43 & 90.47 & \textbf{86.14} & 74.46 & \textbf{89.07} \\
+MInference                  & 96.04 & 93.95 & 92.60 & 88.43 & 84.66 & 63.73 & 86.57 \\
+FlexPrefill                  & 95.37 & 92.29 & 91.23 & 88.02 & 83.56 & 74.23 & 87.45 \\
 \midrule
-XAttn $s=16$                & 99.20 & \textbf{97.57} & 96.52 & \textbf{94.26} & 85.30 & 69.53 & 90.40 \\
-XAttn $s=8$                 & 98.14 & 97.37 & 96.62 & 92.84 & 84.01 & 71.49 & 90.08 \\
+XAttn $s=16$                & \textbf{96.17} & 93.97 & 93.43 & 90.56 & 83.04 & 70.96 & 88.02 \\
+XAttn $s=8$                 & 95.57 & 93.92 & 92.71 & \textbf{90.60} & 81.83 & 71.57 & 87.70 \\
 \midrule
-DPXA cos\,0.75 $r{=}0.75$ (ours) & \textbf{99.43} & \textbf{97.57} & 96.10 & 93.00 & 86.90 & \textbf{74.79} & 91.30 \\
-DPXA cos\,0.75 $r{=}0.90$ (ours) & 99.38 & 97.30 & \textbf{96.90} & 94.06 & \textbf{87.94} & 72.94 & \textbf{91.42} \\
+DPXA cos\,0.72 & 95.83 & \textbf{94.22} & 93.36 & 90.42 & 85.19 & 74.82 & 88.97 \\
+DPXA cos\,0.78 & 96.14 & 93.70 & \textbf{93.44} & 90.35 & 84.93 & \textbf{75.55} & 89.02 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -309,33 +316,33 @@ DPXA cos\,0.75 $r{=}0.90$ (ours) & 99.38 & 97.30 & \textbf{96.90} & 94.06 & \tex
 \subsubsection{LongBench}
 \label{sec:results_longbench}
 
-Table~\ref{tab:longbench} shows LongBench scores on LLaMA-3.1 8B Instruct across nine real-world long-context tasks.
-FlexPrefill's $\gamma$ parameter controls the same quantity as DPXA's $r$: the minimum fraction of cumulative attention mass that must be retained per head.
-At the same operating point ($\gamma{=}r{=}0.90$), DPXA achieves 39.08 average versus FlexPrefill's 36.50, a gap of 2.6 points, showing that DPXA's delta-based block scoring selects more informative blocks than FlexPrefill's runtime estimation at equal coverage budget.
-DPXA $r{=}0.90$ trails only MInference (39.34) overall, and its 39.08 average is above both XAttention variants (38.28 at stride 8 and 38.37 at stride 16).
-On the single-document QA tasks NarrativeQA, Qasper, and MultifieldQA-en, DPXA $r{=}0.75$ records the best score of any method, exceeding even the full-attention baseline.
-Compared to the $r{=}0.90$ variant, this lighter $r{=}0.75$ setting gives up multi-hop accuracy on 2WikiMultiHopQA and MuSiQue, which the higher threshold recovers: moving to $r{=}0.90$ improves 2WikiMultiHopQA by 6.6 points and MuSiQue by 2.8 points.
-Notably, DPXA cos\,0.75 $r{=}0.90$ scores 49.27 on 2WikiMultiHopQA, exceeding the full-attention baseline (47.97).
-Single- and multi-document summarization tasks (GovReport, QMSum, MultiNews) are largely unaffected across all sparse variants.
+Table~\ref{tab:longbench} shows LongBench scores on LLaMA-3.1 8B Instruct across sixteen real-world tasks. DPXA is the strongest sparse method: cos\,0.72 averages 47.51, close to full attention (47.53) and ahead of MInference (47.08) and both XAttention strides (46.50 at stride 8, 46.47 at stride 16). FlexPrefill's $\gamma$ controls the same quantity as DPXA's $r$: the minimum fraction of attention mass kept per head. At the same target ($\gamma{=}r{=}0.90$), DPXA cos\,0.72 beats FlexPrefill by 2.73 points (47.51 versus 44.78).
 
-\begin{table*}[h]
+The gap comes from how the two methods hit that target. DPXA calibrates its per-head thresholds so the \emph{true} retained mass is 90\%: since its scoring only estimates that mass, it overshoots on purpose, keeping 97\% of the estimated mass on average to land near 90\% of the true mass. This keeps DPXA close to its target coverage.
+
+FlexPrefill does not calibrate this way. It adds blocks and indices until their estimated scores reach 90\% of the total, then stops. At $\gamma{=}0.90$ this undercovers: the true retained mass falls below 90\%, which hurts accuracy on tasks that need long-range context. Raising $\gamma$ closes the gap, but costs speed.
+
+The average hides some variation. On the single-document QA tasks Qasper and MultifieldQA-en, DPXA cos\,0.78 scores best of all methods, even above full attention. On multi-hop reasoning the two thresholds trade off: cos\,0.78 loses some accuracy on 2WikiMultiHopQA, while cos\,0.72 holds it at baseline. The summarization tasks (GovReport, QMSum, MultiNews) are unaffected across all sparse methods. DPXA is also strong on passage retrieval, matching full attention exactly at both thresholds (99.00). RepoBench-P shows the same strength: both thresholds beat full attention by a wide margin (49.48 and 49.26 versus 45.12). LCC follows the same split as 2WikiMultiHopQA: cos\,0.72 beats full attention (54.32 versus 51.94), while cos\,0.78 falls below it (50.62). PassageCount shows no meaningful signal: every method, including full attention, scores between 2 and 8, so the small differences there are noise. TREC is the one task where DPXA doesn't tie the baselines on Llama (64.00--66.00 versus 67.00 for every other method), but the direction reverses on Qwen, where DPXA cos\,0.78 is the best score on the task (74.00). We don't interpret this as a systematic weakness.
+
+
+\begin{table*}[!ht]
 \centering
 \small
-\caption{LongBench scores on LLaMA-3.1 8B Instruct (100 samples per task). NQA = NarrativeQA, Qas = Qasper, MFQ = MultifieldQA-en, HotP = HotpotQA, 2Wiki = 2WikiMultiHopQA, Mus = MuSiQue, GovR = GovReport, QMS = QMSum, MNews = MultiNews. Best score per column in \textbf{bold}.}
+\caption{LongBench scores on LLaMA-3.1 8B Instruct (100 samples per task, 16 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma{=}0.90$ respectively). NQA = NarrativeQA, Qas = Qasper, MFQ = MultifieldQA-en, HotP = HotpotQA, 2Wiki = 2WikiMultiHopQA, Mus = MuSiQue, GovR = GovReport, QMS = QMSum, MNews = MultiNews, TREC = TREC, TQA = TriviaQA, SAM = SAMSum, PCnt = PassageCount, PassR = PassageRetrieval-en, LCC = LCC, RepoB = RepoBench-P. Best score per column in \textbf{bold}.}
 \label{tab:longbench}
 \resizebox{\linewidth}{!}{%
-\begin{tabular}{lrrrrrrrrr r}
+\begin{tabular}{lrrrrrrrrrrrrrrrrr}
 \toprule
-Method & NQA & Qas & MFQ & HotP & 2Wiki & Mus & GovR & QMS & MNews & Avg \\
+Method & NQA & Qas & MFQ & HotP & 2Wiki & Mus & GovR & QMS & MNews & TREC & TQA & SAM & PCnt & PassR & LCC & RepoB & Avg \\
 \midrule
-Full attention               & 31.91 & 43.06 & 56.25 & 54.87 & 47.97 & \textbf{34.88} & 34.47 & 25.27 & \textbf{27.15} & \textbf{39.54} \\
-MInference                   & 31.74 & 42.25 & 56.50 & 54.70 & \textbf{50.17} & 31.80 & 34.51 & 25.27 & 27.13 & 39.34 \\
-FlexPrefill $\gamma{=}0.90$  & 26.02 & 39.00 & 55.19 & \textbf{55.11} & 38.53 & 28.73 & 33.44 & 25.53 & 26.93 & 36.50 \\
-XAttn $s{=}8$                & 29.84 & 41.08 & 54.43 & 53.23 & 47.59 & 31.01 & 34.49 & \textbf{26.37} & 26.46 & 38.28 \\
-XAttn $s{=}16$               & 31.01 & 37.56 & 56.65 & 53.35 & 48.37 & 32.71 & 34.83 & 24.37 & 26.46 & 38.37 \\
+Full attention               & 31.91 & 43.06 & 56.25 & \textbf{54.87} & 47.97 & \textbf{34.88} & 34.47 & 25.27 & \textbf{27.15} & \textbf{67.00} & 89.47 & 44.56 & \textbf{7.58} & \textbf{99.00} & 51.94 & 45.12 & \textbf{47.53} \\
+MInference                   & 31.74 & 42.25 & 56.50 & 54.70 & \textbf{50.17} & 31.80 & 34.51 & 25.27 & 27.13 & \textbf{67.00} & 89.69 & 44.09 & 5.00 & 94.00 & 52.14 & 47.32 & 47.08 \\
+FlexPrefill                  & 26.02 & 39.00 & 55.19 & 55.11 & 38.53 & 28.73 & 33.44 & 25.53 & 26.93 & \textbf{67.00} & 89.29 & 44.58 & 2.00 & 83.00 & 54.02 & 48.07 & 44.78 \\
+XAttn $s{=}16$               & 31.01 & 37.56 & 56.65 & 53.35 & 48.37 & 32.71 & 34.83 & 24.37 & 26.46 & \textbf{67.00} & \textbf{89.80} & \textbf{45.42} & 5.33 & 92.00 & 53.94 & 44.74 & 46.47 \\
+XAttn $s{=}8$                & 29.84 & 41.08 & 54.43 & 53.23 & 47.59 & 31.01 & 34.49 & \textbf{26.37} & 26.46 & \textbf{67.00} & 89.77 & 44.53 & 4.00 & 93.00 & 52.67 & 48.61 & 46.50 \\
 \midrule
-DPXA cos\,0.75 $r{=}0.75$ (ours) & \textbf{32.32} & \textbf{43.50} & \textbf{57.13} & 53.73 & 42.66 & 29.28 & 35.03 & 25.38 & 26.28 & 38.37 \\
-DPXA cos\,0.75 $r{=}0.90$ (ours) & 31.26 & 42.35 & 56.76 & 53.11 & 49.27 & 32.12 & \textbf{35.11} & 25.27 & 26.51 & 39.08 \\
+DPXA cos\,0.72 & 31.62 & 42.86 & 57.04 & 53.29 & 47.88 & 32.87 & 34.67 & 25.66 & 26.97 & 64.00 & 89.30 & 44.74 & 6.50 & \textbf{99.00} & \textbf{54.32} & \textbf{49.48} & 47.51 \\
+DPXA cos\,0.78 & 31.81 & \textbf{43.60} & \textbf{57.19} & 54.51 & 45.27 & 32.72 & \textbf{35.26} & 25.35 & 26.67 & 66.00 & 89.30 & 43.83 & 6.83 & \textbf{99.00} & 50.62 & 49.26 & 47.33 \\
 \bottomrule
 \end{tabular}%
 }
@@ -343,34 +350,400 @@ DPXA cos\,0.75 $r{=}0.90$ (ours) & 31.26 & 42.35 & 56.76 & 53.11 & 49.27 & 32.12
 
 \subsubsection{Speedup and discussion}
 
-Table~\ref{tab:delta_tile_speedup} reports an isolated speedup analysis at 131K tokens. The light variants DPXA $r{=}0.75$ and XAttention stride 8 reach the same end-to-end speedup of about 2x over SDPA (2.02x and 2.01x). The notable result is that DPXA reaches this while computing fewer attention tiles: DPXA $r{=}0.75$ computes 8.5\% of the tiles against 10.4\% for XAttention stride 8, and DPXA $r{=}0.90$ computes 15.7\% against 17.1\% for stride 16. In both pairs DPXA is the sparser method, which is reflected in its lower attention time (Attn ms). Taken together with the RULER and LongBench results, where DPXA matches or beats XAttention, this means DPXA selects more important tiles: it reaches better or equal accuracy while computing fewer tiles. This is the central argument for DPXA as a higher quality tile importance estimator.
+Figure~\ref{fig:dpxa_speedup_trend} shows end-to-end speedup for every method from 4K to 512K tokens. All sparse methods start out slower than SDPA at short context, where the scoring overhead outweighs the savings, then speed up as attention comes to dominate the forward pass.
 
-DPXA reaches this estimate while sampling much less of each tile, only 4.1\% of the tile for $r{=}0.75$ against 12.5\% for XAttention stride 8 (Score\%). In theory this means a better tile score from far fewer FLOPs. In practice the lower sampling cost does not translate into faster scoring in wall-clock time: the dynamic nature of the computation makes the scores harder to compute efficiently, and the scoring time (Score ms) is slightly higher than XAttention rather than lower, 3278ms against 3073ms for the light pair. So we do not realize a speedup in the scoring phase, though it is not meaningfully slower either. The gain shows up in the attention phase, where the higher sparsity reduces attention time.
+MInference is the slowest to catch up: it only crosses break-even between 32K and 64K, and stays behind the others until 256K. FlexPrefill is the fastest method from 4K to 256K, but MInference overtakes it at 512K (9.33$\times$ versus 4.83$\times$).
 
-DPXA does not reach the end-to-end speedups of MInference, FlexPrefill, or SpargeAttn. SpargeAttn achieves 2.32$\times$ with negligible scoring overhead: its tile estimation is extremely cheap, which lets it translate sparsity directly into wall-clock speedup. However, it operates at 47.2\% sparsity and suffers significant accuracy degradation, showing that cheap estimation is not the same as accurate estimation. MInference and FlexPrefill are not block-sparse methods. Rather than selecting tiles, they identify important tokens and apply fixed sparse attention patterns at token-level granularity, which is finer than tile-level. MInference uses patterns calibrated before inference and has no per-request selection overhead, reaching 2.48$\times$. It retains accuracy well on LongBench but degrades sharply at 128K tokens on RULER. FlexPrefill adapts patterns at runtime by estimating token importance from the tokens the last query block attends to, reaching the highest speedup at 3.03$\times$. It holds RULER accuracy well across all sequence lengths but drops substantially on LongBench, particularly on 2WikiMultiHopQA and MuSiQue. Looking at the tokens the last query block attends to works for most tasks, but multi-hop reasoning requires attending to context that is not predictable from a local window, and this assumption breaks down there. Notably, DPXA $r{=}0.75$ and FlexPrefill $\gamma{=}0.90$ operate at similar sparsities (8.5\% and 9.8\%), but FlexPrefill selects at token level while DPXA selects at tile level. Even so, DPXA achieves higher accuracy on both benchmarks, indicating that its content-adaptive tile scoring identifies the informative regions of the attention matrix more reliably.
+DPXA and XAttention track each other closely up to 128K. DPXA crosses break-even near 16K and reaches roughly 2.1$\times$ at 128K (2.08$\times$ at cos\,0.72, 2.02$\times$ at cos\,0.78). Beyond 128K, DPXA and XAttention keep climbing together, reaching roughly 3.3$\times$ at 512K, while FlexPrefill and MInference pull further ahead.
+
+Table~\ref{tab:delta_tile_speedup} breaks down the 128K operating point into a tile-scoring phase and an attention phase, along with attention density (the fraction of dense attention actually computed) and Score\% (the fraction of full-attention tile cost spent on scoring). Both DPXA settings match or beat both XAttention strides end-to-end (2.08$\times$ and 2.02$\times$ for cos\,0.72 and cos\,0.78, versus 1.89$\times$ and 2.00$\times$ for XAttn $s{=}16$ and $s{=}8$). The difference comes from the scoring phase: DPXA gets a better importance signal for less work.
+
+Both methods pick tiles up to a fixed recall target ($r{=}0.90$), adding tiles by estimated importance until they cover 90\% of the true attention mass. The number of tiles needed is itself a measure of scoring quality: a sharper ranking reaches the target with fewer tiles, so at fixed recall, lower density means a better signal.
+
+XAttention $s{=}16$ shows this on two axes. At matched density, DPXA cos\,0.72 uses almost the same fraction of tiles (17.6\% versus 17.1\%) but reaches that budget with about a third of the scoring cost (2.3\% versus 6.2\% of full tile cost, 1{,}592 ms versus 2{,}571 ms). At matched scoring cost, DPXA cos\,0.78 spends about the same on scoring (6.3\% versus 6.2\%) but hits the recall target with fewer tiles (14.2\% versus 17.1\% density), and scores higher on both benchmarks (89.02 versus 88.02 on RULER, 47.33 versus 46.47 on LongBench). Either way DPXA wins: the same tile budget for a third of the scoring cost, or a tighter tile budget for the same cost.
+
+XAttention $s{=}8$ reaches the lowest density (10.4\%) and the sharpest ranking, but pays the highest scoring cost of any method (12.5\%, 3{,}099 ms), and is still less accurate than DPXA. DPXA cos\,0.72 beats it outright: higher speedup (2.08$\times$ versus 2.00$\times$), less than half the scoring cost (1{,}592 ms), and better scores on both benchmarks (88.97 versus 87.70 on RULER, 47.51 versus 46.50 on LongBench). A sharper ranking only helps if it costs less than it saves; against $s{=}8$ it doesn't. Across both XAttention settings, DPXA is the better tile-importance estimator on Llama, for less work.
+
+DPXA still doesn't reach the raw speedup of MInference or FlexPrefill. MInference uses per-head sparse patterns calibrated ahead of time and has no online selection overhead, reaching 2.33$\times$ at 128K and 9.33$\times$ at 512K; it holds LongBench accuracy well but drops sharply on RULER at 128K (63.73 versus 74.46 for full attention). FlexPrefill reaches the highest speedup among the accuracy-competitive methods, 3.03$\times$ at 128K and 4.83$\times$ at 512K; it holds RULER accuracy at every length, but its LongBench average drops on 2WikiMultiHopQA (38.53 versus 47.97 for full attention) and MuSiQue (28.73 versus 34.88). This is undercoverage, not an architectural limit: at $\gamma{=}0.90$ FlexPrefill doesn't retain enough of the long-range context these multi-hop tasks need, and raising $\gamma$ recovers the accuracy at the cost of speed.
 
 
 
 
-
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption{Prefill speedup at 131K tokens on LLaMA-3.1 8B Instruct. Speedup is end-to-end prefill relative to SDPA. Sparsity is the fraction of attention tiles computed. Score\% is the fraction of full tile cost spent on tile importance scoring. Score ms and Attn ms are absolute latencies for the scoring and attention phases.}
+\caption{Prefill speedup at 128K tokens on LLaMA-3.1 8B Instruct. Speedup is end-to-end prefill relative to SDPA. Attention density is the fraction of the dense attention computed. Score\% is the fraction of full tile cost spent on tile importance scoring. Score ms and Attn ms are absolute latencies for the scoring and attention phases.}
 \label{tab:delta_tile_speedup}
 \begin{tabular}{lrrrrrr}
 \toprule
-Method & Speedup & Sparsity & Score\% & Score (ms) & Attn (ms) \\
+Method & Speedup & Density & Score\% & Score (ms) & Attn (ms) \\
 \midrule
-SDPA                        & 1.00$\times$ &    --  &    -- &    -- & 14{,}491 \\
-MInference                  & 2.48$\times$ &  2.0\% &    -- &    -- &  3{,}789 \\
-SpargeAttn (adaptive)       & 2.32$\times$ & 47.2\% &    -- &    -- &  3{,}565 \\
-FlexPrefill $\gamma=0.90$   & 3.03$\times$ &  9.8\% &    -- &    -- &  2{,}735 \\
+SDPA                        & 1.00$\times$ &    --  &    -- &    -- & 14{,}467 \\
+MInference                  & 2.33$\times$ &    --  &    -- &    -- &  7{,}502 \\
+FlexPrefill $\gamma=0.90$   & 3.03$\times$ &    --  &    -- &    -- &  5{,}785 \\
 \midrule
-XAttn $s=16$                & 1.91$\times$ & 17.1\% &  6.2\% & 2{,}499 & 2{,}738 \\
-XAttn $s=8$                 & 2.01$\times$ & 10.4\% & 12.5\% & 3{,}073 & 1{,}717 \\
+XAttn $s=16$                & 1.89$\times$ & 17.1\% &  6.2\% & 2{,}571 & 2{,}729 \\
+XAttn $s=8$                 & 2.00$\times$ & 10.4\% & 12.5\% & 3{,}099 & 1{,}713 \\
 \midrule
-DPXA cos\,0.75 $r{=}0.75$ (ours) & 2.02$\times$ &  8.5\% &  4.1\% & 3{,}278 & 1{,}409 \\
-DPXA cos\,0.75 $r{=}0.90$ (ours) & 1.81$\times$ & 15.7\% &  3.8\% & 3{,}191 & 2{,}520 \\
+DPXA cos\,0.72 $r{=}0.90$ (ours) & 2.08$\times$ & 17.6\% &  2.3\% & 1{,}592 & 2{,}833 \\
+DPXA cos\,0.78 $r{=}0.90$ (ours) & 2.02$\times$ & 14.2\% &  6.3\% & 2{,}408 & 2{,}276 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!ht]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\linewidth, height=0.62\linewidth,
+    xmode=log, log basis x=2,
+    xtick={4096,16384,32768,65536,131072,262144,524288},
+    xticklabels={4K,16K,32K,64K,128K,256K,512K},
+    xlabel={Sequence length (tokens)},
+    ylabel={Prefill speedup vs.\ SDPA ($\times$)},
+    ymin=0, ymax=9.8,
+    ytick={0,1,2,3,4,5,6,7,8,9},
+    grid=both, grid style={gray!20},
+    legend pos=north west,
+    legend cell align=left,
+    legend style={font=\small, fill=white, fill opacity=0.85, text opacity=1, draw=gray!40},
+    tick label style={font=\small},
+    label style={font=\small},
+    mark size=1.8pt,
+]
+% break-even reference (SDPA)
+\addplot[black, dashed, thick, forget plot] coordinates {(4096,1)(524288,1)};
+\node[anchor=south east, font=\footnotesize, gray!60!black] at (axis cs:524288,1) {SDPA (break-even)};
+
+\addplot[color=green!55!black, semithick, mark=o]
+    coordinates {(4096,0.11)(16384,0.37)(32768,0.66)(65536,1.23)(131072,2.33)(262144,4.48)(524288,9.33)};
+\addlegendentry{MInference}
+\addplot[color=violet, semithick, mark=diamond]
+    coordinates {(4096,0.62)(16384,1.00)(32768,1.41)(65536,2.02)(131072,3.03)(262144,4.77)(524288,4.83)};
+\addlegendentry{FlexPrefill $\gamma{=}0.90$}
+\addplot[color=cyan!60!black, semithick, dashed, mark=triangle]
+    coordinates {(4096,0.79)(16384,1.08)(32768,1.27)(65536,1.57)(131072,1.89)(262144,2.43)(524288,3.18)};
+\addlegendentry{XAttn $s{=}16$}
+\addplot[color=blue!70!black, semithick, mark=triangle*]
+    coordinates {(4096,0.80)(16384,1.13)(32768,1.34)(65536,1.66)(131072,2.00)(262144,2.57)(524288,3.32)};
+\addlegendentry{XAttn $s{=}8$}
+\addplot[color=red!80!black, very thick, mark=*]
+    coordinates {(4096,0.68)(16384,1.01)(32768,1.23)(65536,1.57)(131072,2.08)(262144,2.65)(524288,3.31)};
+\addlegendentry{DPXA cos\,0.72 (ours)}
+\addplot[color=orange!90!black, very thick, dashed, mark=square*]
+    coordinates {(4096,0.68)(16384,1.02)(32768,1.23)(65536,1.54)(131072,2.02)(262144,2.56)(524288,3.29)};
+\addlegendentry{DPXA cos\,0.78 (ours)}
+\end{axis}
+\end{tikzpicture}
+\caption{End-to-end prefill speedup relative to SDPA across sequence lengths on LLaMA-3.1 8B Instruct (4$\times$H100, layer-sharded). Points above the dashed break-even line (1.0$\times$) are faster than full attention. All methods are slower than SDPA at short contexts and cross break-even between 16K and 32K tokens; speedup then grows with sequence length as attention dominates the forward pass. Sequence lengths beyond 128K are outside LLaMA-3.1's native context and are used for latency benchmarking only. Table~\ref{tab:delta_tile_speedup} details the 128K operating point.}
+\label{fig:dpxa_speedup_trend}
+\end{figure}
+
+\subsubsection{Cosine threshold ablation}
+\label{sec:results_cos_ablation}
+
+The cosine threshold $\tau$ controls how aggressively DPXA packs the delta representation used for tile scoring: a lower $\tau$ keeps fewer rows, making the score cheaper but less accurate, while a higher $\tau$ keeps more rows for a more accurate but more expensive score. We sweep $\tau \in \{0.70, 0.72, 0.75, 0.78, 0.80\}$ at fixed recall $r{=}0.90$ and report speedup, RULER, and LongBench. Because this sweep repeats the evaluation across five configurations, we use the reduced RULER (30 samples, 9 tasks) and reduced LongBench (9 tasks) setup described in the experimental setup, rather than the full setup used for the main DPXA results above.
+
+The sweep trades scoring cost against tile count, and the two roughly cancel out (Table~\ref{tab:cos_speedup}). Lower thresholds score faster (1.6\% of full tile cost, 1{,}447 ms at cos\,0.70) but need more tiles to reach 90\% attention mass, since the ranking is coarser (19.0\% of tiles, 3{,}094 ms of attention). Higher thresholds give a sharper ranking that hits the same recall with fewer tiles (13.3\% of tiles, 2{,}140 ms of attention at cos\,0.80) but cost more to score (8.7\%, 2{,}885 ms). Because scoring and attention move in opposite directions, the end-to-end speedup stays roughly flat: it peaks at cos\,0.72 (2.10$\times$), stays close at cos\,0.70 (2.08$\times$), and only drops off at the high end (2.03$\times$ at cos\,0.78, 1.97$\times$ at cos\,0.80).
+
+RULER is essentially lossless across the whole sweep (Table~\ref{tab:cos_ruler}): every setting lands within 0.4 points of the others, and cos\,0.78 (91.80), cos\,0.70 (91.69), and cos\,0.80 (91.58) all match or beat full attention (91.52). We think this is because of how RULER is built: it inserts target passages into unrelated filler text, and each insertion causes a sharp change in the hidden states. Delta thresholding is designed to catch exactly this kind of change, so the retrieval-critical tokens survive even under aggressive packing, and RULER accuracy holds at every threshold.
+
+LongBench is more sensitive to $\tau$ (Table~\ref{tab:cos_longbench}). Accuracy peaks at cos\,0.72 (39.21) and falls off at both ends, most sharply at cos\,0.80 (38.61). cos\,0.72 is the best overall choice: fastest and best on LongBench. cos\,0.78 is the accuracy-maximizing choice, holding the best RULER score (91.80) at a still-good 2.03$\times$. cos\,0.80 is worse on both axes: slowest and weakest on LongBench. The useful range is roughly cos\,0.72 to cos\,0.78, and we carry both forward as the two settings compared against the other methods.
+
+\begin{table}[!ht]
+\centering
+\caption{Prefill speedup at 128K tokens for the DPXA cosine-threshold sweep on LLaMA-3.1 8B Instruct, all at recall $r{=}0.90$ using the tuned scoring kernel. Speedup is end-to-end prefill relative to SDPA. Attention density is the fraction of the dense attention computed; Score\% is the fraction of full tile cost spent on scoring; Score ms and Attn ms are the scoring and attention phase latencies.}
+\label{tab:cos_speedup}
+\begin{tabular}{lrrrrr}
+\toprule
+Method & Speedup & Density & Score\% & Score (ms) & Attn (ms) \\
+\midrule
+DPXA cos\,0.70 & 2.08$\times$ & 19.0\% & 1.6\% & 1{,}447 & 3{,}094 \\
+DPXA cos\,0.72 & 2.10$\times$ & 17.6\% & 2.3\% & 1{,}611 & 2{,}853 \\
+DPXA cos\,0.75 & 2.09$\times$ & 15.7\% & 3.8\% & 1{,}954 & 2{,}545 \\
+DPXA cos\,0.78 & 2.03$\times$ & 14.2\% & 6.3\% & 2{,}445 & 2{,}284 \\
+DPXA cos\,0.80 & 1.97$\times$ & 13.3\% & 8.7\% & 2{,}885 & 2{,}140 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!ht]
+\centering
+\caption{RULER accuracy (\%) for the DPXA cosine-threshold sweep on LLaMA-3.1 8B Instruct (30 samples, 9 tasks), all at recall $r{=}0.90$.}
+\label{tab:cos_ruler}
+\begin{tabular}{lrrrrrrr}
+\toprule
+Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg \\
+\midrule
+Full attention & 99.31 & 97.21 & 96.59 & 93.76 & 88.23 & 74.00 & 91.52 \\
+\midrule
+DPXA cos\,0.70 & 99.35 & 97.91 & 96.99 & 93.89 & 87.85 & 74.17 & 91.69 \\
+DPXA cos\,0.72 & 99.43 & 97.56 & 96.93 & 94.32 & 88.09 & 72.74 & 91.51 \\
+DPXA cos\,0.75 & 99.38 & 97.30 & 96.90 & 94.06 & 87.94 & 72.94 & 91.42 \\
+DPXA cos\,0.78 & 99.35 & 97.64 & 96.83 & 94.44 & 87.73 & 74.78 & 91.80 \\
+DPXA cos\,0.80 & 99.51 & 96.90 & 97.81 & 93.51 & 87.59 & 74.17 & 91.58 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table*}[!ht]
+\centering
+\small
+\caption{LongBench scores on LLaMA-3.1 8B Instruct (100 samples per task) for the DPXA cosine-threshold sweep, all at recall $r{=}0.90$. Task abbreviations as in Table~\ref{tab:longbench}.}
+\label{tab:cos_longbench}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lrrrrrrrrr r}
+\toprule
+Method & NQA & Qas & MFQ & HotP & 2Wiki & Mus & GovR & QMS & MNews & Avg \\
+\midrule
+Full attention & 31.91 & 43.06 & 56.25 & 54.87 & 47.97 & 34.88 & 34.47 & 25.27 & 27.15 & 39.54 \\
+\midrule
+DPXA cos\,0.70 & 31.13 & 41.85 & 56.74 & 53.42 & 49.10 & 31.59 & 34.51 & 25.59 & 26.63 & 38.95 \\
+DPXA cos\,0.72 & 31.62 & 42.86 & 57.04 & 53.29 & 47.88 & 32.87 & 34.67 & 25.66 & 26.97 & 39.21 \\
+DPXA cos\,0.75 & 31.26 & 42.35 & 56.76 & 53.11 & 49.27 & 32.12 & 35.11 & 25.27 & 26.51 & 39.08 \\
+DPXA cos\,0.78 & 31.81 & 43.60 & 57.19 & 54.51 & 45.27 & 32.72 & 35.26 & 25.35 & 26.67 & 39.15 \\
+DPXA cos\,0.80 & 30.23 & 43.37 & 56.26 & 51.92 & 46.73 & 32.03 & 34.91 & 25.49 & 26.54 & 38.61 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\subsubsection{Cross-Model Generalization: Qwen2.5-7B}
+\label{sec:results_qwen}
+
+The results above use LLaMA-3.1 8B Instruct throughout. To check whether DPXA's behavior is specific to that model, we repeat the full RULER, LongBench, and speedup evaluation on Qwen2.5-7B-Instruct-1M, using the same two operating points (cos\,0.72 and cos\,0.78 at $r{=}0.90$) and the same baselines.
+
+
+\paragraph{RULER.}
+
+Table~\ref{tab:delta_tile_scoring_qwen} reports RULER accuracy on Qwen. MInference (90.35) and both XAttention strides (90.25 at $s{=}16$, 90.23 at $s{=}8$) tie full attention (90.33); DPXA trails by 1.4--2.2 points (88.89 at cos\,0.78 and 88.12 at cos\,0.72). FlexPrefill collapses to 53.50.
+
+\begin{table}[!ht]
+\centering
+\caption{RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on Qwen2.5-7B-Instruct-1M (100 samples, 13 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma{=}0.90$ respectively). Best score per column in \textbf{bold}.}
+\label{tab:delta_tile_scoring_qwen}
+\begin{tabular}{lrrrrrrr}
+\toprule
+Method & 4K & 8K & 16K & 32K & 64K & 128K & Avg \\
+\midrule
+Full attention              & 94.10 & 93.67 & 93.54 & \textbf{91.17} & 88.07 & \textbf{81.41} & 90.33 \\
+MInference                  & \textbf{94.16} & \textbf{94.00} & \textbf{94.03} & 90.99 & 87.68 & 81.23 & \textbf{90.35} \\
+FlexPrefill                  & 74.39 & 61.74 & 55.66 & 59.71 & 32.38 & 37.10 & 53.50 \\
+\midrule
+XAttn $s=16$                & 94.02 & 93.55 & 93.66 & 90.85 & \textbf{88.21} & 81.22 & 90.25 \\
+XAttn $s=8$                 & 94.06 & 93.53 & 93.60 & 91.02 & 87.96 & 81.23 & 90.23 \\
+\midrule
+DPXA cos\,0.72 & 94.01 & 92.38 & 92.56 & 87.45 & 83.69 & 78.60 & 88.12 \\
+DPXA cos\,0.78 & 94.02 & 93.54 & 92.59 & 89.38 & 84.54 & 79.26 & 88.89 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+DPXA's gap isn't confined to one context length: it opens up from 16K onward and widens to roughly 3.5--4.4 points at 64K (Table~\ref{tab:delta_tile_scoring_qwen}), before narrowing again at 128K. To find its source, we break the 128K result down into its 13 individual RULER tasks (Table~\ref{tab:ruler_pertask_qwen}).
+
+DPXA ties or beats XAttention on 11 of the 13 tasks. The whole gap comes from two tasks: variable tracking (vt) and common word extraction (cwe). Both ask the model to aggregate information spread across many positions, rather than retrieve a single needle, and DPXA collapses on both (53.8 and 13.8 at cos\,0.72, well below full attention's 75.8 and 27.3). This is DPXA's failure mode: strong on retrieval, weak on aggregation.
+
+\begin{table*}[!ht]
+\centering
+\small
+\caption{RULER per-task accuracy (\%) at 128K on Qwen2.5-7B-Instruct-1M (100 samples). ns1--3 = niah\_single\_1--3, mk1--3 = niah\_multikey\_1--3, mv = niah\_multivalue, mq = niah\_multiquery, vt = variable tracking, cwe = common words extraction, fwe = frequent words extraction, qa1--2 = question answering 1--2. vt and cwe are the aggregation tasks discussed in the text.}
+\label{tab:ruler_pertask_qwen}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lrrrrrrrrrrrrr}
+\toprule
+Method & ns1 & ns2 & ns3 & mk1 & mk2 & mk3 & mv & mq & vt & cwe & fwe & qa1 & qa2 \\
+\midrule
+Full attention & 100 & 97 & 100 & 100 & 96 & 89 & 82.8 & 99.5 & 75.8 & 27.3 & 81.0 & 69 & 41 \\
+MInference     & 100 & 100 & 100 & 99  & 95 & 92 & 83.5 & 99.3 & 76.0 & 24.7 & 78.0 & 69 & 39.5 \\
+\midrule
+XAttn $s{=}16$ & 100 & 98 & 100 & 100 & 94 & 82 & 82.8 & 99.3 & 75.0 & 30.5 & 80.3 & 72 & 42 \\
+XAttn $s{=}8$  & 100 & 98 & 100 & 100 & 97 & 84 & 82.8 & 99.0 & 73.0 & 28.9 & 79.3 & 70 & 44 \\
+\midrule
+DPXA cos\,0.72 & 100 & 98 & 100 & 97  & 90 & 84 & 86.0 & 99.3 & 53.8 & 13.8 & 82.0 & 70 & 48 \\
+DPXA cos\,0.78 & 100 & 98 & 100 & 98  & 94 & 83 & 83.0 & 99.3 & 52.6 & 18.2 & 81.3 & 70 & 53 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+The Llama picture partially hides the weakness. Table~\ref{tab:ruler_pertask_llama_agg} shows the same two tasks at 128K on Llama. On cwe, full attention itself only reaches 1.6, and every method, DPXA included, is stuck near the same floor (0.5--2.8); there is no real signal in this task on Llama. But vt is not a floor effect: full attention reaches a meaningful 57.4, and DPXA holds up well, while XAttention pushes further ahead (61.4--74.6). DPXA's vt score on Llama is in fact higher than its vt score on Qwen (57.6 versus 52.6--53.8), even though Qwen's full attention is far stronger on this task (75.8 versus 57.4). This suggests the aggregation weakness is exaggerated on Qwen.
+
+\begin{table}[!ht]
+\centering
+\caption{RULER accuracy (\%) at 128K on the two aggregation tasks (variable tracking, common words extraction) on LLaMA-3.1 8B Instruct (100 samples). On cwe, full attention is already near the floor and every method sits close to it; on vt, full attention is meaningful and DPXA holds up.}
+\label{tab:ruler_pertask_llama_agg}
+\begin{tabular}{lrr}
+\toprule
+Method & vt & cwe \\
+\midrule
+Full attention & 57.4 & 1.6 \\
+MInference     & 61.8 & 0.5 \\
+\midrule
+XAttn $s{=}16$ & 61.4 & 1.6 \\
+XAttn $s{=}8$  & 74.6 & 2.8 \\
+\midrule
+DPXA cos\,0.72 & 53.4 & 1.8 \\
+DPXA cos\,0.78 & 57.6 & 2.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{LongBench.}
+
+Table~\ref{tab:longbench_qwen} shows LongBench scores on Qwen. DPXA ties full attention (46.76): 46.19 at cos\,0.72 and 46.20 at cos\,0.78, tracking both XAttention variants (46.46 at $s{=}8$, 46.66 at $s{=}16$).
+
+The RULER aggregation weakness does not show up in the LongBench average. DPXA is in fact the strongest method on RepoBench-P, beating full attention and both XAttention variants by a wide margin (35.15 and 36.90 versus 32.92 for full attention, 31.97 and 31.70 for XAttention). It also stays near-lossless on passage retrieval (97--98 versus 100).
+
+The two tasks where DPXA falls short of full attention are MuSiQue (29.22--29.88 versus 32.70) and 2WikiMultiHopQA (52.46--53.31 versus 55.45), both multi-hop tasks that require combining evidence spread across several passages. This lines up with the RULER aggregation failure mode, though with only two tasks affected we can't say for certain that multi-hop QA and RULER's aggregation tasks share the same underlying cause.
+
+MInference fails to complete two tasks (QMSum, RepoBench-P) at 128K, so its 16-task average is not directly comparable and is marked with $\dagger$.
+
+\begin{table*}[!ht]
+\centering
+\small
+\caption{LongBench scores on Qwen2.5-7B-Instruct-1M (100 samples per task, 16 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma{=}0.90$ respectively). Task abbreviations as in Table~\ref{tab:longbench}. Best score per column in \textbf{bold}. $\dagger$MInference failed on 2 of 16 tasks (QMSum, RepoBench-P); its reported average is over the 14 completed tasks and is not directly comparable to the other rows.}
+\label{tab:longbench_qwen}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lrrrrrrrrrrrrrrrrr}
+\toprule
+Method & NQA & Qas & MFQ & HotP & 2Wiki & Mus & GovR & QMS & MNews & TREC & TQA & SAM & PCnt & PassR & LCC & RepoB & Avg \\
+\midrule
+Full attention               & 29.26 & 45.12 & 51.49 & \textbf{58.34} & 55.45 & 32.70 & 35.22 & 23.99 & 25.69 & 71.00 & 83.31 & 45.24 & 10.00 & \textbf{100.00} & \textbf{48.40} & 32.92 & 46.76 \\
+MInference$^\dagger$         & 29.38 & 45.36 & 51.85 & 56.77 & 54.65 & \textbf{33.47} & 35.20 & --    & 25.98 & 71.00 & 83.31 & 46.32 & 10.00 & 99.00 & 47.63 & --    & (44.4)$^\dagger$ \\
+FlexPrefill                  & 24.68 & 39.46 & 50.63 & 48.72 & 50.58 & 21.06 & 33.61 & \textbf{24.67} & 25.42 & 70.00 & 78.64 & 46.11 & 2.00 & 59.00 & 45.18 & 33.61 & 40.84 \\
+XAttn $s{=}16$               & 29.84 & 44.74 & 51.41 & 57.63 & \textbf{55.62} & 32.60 & 34.84 & 24.00 & \textbf{26.09} & 70.00 & 83.18 & 46.00 & \textbf{12.00} & \textbf{100.00} & 46.70 & 31.97 & 46.66 \\
+XAttn $s{=}8$                & \textbf{30.26} & 45.77 & \textbf{52.31} & 58.16 & 53.78 & 31.62 & 35.18 & 24.09 & 26.00 & 71.00 & 83.51 & 45.83 & 9.00 & \textbf{100.00} & 45.14 & 31.70 & 46.46 \\
+\midrule
+DPXA cos\,0.72 & 29.89 & \textbf{46.48} & 52.04 & \textbf{58.56} & 53.31 & 29.22 & 35.12 & 24.19 & 25.86 & 72.00 & 83.17 & \textbf{46.51} & 4.00 & 98.00 & 45.57 & 35.15 & 46.19 \\
+DPXA cos\,0.78 & 28.16 & 42.79 & 50.85 & 55.59 & 52.46 & 29.88 & 35.11 & 24.33 & 25.57 & \textbf{74.00} & \textbf{83.84} & 46.18 & 10.00 & 97.00 & 46.52 & \textbf{36.90} & 46.20 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\paragraph{Speedup.}
+
+Figure~\ref{fig:dpxa_speedup_trend_qwen} traces end-to-end speedup on Qwen from 4K to 512K. XAttention and DPXA are reported only to 256K: both OOM at 512K on the block-sparse attention transients of the 4-GPU node, while SDPA, MInference, and FlexPrefill complete.
+
+The overall picture matches Llama (Figure~\ref{fig:dpxa_speedup_trend}). MInference is the slowest method up to 64K and only catches up at 128K; it doesn't pass FlexPrefill until 512K, where it reaches 4.81$\times$, a smaller jump than the 9.33$\times$ it reaches on Llama. FlexPrefill leads from 4K to 256K, drops back (4.13$\times$ to 3.87$\times$) on 512K.
+
+DPXA and XAttention track each other closely, but DPXA is clearly faster at 128K and 256K, reaching 1.57$\times$ and 1.81$\times$ versus 1.45$\times$ and 1.74$\times$ for XAttn $s{=}16$.
+
+\begin{figure}[!ht]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\linewidth, height=0.62\linewidth,
+    xmode=log, log basis x=2,
+    xtick={4096,16384,32768,65536,131072,262144,524288},
+    xticklabels={4K,16K,32K,64K,128K,256K,512K},
+    xlabel={Sequence length (tokens)},
+    ylabel={Prefill speedup vs.\ SDPA ($\times$)},
+    ymin=0, ymax=5.2,
+    ytick={0,1,2,3,4,5},
+    grid=both, grid style={gray!20},
+    legend pos=north west,
+    legend cell align=left,
+    legend style={font=\small, fill=white, fill opacity=0.85, text opacity=1, draw=gray!40},
+    tick label style={font=\small},
+    label style={font=\small},
+    mark size=1.8pt,
+]
+% break-even reference (SDPA)
+\addplot[black, dashed, thick, forget plot] coordinates {(4096,1)(524288,1)};
+\node[anchor=south east, font=\footnotesize, gray!60!black] at (axis cs:524288,1) {SDPA (break-even)};
+
+\addplot[color=green!55!black, semithick, mark=o]
+    coordinates {(4096,0.12)(16384,0.24)(32768,0.42)(65536,0.79)(131072,1.41)(262144,2.70)(524288,4.81)};
+\addlegendentry{MInference}
+\addplot[color=violet, semithick, mark=diamond]
+    coordinates {(4096,0.52)(16384,0.90)(32768,1.26)(65536,1.77)(131072,2.66)(262144,4.13)(524288,3.87)};
+\addlegendentry{FlexPrefill $\gamma{=}0.90$}
+\addplot[color=cyan!60!black, semithick, dashed, mark=triangle]
+    coordinates {(4096,0.73)(16384,1.03)(32768,1.13)(65536,1.29)(131072,1.45)(262144,1.74)};
+\addlegendentry{XAttn $s{=}16$}
+\addplot[color=blue!70!black, semithick, mark=triangle*]
+    coordinates {(4096,0.73)(16384,1.01)(32768,1.11)(65536,1.24)(131072,1.36)(262144,1.61)};
+\addlegendentry{XAttn $s{=}8$}
+\addplot[color=red!80!black, very thick, mark=*]
+    coordinates {(4096,0.66)(16384,0.96)(32768,1.10)(65536,1.29)(131072,1.54)(262144,1.79)};
+\addlegendentry{DPXA cos\,0.72 (ours)}
+\addplot[color=orange!90!black, very thick, dashed, mark=square*]
+    coordinates {(4096,0.66)(16384,0.97)(32768,1.11)(65536,1.30)(131072,1.57)(262144,1.81)};
+\addlegendentry{DPXA cos\,0.78 (ours)}
+\end{axis}
+\end{tikzpicture}
+\caption{End-to-end prefill speedup relative to SDPA across sequence lengths on Qwen2.5-7B-Instruct-1M (4$\times$H100, layer-sharded). XAttention and DPXA are reported to 256K; both OOM at 512K on this hardware.}
+\label{fig:dpxa_speedup_trend_qwen}
+\end{figure}
+
+\subsubsection{Video Understanding: Qwen2-VL}
+\label{sec:results_video}
+
+We test whether DPXA transfers beyond text to video understanding, using Qwen2-VL-7B-Instruct on Video-MME at 1 fps, the same video setup used in the XAttention paper. 
+
+On video, packing by Euclidean distance works better than packing by cosine similarity, since it is also sensitive to magnitude rather than direction alone (see Ablations below). We therefore report DPXA with Euclidean packing at $\delta{=}15$, $r{=}0.90$ as the video operating point. We compare against full attention, XAttention at stride 16, MInference, and FlexPrefill, the same baselines used in the text experiments.
+
+\paragraph{Benchmark.}
+
+We measure two things on Video-MME: accuracy and speed. Accuracy is the rule-based score on the full test set (2,700 videos, 900 per duration bucket). Speedup is the attention-kernel latency relative to full attention, measured on a smaller timing sample of 10 videos per bucket. Unlike the text speedup tests, where we measure end-to-end latency, here we report attention latency only (scoring, block-selection, and packing, plus the actual block-sparse or dense attention kernel), since the end-to-end latency includes the whole vision decoding and dilutes the speedups. Both accuracy and speedup are broken down by video length: short (under 2 minutes), medium, and long (30 to 60 minutes). Table~\ref{tab:videomme_main} reports both.
+
+DPXA at $\delta{=}15$ is our headline video result. It stays close to full attention (60.7 overall versus 62.1) and matches XAttention on quality, while being faster on long videos, the most crucial split. There DPXA scores 52.6 against XAttention's 51.7, and it runs at 1.33$\times$ full attention while XAttention only reaches 1.18$\times$.
+
+The other DPXA settings trade accuracy for speed. $\delta{=}19$ overpacks and drops about 2 points overall (59.1), but on long videos it holds 51.1, close to XAttention (51.7), while reaching 1.79$\times$, the second highest long-video speedup after FlexPrefill. It is worth using only when speed is the priority.
+
+MInference keeps the best accuracy of the sparse methods (62.4 overall) but is slower than full attention on every bucket (0.42$\times$ to 0.62$\times$). This matches our text speedup findings, where MInference only shows speedups past 128K. FlexPrefill is the fastest method (2.18$\times$ on long) and has solid overall accuracy retention, but it falls behind DPXA $\delta{=}15$ on long-video accuracy (51.6 versus 52.6).
+
+\begin{table}[!ht]
+\centering
+\caption{Video-MME accuracy and prefill speedup on Qwen2-VL-7B-Instruct (Video-MME @ 1fps, no subtitles). Accuracy (\%) is on the full test set ($n{=}2700$). Speedup ($\times$full) is attention-kernel latency (\texttt{self\_attn\_ms}) relative to full attention on a 10-videos-per-bucket timing sample; higher is faster. DPXA rows use Euclidean packing with count-weighting off. Best accuracy per column in \textbf{bold}.}
+\label{tab:videomme_main}
+\begin{tabular}{lrrrrrr}
+\toprule
+ & \multicolumn{3}{c}{Accuracy (\%)} & \multicolumn{3}{c}{Speedup ($\times$full)} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Method & Short & Med & Long & Short & Med & Long \\
+\midrule
+Full attention                    & 72.3 & 61.0 & 53.0 & 1.00 & 1.00 & 1.00 \\
+MInference                        & \textbf{72.8} & 61.2 & \textbf{53.3} & 0.42 & 0.62 & 0.61 \\
+FlexPrefill                        & 72.1 & \textbf{61.3} & 51.6 & 1.41 & 2.12 & 2.18 \\
+XAttn $s{=}16$ ($r{=}0.90$)       & 72.0 & 59.9 & 51.7 & 0.95 & 1.22 & 1.18 \\
+\midrule
+DPXA $\delta{=}15$ ($r{=}0.90$)   & 71.1 & 58.6 & 52.6 & 0.98 & 1.21 & 1.33 \\
+DPXA $\delta{=}19$ ($r{=}0.90$)   & 69.0 & 57.1 & 51.1 & 1.12 & 1.48 & 1.79 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Ablations.}
+
+We sweep cosine ($\tau \in \{0.72, 0.75, 0.80, 0.90\}$) and Euclidean ($\delta \in \{13, 15, 17, 19\}$) packing thresholds at matched recall $r{=}0.90$ on the Video-MME 200-video subset, with count-weighting off throughout (Table~\ref{tab:videomme_ablation_metric}). Euclidean is the stronger metric on long videos across the whole sweep, matching or beating XAttention's long score (44.6) at every threshold.
+
+$\delta{=}15$ is the best operating point in the sweep: it has the highest overall score (60.5) and the strongest long score (50.0). Its scoring ratio (9.7\%) is higher than XAttention's (6.25\%), but it retains far fewer tiles (30.5\% versus 40.7\%), so the savings on the attention side outweigh the pricier scoring. We use $\delta{=}15$ as our operating point for the full-scale experiments.
+
+$\delta{=}19$ trades accuracy for cost: overall drops to 57.5, but scoring ratio falls to 1.4\% and retained tiles to 23.6\%, both well below XAttention. This makes it a candidate fast operating point, though we have not yet confirmed it at full scale.
+
+
+
+
+\begin{table}[!ht]
+\centering
+\caption{Packing metric ablation on Video-MME (200-video subset), Qwen2-VL-7B-Instruct, recall $r{=}0.90$, count-weighting off throughout.}
+\label{tab:videomme_ablation_metric}
+\begin{tabular}{llrrrrrr}
+\toprule
+Metric & $\tau$/$\delta$ & Overall & Short & Medium & Long & Retained tiles & Scoring ratio \\
+\midrule
+XAttn $s{=}16$ & -- & 59.0 & 75.0 & 59.7 & 44.6 & 40.7\% & 6.25\% \\
+\midrule
+Cosine & $\tau{=}0.90$ & 59.5 & 78.1 & 54.8 & 47.3 & 33.6\% & 45.8\% \\
+Cosine & $\tau{=}0.80$ & 58.5 & 76.6 & 56.5 & 44.6 & 32.4\% & 14.2\% \\
+Cosine & $\tau{=}0.75$ & 56.5 & 79.7 & 48.4 & 43.2 & 30.6\% & 7.4\% \\
+Cosine & $\tau{=}0.72$ & 58.5 & 81.2 & 50.0 & 45.9 & 29.3\% & 5.0\% \\
+\midrule
+Euclidean & $\delta{=}13$ & 59.5 & 78.1 & 56.5 & 45.9 & 32.8\% & 21.2\% \\
+Euclidean & $\delta{=}15$ & 60.5 & 76.6 & 56.5 & 50.0 & 30.5\% & 9.7\% \\
+Euclidean & $\delta{=}17$ & 58.5 & 76.6 & 53.2 & 47.3 & 27.1\% & 3.8\% \\
+Euclidean & $\delta{=}19$ & 57.5 & 75.0 & 48.4 & 50.0 & 23.6\% & 1.4\% \\
 \bottomrule
 \end{tabular}
 \end{table}

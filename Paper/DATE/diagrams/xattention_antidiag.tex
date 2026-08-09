@@ -1,0 +1,138 @@
+\begin{figure}[h]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tikzpicture}
+  \def\cell{0.28}
+  \colorlet{hilightA}{orange!60}
+  \colorlet{hilightB}{orange!25}
+  \colorlet{hilightFocus}{orange!90!red!80}
+  \colorlet{plain}{gray!15}
+
+  %--- Stride bracket on left of Q ---
+  \draw[thick] ({-0.2*\cell},0) -- ({-0.7*\cell},0)
+               -- ({-0.7*\cell},{-4*\cell})
+               -- ({-0.2*\cell},{-4*\cell});
+  \node[left, font=\scriptsize] at ({-0.7*\cell},{-2*\cell}) {$S$ tokens};
+
+  %--- Full Q (16×2, alternating group colours) ---
+  \foreach \r in {0,...,15} {
+    \pgfmathtruncatemacro{\grp}{mod(int(\r/4),2)}
+    \foreach \c in {0,1} {
+      \ifnum\grp=0 \fill[hilightA] \else \fill[hilightB] \fi
+        ({\c*\cell},{-\r*\cell}) rectangle ({(\c+1)*\cell},{(-\r-1)*\cell});
+      \draw ({\c*\cell},{-\r*\cell}) rectangle ({(\c+1)*\cell},{(-\r-1)*\cell});
+    }
+  }
+  \foreach \g in {4,8,12} { \draw[thick] (0,{-\g*\cell}) -- ({2*\cell},{-\g*\cell}); }
+  \node[above, font=\small\bfseries] at ({1*\cell}, 0.1)             {$Q$};
+  \node[below, font=\scriptsize]     at ({1*\cell},{-16*\cell-0.05}) {$B \times d$};
+
+  %--- Full K (16×2) ---
+  \foreach \r in {0,...,15} {
+    \pgfmathtruncatemacro{\grp}{mod(int(\r/4),2)}
+    \foreach \c in {0,1} {
+      \ifnum\grp=0 \fill[hilightA] \else \fill[hilightB] \fi
+        ({(3+\c)*\cell},{-\r*\cell}) rectangle ({(4+\c)*\cell},{(-\r-1)*\cell});
+      \draw ({(3+\c)*\cell},{-\r*\cell}) rectangle ({(4+\c)*\cell},{(-\r-1)*\cell});
+    }
+  }
+  \foreach \g in {4,8,12} { \draw[thick] ({3*\cell},{-\g*\cell}) -- ({5*\cell},{-\g*\cell}); }
+  \node[above, font=\small\bfseries] at ({4*\cell}, 0.1)             {$K$};
+  \node[below, font=\scriptsize]     at ({4*\cell},{-16*\cell-0.05}) {$B \times d$};
+
+  %--- Pack arrow ---
+  \draw[-{Stealth}] ({5.4*\cell},{-8*\cell}) -- ({7.6*\cell},{-8*\cell});
+  \node[above, font=\scriptsize] at ({6.5*\cell},{-8*\cell}) {pack $Sd$};
+
+  %--- Q̃ (4 rows × 8 cols) centred at rows 6–9 ---
+  \foreach \r in {0,...,3} {
+    \pgfmathtruncatemacro{\grp}{mod(\r,2)}
+    \foreach \c in {0,...,7} {
+      \ifnum\grp=0 \fill[hilightA] \else \fill[hilightB] \fi
+        ({(8+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(9+\c)*\cell},{-(7+\r)*\cell});
+      \draw ({(8+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(9+\c)*\cell},{-(7+\r)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({12*\cell},{-6*\cell})       {$\tilde{Q}$};
+  \node[below, font=\scriptsize]     at ({12*\cell},{-10*\cell-0.05}) {$\dfrac{B}{S} \times Sd$};
+
+  %--- ⊗ ---
+  \node[font=\large] at ({17.5*\cell},{-8*\cell}) {$\otimes$};
+
+  %--- K̃ (4 rows × 8 cols) ---
+  \foreach \r in {0,...,3} {
+    \pgfmathtruncatemacro{\grp}{mod(\r,2)}
+    \foreach \c in {0,...,7} {
+      \ifnum\grp=0 \fill[hilightA] \else \fill[hilightB] \fi
+        ({(19+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(20+\c)*\cell},{-(7+\r)*\cell});
+      \draw ({(19+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(20+\c)*\cell},{-(7+\r)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({23*\cell},{-6*\cell})       {$\tilde{K}$};
+  \node[below, font=\scriptsize]     at ({23*\cell},{-10*\cell-0.05}) {$\dfrac{B}{S} \times Sd$};
+
+  %--- = ---
+  \node[font=\large] at ({29*\cell},{-8*\cell}) {$=$};
+
+  %--- 4×4 result matrix (B/S × B/S), centred at rows 6–9 ---
+  \foreach \r in {0,...,3} {
+    \foreach \c in {0,...,3} {
+      \ifnum\r=0
+        \ifnum\c=0
+          \fill[hilightFocus]
+            ({(31+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(32+\c)*\cell},{-(7+\r)*\cell});
+        \else
+          \fill[plain]
+            ({(31+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(32+\c)*\cell},{-(7+\r)*\cell});
+        \fi
+      \else
+        \fill[plain]
+          ({(31+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(32+\c)*\cell},{-(7+\r)*\cell});
+      \fi
+      \draw ({(31+\c)*\cell},{-(6+\r)*\cell}) rectangle ({(32+\c)*\cell},{-(7+\r)*\cell});
+    }
+  }
+  \node[above, font=\small\bfseries] at ({33*\cell},{-6*\cell})       {$\tilde{Q}\tilde{K}^\top$};
+  \node[below, font=\scriptsize]     at ({33*\cell},{-10*\cell-0.05}) {$\dfrac{B}{S} \times \dfrac{B}{S}$};
+
+  %--- Arrow from cell (0,0) of 4×4 to sub-block (0,0) of 16×16 ---
+  \draw[-{Stealth}, thick, orange!70!black]
+      ({31.5*\cell},{-6.5*\cell})
+      to[out=70, in=210]
+      ({39*\cell},{-2*\cell});
+
+  %--- 16×16 full matrix (cols 37–52, rows 0–15) ---
+  \foreach \r in {0,...,15} {
+    \foreach \c in {0,...,15} {
+      \pgfmathtruncatemacro{\ad}{\r+\c}
+      \pgfmathtruncatemacro{\rem}{mod(\ad,4)}
+      \pgfmathtruncatemacro{\inblock}{(\r<4)*(\c<4)}
+      \ifnum\rem=3
+        \ifnum\inblock=1
+          \fill[hilightFocus]
+        \else
+          \fill[hilightA]
+        \fi
+      \else
+        \fill[plain]
+      \fi
+        ({(37+\c)*\cell},{-\r*\cell}) rectangle ({(38+\c)*\cell},{(-\r-1)*\cell});
+      \draw ({(37+\c)*\cell},{-\r*\cell}) rectangle ({(38+\c)*\cell},{(-\r-1)*\cell});
+    }
+  }
+  %--- S×S sub-block grid lines ---
+  \foreach \g in {4,8,12} {
+    \draw[thick] ({37*\cell},{-\g*\cell}) -- ({53*\cell},{-\g*\cell});
+    \draw[thick] ({(37+\g)*\cell},0)      -- ({(37+\g)*\cell},{-16*\cell});
+  }
+  %--- Outline the focused sub-block (0,0) ---
+  \draw[very thick, orange!70!black] ({37*\cell},0) rectangle ({41*\cell},{-4*\cell});
+
+  \node[above, font=\small\bfseries] at ({45*\cell}, 0.1)             {Approximate scores};
+  \node[below, font=\scriptsize]     at ({45*\cell},{-16*\cell-0.05}) {antidiagonal of each $S{\times}S$ sub-block};
+
+\end{tikzpicture}
+}
+\caption{XAttention antidiagonal scoring. Groups of $S$ consecutive tokens are packed along the head dimension ($d \to Sd$), with $K$ groups reversed. Each entry of the $(B/S)\times(B/S)$ product $\tilde{Q}\tilde{K}^\top$ sums the $S$ antidiagonal scores of one $S\times S$ sub-block (arrow).}
+\label{fig:xattention_antidiag}
+\end{figure}

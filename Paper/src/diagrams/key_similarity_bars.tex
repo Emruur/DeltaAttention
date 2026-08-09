@@ -1,0 +1,41 @@
+\begin{figure}[!ht]
+\centering
+\begin{tikzpicture}
+  \definecolor{preReal}{HTML}{2C5F8A}   % dark blue
+  \definecolor{preShuf}{HTML}{8FB8DE}   % light blue
+  \definecolor{postReal}{HTML}{B23A2E}  % dark red
+  \definecolor{postCont}{HTML}{E08A3C}  % orange
+  \definecolor{postShuf}{HTML}{E9C46A}  % light amber
+  \begin{axis}[
+    ybar,
+    bar width=6pt,
+    width=\textwidth,
+    height=6.2cm,
+    enlarge x limits=0.18,
+    ymin=0, ymax=1,
+    ytick={0,0.2,0.4,0.6,0.8,1.0},
+    ylabel={Mean adj.\ cosine similarity},
+    symbolic x coords={Layer 0, Layer 8, Layer 16, Layer 23},
+    xtick=data,
+    tick label style={font=\small},
+    ylabel style={font=\small},
+    ymajorgrids=true,
+    grid style={dashed, gray!40},
+    legend style={
+      at={(0.5,-0.16)}, anchor=north,
+      legend columns=3, font=\small,
+      /tikz/every even column/.append style={column sep=10pt},
+      draw=gray!50,
+    },
+  ]
+    \addplot[fill=preReal,  draw=preReal!70!black]  coordinates {(Layer 0,0.7728) (Layer 8,0.8252) (Layer 16,0.8498) (Layer 23,0.8264)};
+    \addplot[fill=preShuf,  draw=preShuf!70!black]  coordinates {(Layer 0,0.7700) (Layer 8,0.6837) (Layer 16,0.6806) (Layer 23,0.6989)};
+    \addplot[fill=postReal, draw=postReal!70!black] coordinates {(Layer 0,0.7457) (Layer 8,0.8167) (Layer 16,0.8423) (Layer 23,0.8172)};
+    \addplot[fill=postCont, draw=postCont!70!black] coordinates {(Layer 0,0.7434) (Layer 8,0.8200) (Layer 16,0.8573) (Layer 23,0.8390)};
+    \addplot[fill=postShuf, draw=postShuf!70!black] coordinates {(Layer 0,0.5094) (Layer 8,0.5005) (Layer 16,0.5216) (Layer 23,0.5242)};
+    \legend{pre-RoPE real, pre-RoPE shuffled, post-RoPE real, post-RoPE content-shuffled, post-RoPE key-shuffled}
+  \end{axis}
+\end{tikzpicture}
+\caption{Average cosine similarity of adjacent key states under five configurations for LLaMA-3.1 8B Instruct at layers 0, 8, 16, and 23.}
+\label{fig:cos_analysis}
+\end{figure}

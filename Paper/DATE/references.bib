@@ -1,0 +1,361 @@
+% ============================================================
+% Foundational Transformers
+% ============================================================
+
+@inproceedings{vaswani2017attention,
+  title     = {Attention Is All You Need},
+  author    = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and
+               Jones, Llion and Gomez, Aidan N. and Kaiser, {\L}ukasz and Polosukhin, Illia},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {30},
+  year      = {2017}
+}
+
+@article{brown2020gpt3,
+  title   = {Language Models are Few-Shot Learners},
+  author  = {Brown, Tom and Mann, Benjamin and Ryder, Nick and Subbiah, Melanie and
+             Kaplan, Jared D. and Dhariwal, Prafulla and Neelakantan, Arvind and
+             Shyam, Pranav and Sastry, Girish and Askell, Amanda and others},
+  journal = {Advances in Neural Information Processing Systems},
+  volume  = {33},
+  pages   = {1877--1901},
+  year    = {2020}
+}
+
+% ============================================================
+% Positional Encoding
+% ============================================================
+
+@article{su2024rope,
+  title   = {{RoFormer}: Enhanced Transformer with Rotary Position Embedding},
+  author  = {Su, Jianlin and Ahmed, Murtadha and Lu, Yu and Pan, Shengfeng and
+             Bo, Wen and Liu, Yunfeng},
+  journal = {Neurocomputing},
+  volume  = {568},
+  pages   = {127063},
+  year    = {2024}
+}
+
+@article{peng2023yarn,
+  title   = {{YaRN}: Efficient Context Window Extension of Large Language Models},
+  author  = {Peng, Bowen and Quesnelle, Jeffrey and Fan, Honglu and Shippole, Enrico},
+  journal = {arXiv preprint arXiv:2309.00071},
+  year    = {2023}
+}
+
+@article{ding2024longrope,
+  title   = {{LongRoPE}: Extending {LLM} Context Window Beyond 2 Million Tokens},
+  author  = {Ding, Yiran and Zhang, Li Lyna and Zhang, Chengruidong and Xu, Yuanyuan and
+             Shang, Ning and Xu, Jiahang and Yang, Fan and Yang, Mao},
+  journal = {arXiv preprint arXiv:2402.13753},
+  year    = {2024}
+}
+
+% ============================================================
+% Triton
+% ============================================================
+
+@inproceedings{tillet2019triton,
+  title     = {Triton: An Intermediate Language and Compiler for Tiled Neural Network Computations},
+  author    = {Tillet, Philippe and Kung, H.~T. and Cox, David},
+  booktitle = {Proceedings of the 3rd {ACM} {SIGPLAN} International Workshop on Machine Learning and Programming Languages},
+  pages     = {10--19},
+  year      = {2019}
+}
+
+% ============================================================
+% Attention / FlashAttention
+% ============================================================
+
+@inproceedings{dao2022flashattention,
+  title     = {{FlashAttention}: Fast and Memory-Efficient Exact Attention with {IO}-Awareness},
+  author    = {Dao, Tri and Fu, Dan and Ermon, Stefano and Rudra, Atri and R{\'e}, Christopher},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {35},
+  pages     = {16344--16359},
+  year      = {2022}
+}
+
+@inproceedings{dao2023flashattention2,
+  title     = {{FlashAttention-2}: Faster Attention with Better Parallelism and Work Partitioning},
+  author    = {Dao, Tri},
+  booktitle = {International Conference on Learning Representations},
+  year      = {2024}
+}
+
+% ============================================================
+% Static sparse attention
+% ============================================================
+
+@article{child2019generating,
+  title   = {Generating Long Sequences with Sparse Transformers},
+  author  = {Child, Rewon and Gray, Scott and Radford, Alec and Sutskever, Ilya},
+  journal = {arXiv preprint arXiv:1904.10509},
+  year    = {2019}
+}
+
+% ============================================================
+% Attention sinks / local window
+% ============================================================
+
+@inproceedings{xiao2023streamingllm,
+  title     = {Efficient Streaming Language Models with Attention Sinks},
+  author    = {Xiao, Guangxuan and Tian, Yuandong and Chen, Beidi and Han, Song and Lewis, Mike},
+  booktitle = {International Conference on Learning Representations},
+  year      = {2024}
+}
+
+% ============================================================
+% Dynamic sparse attention (prefill)
+% ============================================================
+
+@inproceedings{jiang2024minference,
+  title     = {{MI}nference 1.0: Accelerating Pre-filling for Long-Context {LLMs} via Dynamic Sparse Attention},
+  author    = {Jiang, Huiqiang and Li, Yucheng and Zhang, Chengruidong and Wu, Qianhui and
+               Luo, Xufang and Ahn, Surin and Han, Zhenhua and Abdi, Amir H. and
+               Li, Dongsheng and Lin, Chin-Yew and Yang, Yuqing and Qiu, Lili},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2024}
+}
+
+@inproceedings{zhang2025spargeattn,
+  title     = {{SpargeAttention}: Accurate and Training-free Sparse Attention Accelerating Any Model Inference},
+  author    = {Zhang, Jintao and Xiang, Chendong and Huang, Haofeng and Wei, Jia and
+               Xi, Haocheng and Zhu, Jun and Chen, Jianfei},
+  booktitle = {Proceedings of the 42nd International Conference on Machine Learning},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {267},
+  publisher = {PMLR},
+  year      = {2025}
+}
+
+@inproceedings{lai2025flexprefill,
+  title     = {{FlexPrefill}: A Context-Aware Sparse Attention Mechanism for Efficient Long-Sequence Inference},
+  author    = {Lai, Xunhao and Lu, Jianqiao and Luo, Yao and Ma, Yiyuan and Zhou, Xun},
+  booktitle = {International Conference on Learning Representations},
+  year      = {2025}
+}
+
+@article{xu2025xattention,
+  title   = {{XAttention}: Block Sparse Attention with Antidiagonal Scoring},
+  author  = {Xu, Ruyi and Xiao, Guangxuan and Huang, Haofeng and Guo, Junxian and Han, Song},
+  journal = {arXiv preprint arXiv:2503.16428},
+  year    = {2025}
+}
+
+% ============================================================
+% K-matrix sparsity (prefill, parallel line)
+% ============================================================
+
+@article{qi2024deltallm,
+  title   = {{DeltaLLM}: A Training-Free Framework Exploiting Temporal Sparsity for Efficient Edge {LLM} Inference},
+  author  = {Qi, Jiawen and Gao, Chang and Ren, Zhaochun and Chen, Qinyu},
+  journal = {TODO: add arXiv ID or venue},
+  year    = {2024}
+}
+
+% ============================================================
+% Low-rank KV compression
+% ============================================================
+
+@inproceedings{saxena2024eigenattention,
+  title     = {Eigen Attention: Attention in Low-Rank Space for {KV} Cache Compression},
+  author    = {Saxena, Utkarsh and Saha, Gobinda and Choudhary, Sakshi and Roy, Kaushik},
+  booktitle = {Findings of the Association for Computational Linguistics: {EMNLP} 2024},
+  year      = {2024}
+}
+
+@article{deepseekai2024deepseekv2,
+  title   = {{DeepSeek-V2}: A Strong, Economical, and Efficient Mixture-of-Experts Language Model},
+  author  = {{DeepSeek-AI}},
+  journal = {arXiv preprint arXiv:2405.04434},
+  year    = {2024}
+}
+
+% ============================================================
+% KV cache compression (decoding)
+% ============================================================
+
+@inproceedings{zhang2023h2o,
+  title     = {{H2O}: Heavy-Hitter Oracle for Efficient Generative Inference of Large Language Models},
+  author    = {Zhang, Zhenyu and Sheng, Ying and Zhou, Tianyi and Chen, Tianlong and
+               Zheng, Lianmin and Cai, Ruisi and Song, Zhao and Tian, Yuandong and
+               R{\'e}, Christopher and Barrett, Clark and Wang, Zhangyang and Chen, Beidi},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2023}
+}
+
+@article{li2024snapkv,
+  title   = {{SnapKV}: {LLM} Knows What You are Looking for Before Generation},
+  author  = {Li, Yuhong and Huang, Yingbing and Yang, Bowen and Venkitesh, Bharat and
+             Locatelli, Acyr and Ye, Hanchen and Cai, Tianle and Lewis, Patrick and Chen, Deming},
+  journal = {arXiv preprint arXiv:2404.14469},
+  year    = {2024}
+}
+
+@article{zhang2024cam,
+  title   = {{CaM}: Cache Merging for Memory-efficient {LLMs} Inference},
+  author  = {Zhang, Yuxin and Du, Yuxuan and Luo, Gen and Zhong, Yunshan and
+             Zhang, Zhenyu and Liu, Shiwei and Ji, Rongrong},
+  journal = {TODO: add arXiv ID or venue},
+  year    = {2024}
+}
+
+@article{wang2024kvmerger,
+  title   = {Model Tells You Where to Merge: Adaptive {KV} Cache Merging for {LLMs} on Long-Context Tasks},
+  author  = {Wang, Zheng and Jin, Boxiao and Yu, Zhongzhi and Zhang, Minjia},
+  journal = {arXiv preprint arXiv:2407.08454},
+  year    = {2024}
+}
+
+% ============================================================
+% Long-context benchmarks
+% ============================================================
+
+@inproceedings{kuratov2024babilong,
+  title     = {{BABILong}: Testing the Limits of {LLMs} with Long Context Reasoning-in-a-Haystack},
+  author    = {Kuratov, Yuri and Bulatov, Aydar and Anokhin, Petr and Rodkin, Ivan and
+               Sorokin, Dmitry and Sorokin, Artyom and Burtsev, Mikhail},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2024}
+}
+
+@inproceedings{hsieh2024ruler,
+  title     = {{RULER}: What's the Real Context Size of Your Long-Context Language Models?},
+  author    = {Hsieh, Cheng-Ping and Sun, Simeng and Kriman, Samuel and Acharya, Shantanu and
+               Rekesh, Dima and Jia, Fei and Zhang, Yang and Ginsburg, Boris},
+  booktitle = {Proceedings of the First Conference on Language Modeling},
+  year      = {2024}
+}
+
+@inproceedings{bai2024longbench,
+  title     = {{LongBench}: A Bilingual, Multitask Benchmark for Long Context Understanding},
+  author    = {Bai, Yushi and Lv, Xin and Zhang, Jiajie and Lyu, Hongchang and Tang, Jiankai and
+               Huang, Zhidian and Du, Zhengxiao and Liu, Xiao and Zeng, Aohan and Hou, Lei and
+               Dong, Yuxiao and Tang, Jie and Li, Juanzi},
+  booktitle = {Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics},
+  year      = {2024}
+}
+
+% ============================================================
+% Hybrid prefill + decoding
+% ============================================================
+
+@article{xiao2024infllm,
+  title   = {{InfLLM}: Training-Free Long-Context Extrapolation for {LLMs} with an Efficient Context Memory},
+  author  = {Xiao, Chaojun and Zhang, Pengle and Han, Xu and Xiao, Guangxuan and
+             Lin, Yankai and Zhang, Zhengyan and Liu, Zhiyuan and Sun, Maosong},
+  journal = {arXiv preprint arXiv:2402.04617},
+  year    = {2024}
+}
+
+% ============================================================
+% Video understanding benchmark
+% ============================================================
+
+@inproceedings{fu2024videomme,
+  title     = {Video-{MME}: The First-Ever Comprehensive Evaluation Benchmark of Multi-modal {LLMs} in Video Analysis},
+  author    = {Fu, Chaoyou and Dai, Yuhan and Luo, Yongdong and Li, Lei and Ren, Shuhuai and
+               Zhang, Renrui and Wang, Zihan and Zhou, Chenyu and Shen, Yunhang and Zhang, Mengdan and
+               Chen, Peixian and Li, Yanwei and Lin, Shaohui and Zhao, Sirui and Li, Ke and Xu, Tong and
+               Zheng, Xiawu and Chen, Enhong and Ji, Rongrong and Sun, Xing},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2025}
+}
+
+% ============================================================
+% Added Enhancements (Models, Systems, RAG, etc.)
+% ============================================================
+
+@misc{dubey2024llama3,
+      title={The Llama 3 Herd of Models}, 
+      author={Abhimanyu Dubey and others},
+      year={2024},
+      eprint={2407.21783},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2407.21783},
+}
+
+@article{qwen25,
+  title={Qwen2.5 technical report},
+  author={Qwen Team},
+  journal={arXiv preprint arXiv:2412.15115},
+  year={2024}
+}
+
+@article{Qwen2-VL,
+  title={Qwen2-VL: Enhancing Vision-Language Model's Perception of the World at Any Resolution},
+  author={Wang, Peng and others},
+  journal={arXiv preprint arXiv:2409.12191},
+  year={2024}
+}
+
+@inproceedings{paszke2019pytorch,
+  title={PyTorch: An imperative style, high-performance deep learning library},
+  author={Paszke, Adam and others},
+  booktitle={Advances in neural information processing systems},
+  volume={32},
+  year={2019}
+}
+
+@article{Beltagy2020Longformer,
+  title={Longformer: The Long-Document Transformer},
+  author={Iz Beltagy and Matthew E. Peters and Arman Cohan},
+  journal={arXiv:2004.05150},
+  year={2020}
+}
+
+@article{zaheer2020bigbird,
+  title={Big bird: Transformers for longer sequences},
+  author={Zaheer, Manzil and others},
+  journal={Advances in Neural Information Processing Systems},
+  volume={33},
+  year={2020}
+}
+
+@inproceedings{lewis2020retrieval,
+  title={Retrieval-augmented Generation for Knowledge-intensive NLP Tasks},
+  author={Lewis, Patrick and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={33},
+  pages={9459--9474},
+  year={2020}
+}
+
+@inproceedings{yang2024sweagent,
+  title={SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering},
+  author={Yang, John and Jimenez, Carlos E and Wettig, Alexander and Lieret, Kilian and Yao, Shunyu and Narasimhan, Karthik and Press, Ofir},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={37},
+  year={2024}
+}
+
+@inproceedings{kwon2023efficient,
+  title={Efficient Memory Management for Large Language Model Serving with PagedAttention},
+  author={Kwon, Woosuk and others},
+  booktitle={Proceedings of the 29th Symposium on Operating Systems Principles},
+  pages={611--626},
+  year={2023}
+}
+
+@article{shah2024flashattention3,
+  title={FlashAttention-3: Fast and Accurate Attention with Asynchrony and Low-precision},
+  author={Shah, Jay and Bikshandi, Ganesh and Zhang, Ying and Thakkar, Vijay and Ramani, Pradeep and Dao, Tri},
+  journal={arXiv preprint arXiv:2407.08608},
+  year={2024}
+}
+
+@article{reid2024gemini,
+  title={Gemini 1.5: Unlocking multimodal understanding across millions of tokens of context},
+  author={Reid, Machel and others},
+  journal={arXiv preprint arXiv:2403.05530},
+  year={2024}
+}
+
+@article{liu2023ring,
+  title={Ring Attention with Blockwise Transformers for Near-Infinite Context},
+  author={Liu, Hao and Zaharia, Matei and Abbeel, Pieter},
+  journal={arXiv preprint arXiv:2310.01889},
+  year={2023}
+}

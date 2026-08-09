@@ -2,13 +2,13 @@
 
 Before the Transformer era, language models were built on recurrent neural networks (RNNs) and their variants such as LSTMs and GRUs.
 These models were used in small-scale conversational assistants like Siri and Alexa, but their usefulness was limited.
-RNNs encode context into a fixed-size hidden state, which means they forget information as sequences grow longer and the hidden state get diluted.
+RNNs encode context into a fixed-size hidden state, which means they forget information as sequences grow longer and the hidden state gets diluted.
 More importantly, they process text sequentially token by token, making it impossible to parallelize training across the sequence.
 This sequential bottleneck kept these models small.
 
 The groundbreaking paper \textit{Attention Is All You Need}~\citep{vaswani2017attention} changed the field.
 Transformers process all tokens in a sequence simultaneously, making it possible to train on massive datasets using GPU parallelism.
-Scaled to billions of parameters on web data,  GPT-3~\citep{brown2020gpt3} could do in-context learning, translation, coding, and reasoning without any task-specific training.
+Scaled to billions of parameters on web data, GPT-3~\citep{brown2020gpt3} could do in-context learning, translation, coding, and reasoning without any task-specific training.
 The scale of the data and model allowed a certain amount of generalization that earlier architectures could not achieve.
 
 The mechanism behind this is the attention module.
@@ -23,7 +23,7 @@ LLM inference consists of two stages: the prefill stage, which processes the ent
 As context length grows, the quadratic time complexity of attention makes prefill increasingly expensive.
 Memory was the original wall; FlashAttention removed it but did not address the time complexity: computing attention on long contexts is slow.
 
-A large body of work aims to accelarate attention for long context tasks by exploiting the empirical sparsity of the attention matrix: most tokens only attend strongly to a small local window and a few distant positions, so many token pair interactions do not need to be computed at all.
+A large body of work aims to accelerate attention for long context tasks by exploiting the empirical sparsity of the attention matrix: most tokens only attend strongly to a small local window and a few distant positions, so many token pair interactions do not need to be computed at all.
 Early work used fixed sparse patterns~\citep{child2019generating}; more recent methods determine the pattern dynamically based on the input~\citep{jiang2024minference, lai2025flexprefill, xu2025xattention}.
 
 This thesis exploits the insight that adjacent tokens have similar key vectors, with high cosine similarity between neighboring keys. This redundancy in $K$ is already documented in prior work~\citep{wang2024kvmerger, qi2024deltallm}. We show that the same holds for query vectors: adjacent queries are also highly similar. Unlike the sparsity of the attention matrix, this adjacency redundancy lives in the $Q$ and $K$ matrices before attention is computed, so it can be exploited independently of existing sparse attention methods or layered on top of them.
@@ -34,3 +34,5 @@ We apply this single insight to three prefill acceleration applications:
     \item \textbf{DeltaXAttention.} We apply the same compression on top of a block-sparse method, XAttention, compressing the keys inside the tiles it already selects to accelerate it further (Section~\ref{sec:xattention_adaptation}).
     \item \textbf{Delta-based tile scoring (DPXA).} We use the adjacency structure as a tile importance estimator for block-sparse attention, choosing which tiles to compute while sampling far less of each tile than existing estimators (Section~\ref{sec:delta_tile_scoring}).
 \end{itemize}
+
+These three are not equal contributions. The first two demonstrate what delta compression can and cannot do as a prefill optimization, and both turn out to have limited practical value: Delta-KV compression is dominated by existing methods as a standalone optimization, and DeltaXAttention saves KV loads that XAttention can already match by skipping tiles. DPXA is where the idea fits naturally. It is the strongest of the three, matching full attention on RULER for Llama, where it produces a higher-quality tile-importance signal than XAttention at a fraction of the scoring cost, and matching or beating XAttention's speedup across both models.

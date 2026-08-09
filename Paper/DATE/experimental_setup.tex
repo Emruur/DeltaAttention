@@ -1,0 +1,22 @@
+\section{Experimental Setup}
+
+\subsection{Benchmarks}
+
+We evaluate our method on two text benchmarks and one video benchmark. The text benchmarks are evaluated using LLaMA-3.1~\cite{dubey2024llama3} and Qwen2.5~\cite{qwen25}, while the video benchmark uses Qwen2-VL~\cite{Qwen2-VL}.
+
+\subsubsection{Text Benchmarks}
+
+\paragraph{RULER}
+RULER is a synthetic, retrieval-heavy benchmark that evaluates models across context lengths typically ranging from 4K to 128K tokens. The standard RULER setup includes 13 tasks with 100 samples per pass, making it computationally expensive. For development and ablations, we employ a lighter setup comprising 30 samples per task across 9 tasks
+
+\paragraph{LongBench}
+LongBench is a real-world benchmark featuring tasks such as coding, question answering, and summarization, with context lengths ranging from roughly 3K to 24K tokens. It covers 21 datasets across six task categories: single-document QA, multi-document QA, summarization, few-shot learning, synthetic retrieval, and code completion. We sample 100 instances per task and evaluate our main DTS results on 16 of these tasks.
+
+\subsubsection{Video Benchmarks}
+
+\paragraph{Video-MME}
+Video-MME is a long-video understanding benchmark that tests multiple-choice question answering over videos, sampling each video at 1 frame per second. The benchmark comprises 2,700 videos with durations ranging from short (under 2 minutes) to long (30 to 60 minutes). Our main results evaluate the full 2,700-video test set, while our packing threshold ablations use a reduced 200-video subset.
+
+\subsection{Speedup Experiment}
+
+To measure raw attention speedup, we run an isolated prefill test independent of any downstream task, following the latency evaluation in MInference~\cite{jiang2024minference}. The model is fed a randomly sampled sequence from WikiText-103 across a range of context lengths. We measure the time to first token, which covers the full prefill stage. DTS is compared against PyTorch SDPA~\cite{paszke2019pytorch, vaswani2017attention}, which dispatches to a FlashAttention-2~\cite{dao2023flashattention2}. We perform 2 warmup and 10 measured runs. 

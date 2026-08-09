@@ -1,0 +1,276 @@
+
+            <!-- Slide 12: Parallel Delta Packing -->
+            <section class="slide" id="parallel-deltapacking-slide" style="padding-top: 1rem; padding-bottom: 1rem;">
+                <div class="slide-header" style="margin-bottom: 0.5rem;">
+                    <h2>Parallel Delta Packing</h2>
+                </div>
+                <div class="slide-content" style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 4rem; padding: 0 4rem;">
+                    
+                    <!-- Unified Matrix Container -->
+                    <div class="k-matrix-container">
+                        <div style="display: flex; flex-direction: row; justify-content: flex-start; gap: 8px;">
+                            <div style="width: 50px;"></div>
+                            <h3 style="margin-bottom: 0.25rem; font-size: 1.5rem; color: #1A73E8; width: 44px; text-align: center;">K</h3>
+                            <h3 id="pdp-delta-k-title" style="margin-bottom: 0.25rem; font-size: 1.5rem; color: #1A73E8; width: 44px; text-align: center; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.5s ease;"><span style="color: #1E8E3E; margin-right: 2px;">&Delta;</span>K</h3>
+                            <div style="width: 144px;"></div>
+                            <h3 style="margin-bottom: 0.25rem; font-size: 1.5rem; color: #1E8E3E; width: 30px; text-align: center;">&Delta;</h3>
+                        </div>
+                        <div style="display: flex; flex-direction: row; gap: 8px;">
+                            <!-- Left Arrows Column -->
+                            <div style="display: flex; flex-direction: column; gap: 2px; padding: 2px 0;" id="pdp-arrows">
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                                <div class="k-arrow"></div>
+                            </div>
+                            <!-- Matrix Column -->
+                            <div class="k-matrix" id="pdp-left-k-matrix">
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k0</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k1</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k2</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k3</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k4</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k5</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k6</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k7</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k8</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k9</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k10</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k11</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k12</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k13</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k14</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k15</span></div></div></div>
+                            </div>
+                            <!-- Delta K Matrix Column -->
+                            <div class="k-matrix" id="pdp-far-right-k-matrix">
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k0</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k1</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k2</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k3</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k4</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k5</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k6</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k7</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k8</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k9</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k10</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k11</span></div></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k12</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k13</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k14</span></div></div></div>
+                                <div class="k-row" style=""><div class="k-cell"><div class="vec-label"><span class="vec-arrow">&rarr;</span><span>k15</span></div></div></div>
+                            </div>
+                            <!-- Right Arrows Column (K to Delta) -->
+                            <div style="display: flex; flex-direction: column; gap: 2px; padding: 2px 0; width: 144px;" id="pdp-k-to-v-arrows">
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                                <div class="k-to-v-arrow" style="width: 144px;"></div>
+                            </div>
+                            <!-- Delta Matrix Column -->
+                            <div class="k-matrix" id="pdp-right-delta-matrix">
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style="border-top: 2px solid #E3000F;"><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                                <div class="k-row" style=""><div class="v-cell"></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Animation container -->
+                    <div id="pdp-anim-data" style="display: none;">
+                        <div class="pdp-step animate-on-click" data-action="init-anchors"></div>
+                        <div class="pdp-step animate-on-click" data-action="eval-step-1"></div>
+                        <div class="pdp-step animate-on-click" data-action="eval-step-2"></div>
+                        <div class="pdp-step animate-on-click" data-action="eval-step-3"></div>
+                        <div class="pdp-step animate-on-click" data-action="vanish-zeros"></div>
+                        <div class="pdp-step animate-on-click" data-action="pack"></div>
+                    </div>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const slide = document.getElementById('parallel-deltapacking-slide');
+                            const steps = slide.querySelectorAll('.pdp-step');
+                            const arrows = slide.querySelectorAll('#pdp-arrows .k-arrow');
+                            const kToVArrows = slide.querySelectorAll('#pdp-k-to-v-arrows .k-to-v-arrow');
+                            const vCells = slide.querySelectorAll('#pdp-right-delta-matrix .v-cell');
+                            
+                            // Define final delta values for chunks
+                            // Chunk 0: 1, 0, 0, 1
+                            // Chunk 1: 1, 0, 1, 0
+                            // Chunk 2: 1, 0, 0, 0
+                            // Chunk 3: 1, 0, 1, 0
+                            const finalVals = [
+                                1, 0, 0, 1,
+                                1, 0, 1, 0,
+                                1, 0, 0, 0,
+                                1, 0, 1, 0
+                            ];
+
+                            const updateAnimation = () => {
+                                if(!slide.classList.contains('active')) return;
+                                
+                                let currentStep = -1;
+                                steps.forEach((s, idx) => {
+                                    if(s.classList.contains('visible')) currentStep = idx;
+                                });
+                                
+                                // Reset
+                                arrows.forEach(a => a.innerHTML = '');
+                                kToVArrows.forEach(a => a.innerHTML = '');
+                                vCells.forEach(c => {
+                                    c.innerHTML = '';
+                                    c.style.background = '#fff';
+                                    c.style.color = '#111';
+                                });
+                                
+                                const actionStep = currentStep >= 0 && steps[currentStep].dataset.action ? steps[currentStep].dataset.action : null;
+                                
+                                const leftRows = document.getElementById('pdp-left-k-matrix').querySelectorAll('.k-row');
+                                const rightRows = document.getElementById('pdp-right-delta-matrix').querySelectorAll('.k-row');
+                                const farRightRows = document.getElementById('pdp-far-right-k-matrix').querySelectorAll('.k-row');
+                                const deltaKTitle = document.getElementById('pdp-delta-k-title');
+                                
+                                leftRows.forEach(r => r.classList.remove('vanish', 'pack', 'knock-right'));
+                                rightRows.forEach(r => r.classList.remove('vanish', 'pack', 'knock-right'));
+                                farRightRows.forEach(r => r.classList.remove('knock-right', 'pack'));
+                                deltaKTitle.style.opacity = '0';
+
+                                if (currentStep < 0) return;
+
+                                // Helper to set vCell
+                                const setVCell = (row, val) => {
+                                    vCells[row].innerHTML = val;
+                                    if(val === 1) {
+                                        vCells[row].style.background = '#444';
+                                        vCells[row].style.color = '#fff';
+                                    } else {
+                                        vCells[row].style.background = '#fff';
+                                        vCells[row].style.color = '#111';
+                                    }
+                                };
+
+                                // Step logic
+                                // Action: init-anchors (0, 4, 8, 12 get 1)
+                                if (currentStep >= 0) {
+                                    setVCell(0, 1); setVCell(4, 1); setVCell(8, 1); setVCell(12, 1);
+                                    arrows[0].innerHTML = '<span style="color:#1E8E3E;">0 &rarr;</span>';
+                                    arrows[4].innerHTML = '<span style="color:#1E8E3E;">0 &rarr;</span>';
+                                    arrows[8].innerHTML = '<span style="color:#1E8E3E;">0 &rarr;</span>';
+                                    arrows[12].innerHTML = '<span style="color:#1E8E3E;">0 &rarr;</span>';
+                                }
+
+                                const drawComparison = (anchor, compare) => {
+                                    arrows[compare].innerHTML = '<span style="color:#E3000F;">1 &rarr;</span>';
+                                    kToVArrows[compare].innerHTML = `
+                                        <div style="display: flex; flex-direction: column; width: 100%; align-items: center; justify-content: center; padding: 0 4px;">
+                                            <div style="font-size: 0.70rem; color: #555; line-height: 1; margin-bottom: 3px; font-family: monospace; white-space: nowrap;">
+                                                cos(k<sub>${anchor}</sub>, k<sub>${compare}</sub>) &lt; &tau;
+                                            </div>
+                                            <div style="display: flex; align-items: center; width: 100%;">
+                                                <div style="flex-grow: 1; height: 2px; background-color: #E3000F;"></div>
+                                                <div style="width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid #E3000F;"></div>
+                                            </div>
+                                        </div>
+                                    `;
+                                };
+
+                                let anchorChunks = [0, 4, 8, 12];
+
+                                if (actionStep === 'eval-step-1') {
+                                    [1, 5, 9, 13].forEach(r => setVCell(r, finalVals[r]));
+                                    drawComparison(0, 1); drawComparison(4, 5); drawComparison(8, 9); drawComparison(12, 13);
+                                } else if (currentStep >= 1) {
+                                    [1, 5, 9, 13].forEach(r => setVCell(r, finalVals[r]));
+                                    if (finalVals[1] === 1) anchorChunks[0] = 1;
+                                    if (finalVals[5] === 1) anchorChunks[1] = 5;
+                                    if (finalVals[9] === 1) anchorChunks[2] = 9;
+                                    if (finalVals[13] === 1) anchorChunks[3] = 13;
+                                }
+
+                                if (actionStep === 'eval-step-2') {
+                                    [2, 6, 10, 14].forEach(r => setVCell(r, finalVals[r]));
+                                    drawComparison(anchorChunks[0], 2); drawComparison(anchorChunks[1], 6); drawComparison(anchorChunks[2], 10); drawComparison(anchorChunks[3], 14);
+                                } else if (currentStep >= 2) {
+                                    [2, 6, 10, 14].forEach(r => setVCell(r, finalVals[r]));
+                                    if (finalVals[2] === 1) anchorChunks[0] = 2;
+                                    if (finalVals[6] === 1) anchorChunks[1] = 6;
+                                    if (finalVals[10] === 1) anchorChunks[2] = 10;
+                                    if (finalVals[14] === 1) anchorChunks[3] = 14;
+                                }
+
+                                if (actionStep === 'eval-step-3') {
+                                    [3, 7, 11, 15].forEach(r => setVCell(r, finalVals[r]));
+                                    drawComparison(anchorChunks[0], 3); drawComparison(anchorChunks[1], 7); drawComparison(anchorChunks[2], 11); drawComparison(anchorChunks[3], 15);
+                                } else if (currentStep >= 3) {
+                                    [3, 7, 11, 15].forEach(r => setVCell(r, finalVals[r]));
+                                }
+
+                                if (actionStep === 'vanish-zeros' || actionStep === 'pack') {
+                                    arrows.forEach(a => a.innerHTML = '');
+                                    kToVArrows.forEach(a => a.innerHTML = '');
+                                    deltaKTitle.style.opacity = '1';
+                                    for(let i=0; i<16; i++) {
+                                        let val = parseInt(vCells[i].innerHTML);
+                                        if (val === 1) {
+                                            farRightRows[i].classList.add('knock-right');
+                                        } else {
+                                            if (actionStep === 'pack') {
+                                                farRightRows[i].classList.add('pack');
+                                                leftRows[i].classList.add('pack');
+                                                rightRows[i].classList.add('pack');
+                                                farRightRows[i].style.borderTop = 'none';
+                                                leftRows[i].style.borderTop = 'none';
+                                                rightRows[i].style.borderTop = 'none';
+                                            }
+                                        }
+                                    }
+                                }
+                            };
+                            
+                            const observer = new MutationObserver(updateAnimation);
+                            steps.forEach(s => observer.observe(s, {attributes: true, attributeFilter: ['class']}));
+                            new MutationObserver(updateAnimation).observe(slide, {attributes: true, attributeFilter: ['class']});
+                            updateAnimation();
+                        });
+                    </script>
+                </div>
+            </section>
+

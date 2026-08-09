@@ -1,0 +1,59 @@
+\section{Methodology}
+
+In this section, we describe the core components of our proposed approach: Delta Packing and its extension to Delta-Based Tile Scoring (DTS). 
+
+\subsection{Delta Packing}
+The foundational operation in our methodology is Delta Packing. Adjacent query and key vectors are highly similar at the token level, which means they can be compressed along the sequence dimension. 
+
+Algorithm 1 outlines the sequential Delta Packing procedure.
+
+\begin{figure}[htbp]
+\noindent\hrulefill\\
+\textbf{Algorithm 1: Sequential Delta Packing}\\[-2mm]
+\noindent\hrulefill
+\begin{tabbing}
+\textbf{Input:} Matrix $\mathbf{K} \in \mathbb{R}^{N \times D}$, similarity threshold $\tau$ \\
+\textbf{Output:} Packed matrix $\hat{\mathbf{K}}$, binary mask $\Delta \in \{0, 1\}^N$ \\
+1. \quad \= $\Delta \gets \mathbf{0}$, $\Delta[0] \gets 1$ \\
+2. \> $\mathbf{k}_{\text{anchor}} \gets \mathbf{K}[0]$ \\
+3. \> \textbf{for} $i = 1$ \textbf{to} $N-1$ \textbf{do} \\
+4. \> \quad \= \textbf{if} $\cos(\mathbf{K}[i], \mathbf{k}_{\text{anchor}}) < \tau$ \textbf{then} \\
+5. \> \> \quad \= $\Delta[i] \gets 1$ \\
+6. \> \> \> $\mathbf{k}_{\text{anchor}} \gets \mathbf{K}[i]$ \\
+7. \> \> \textbf{end if} \\
+8. \> \textbf{end for} \\
+9. \> $\hat{\mathbf{K}} \gets \mathbf{K}[\Delta == 1]$ \\
+10.\> \textbf{return} $\hat{\mathbf{K}}, \Delta$
+\end{tabbing}
+\vspace{-4mm}
+\noindent\hrulefill
+\end{figure}
+
+\textbf{Parallel Delta Packing.}
+In practice, we apply sequential delta packing to fixed-size chunks (e.g., 128 tokens) independently by setting each chunk's first vector as an anchor, which breaks the sequential dependency. Otherwise, sequential packing has a linear time complexity with respect to sequence length, which would result in severe overhead in extremely long contexts.
+
+
+
+\subsection{Delta-Based Tile Scoring (DTS)}
+Building upon the Delta Packing concept, we introduce Delta-Based Tile Scoring (DTS) for block-sparse attention. 
+
+The DTS methodology operates as follows:
+\begin{enumerate}
+    \item \textbf{Delta Pack:} Apply Delta packing on \textbf{Q} and \textbf{K} separately.
+    \item \textbf{Multiply:} Multiply the packed $\hat{\textbf{Q}}$ and $\hat{\textbf{K}}$ to get representative attention scores in tiles.
+    \item \textbf{Sum:} Sum the tile attention scores to get an importance score for each tile.
+    \item \textbf{Normalize:} Apply softmax to the tile scores across query rows to obtain tile weights.
+    \item \textbf{Threshold:} Select the highest-scoring tiles per row until their accumulated weights exceed a threshold $\tau = 0.9$.
+    \item \textbf{Compute:} Process the selected tiles using block-sparse attention and skip the remaining tiles.
+\end{enumerate}
+
+
+
+Figure~\ref{fig:delta_tile_scoring} provides a detailed algorithmic view of how \textbf{Q} and \textbf{K} are packed into $\hat{\textbf{Q}}$ and $\hat{\textbf{K}}$, and how these packed matrices are multiplied to obtain the sparse attention scores.
+
+Figure~\ref{fig:dts_flow} illustrates the complete end-to-end flow of this four-stage methodology, showcasing how the sparse attention scores are summed to compute tile importance, and how these tile scores determine which tiles are processed and which are skipped.
+
+\input{diagrams/delta_tile_scoring.tex}
+
+\subsection{Per-Head $\tau$ Calibration}
+A global threshold of $\tau=0.9$ does not strictly guarantee retaining $90\%$ of the true attention mass, because the tile scores are only estimates. To accurately achieve the target retention rate, similar to X-Attention, we perform an offline calibration step. During this step, the threshold $\tau$ is independently tuned for each attention head so that every head reliably retains its target mass. Detailed procedures for this calibration are presented in Appendix~\ref{app:calibration}.

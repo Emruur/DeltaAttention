@@ -3,10 +3,22 @@
 \usepackage[numbers]{natbib}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{subcaption}
 \usepackage{hyperref}
 \usepackage{booktabs}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% Encourage floats to sit near their reference instead of drifting to the end
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.75}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
 
 \title{DeltaAttention}
 \author{}
@@ -15,19 +27,23 @@
 \begin{document}
 \maketitle
 
+\input{abstract}
+\newpage
+
 \setcounter{tocdepth}{2}
 \tableofcontents
 \newpage
 
 \input{introduction}
 \input{preliminary}
+\input{observations}
 \input{related_work}
 \input{methodology}
 \input{experimental_setup}
-\input{observations}
 \input{results}
 \input{conclusion}
 
+\newpage
 \bibliographystyle{plainnat}
 \bibliography{references}
 

@@ -1,0 +1,115 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{dubey2024llama3,qwen25,Qwen2-VL,reid2024gemini,liu2023ring}
+\citation{yang2024sweagent}
+\citation{lewis2020retrieval}
+\citation{dao2022flashattention,dao2023flashattention2,shah2024flashattention3}
+\citation{kwon2023efficient}
+\citation{child2019generating,Beltagy2020Longformer,zaheer2020bigbird}
+\citation{jiang2024minference,lai2025flexprefill,xu2025xattention}
+\citation{wang2024kvmerger,qi2024deltallm}
+\citation{child2019generating}
+\citation{Beltagy2020Longformer}
+\citation{zaheer2020bigbird}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{section.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces DTS four-stage process: Compress queries and keys into $\hat  {Q}$ and $\hat  {K}$ and multiply them to estimate sparse attention scores during delta scoring. These individual scores are then summed to yield a single importance score for each tile. Finally, the highest-scoring tiles are selected to undergo block sparse attention.}}{1}{figure.caption.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:dts_flow}{{1}{1}{DTS four-stage process: Compress queries and keys into $\hat {Q}$ and $\hat {K}$ and multiply them to estimate sparse attention scores during delta scoring. These individual scores are then summed to yield a single importance score for each tile. Finally, the highest-scoring tiles are selected to undergo block sparse attention}{figure.caption.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{1}{section.2}\protected@file@percent }
+\citation{zhang2025spargeattn}
+\citation{xu2025xattention}
+\citation{jiang2024minference}
+\citation{lai2025flexprefill}
+\citation{xu2025xattention}
+\citation{zhang2025spargeattn}
+\citation{wang2024kvmerger}
+\@writefile{toc}{\contentsline {section}{\numberline {III}Observations}{2}{section.3}\protected@file@percent }
+\newlabel{sec:observations}{{III}{2}{Observations}{section.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Average cosine similarity of adjacent key and query states for LLaMA-3.1 8B Instruct, showing both natural token order (post-RoPE) and randomly shuffled token order.}}{2}{figure.caption.2}\protected@file@percent }
+\newlabel{fig:combined_similarity}{{2}{2}{Average cosine similarity of adjacent key and query states for LLaMA-3.1 8B Instruct, showing both natural token order (post-RoPE) and randomly shuffled token order}{figure.caption.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Methodology}{2}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Delta Packing}{2}{subsection.4.1}\protected@file@percent }
+\citation{dubey2024llama3}
+\citation{qwen25}
+\citation{Qwen2-VL}
+\citation{jiang2024minference}
+\citation{paszke2019pytorch,vaswani2017attention}
+\citation{dao2023flashattention2}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Delta-Based Tile Scoring (DTS)}{3}{subsection.4.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Delta-based tile scoring. Delta pre-processing selects content-adaptive anchors (blue) from $Q$ and $K$ independently, producing $\hat  {Q}$ and $\hat  {K}$. Their product gives an $(\alpha B)\times (\beta B)$ score matrix; each entry (highlighted cell, arrow) corresponds to a single dot product at one position in the full $B\times B$ score tile.}}{3}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:delta_tile_scoring}{{3}{3}{Delta-based tile scoring. Delta pre-processing selects content-adaptive anchors (blue) from $Q$ and $K$ independently, producing $\hat {Q}$ and $\hat {K}$. Their product gives an $(\alpha B)\times (\beta B)$ score matrix; each entry (highlighted cell, arrow) corresponds to a single dot product at one position in the full $B\times B$ score tile}{figure.caption.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Per-Head $\tau $ Calibration}{3}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {V}Experimental Setup}{3}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Benchmarks}{3}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-A}1}Text Benchmarks}{3}{subsubsection.5.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-A}1a}RULER}{3}{paragraph.5.1.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-A}1b}LongBench}{3}{paragraph.5.1.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {V-A}2}Video Benchmarks}{3}{subsubsection.5.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {V-A}2a}Video-MME}{3}{paragraph.5.1.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Speedup Experiment}{3}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Results}{3}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-A}}RULER}{3}{subsection.6.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on LLaMA-3.1 8B Instruct (100 samples, 13 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Best score per column in \textbf  {bold}.}}{4}{table.caption.5}\protected@file@percent }
+\newlabel{tab:delta_tile_scoring}{{I}{4}{RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on LLaMA-3.1 8B Instruct (100 samples, 13 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Best score per column in \textbf {bold}}{table.caption.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-B}}LongBench}{4}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:results_longbench}{{\mbox  {VI-B}}{4}{LongBench}{subsection.6.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-C}}Speedup and discussion}{4}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-D}}Cosine threshold ablation}{4}{subsection.6.4}\protected@file@percent }
+\newlabel{sec:results_cos_ablation}{{\mbox  {VI-D}}{4}{Cosine threshold ablation}{subsection.6.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces End-to-end prefill speedup relative to SDPA across sequence lengths on LLaMA-3.1 8B Instruct (4$\times $H100, layer-sharded). Points above the dashed break-even line (1.0$\times $) are faster than full attention.}}{4}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:dts_speedup_trend}{{4}{4}{End-to-end prefill speedup relative to SDPA across sequence lengths on LLaMA-3.1 8B Instruct (4$\times $H100, layer-sharded). Points above the dashed break-even line (1.0$\times $) are faster than full attention}{figure.caption.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-E}}Cross-Model Generalization: Qwen2.5-7B}{4}{subsection.6.5}\protected@file@percent }
+\newlabel{sec:results_qwen}{{\mbox  {VI-E}}{4}{Cross-Model Generalization: Qwen2.5-7B}{subsection.6.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-E}0a}RULER.}{4}{paragraph.6.5.0.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces LongBench scores on LLaMA-3.1 8B Instruct (100 samples per task, 16 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). NQA = NarrativeQA, Qas = Qasper, MFQ = MultifieldQA-en, HotP = HotpotQA, 2Wiki = 2WikiMultiHopQA, Mus = MuSiQue, GovR = GovReport, QMS = QMSum, MNews = MultiNews, TREC = TREC, TQA = TriviaQA, SAM = SAMSum, PCnt = PassageCount, PassR = PassageRetrieval-en, LCC = LCC, RepoB = RepoBench-P. Best score per column in \textbf  {bold}.}}{5}{table.caption.6}\protected@file@percent }
+\newlabel{tab:longbench}{{II}{5}{LongBench scores on LLaMA-3.1 8B Instruct (100 samples per task, 16 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). NQA = NarrativeQA, Qas = Qasper, MFQ = MultifieldQA-en, HotP = HotpotQA, 2Wiki = 2WikiMultiHopQA, Mus = MuSiQue, GovR = GovReport, QMS = QMSum, MNews = MultiNews, TREC = TREC, TQA = TriviaQA, SAM = SAMSum, PCnt = PassageCount, PassR = PassageRetrieval-en, LCC = LCC, RepoB = RepoBench-P. Best score per column in \textbf {bold}}{table.caption.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces End-to-end prefill speedup (128K tokens) and accuracy (\%) on RULER and LongBench for DTS cosine thresholds on LLaMA-3.1 8B Instruct ($r{=}0.90$). Attention density is the fraction of computed sparse attention. Score\% represents the scoring overhead. Score ms and Attn ms indicate the respective phase latencies.}}{5}{table.caption.8}\protected@file@percent }
+\newlabel{tab:cos_ablation}{{III}{5}{End-to-end prefill speedup (128K tokens) and accuracy (\%) on RULER and LongBench for DTS cosine thresholds on LLaMA-3.1 8B Instruct ($r{=}0.90$). Attention density is the fraction of computed sparse attention. Score\% represents the scoring overhead. Score ms and Attn ms indicate the respective phase latencies}{table.caption.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on Qwen2.5-7B-Instruct-1M (100 samples, 13 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Best score per column in \textbf  {bold}.}}{5}{table.caption.9}\protected@file@percent }
+\newlabel{tab:delta_tile_scoring_qwen}{{IV}{5}{RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on Qwen2.5-7B-Instruct-1M (100 samples, 13 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Best score per column in \textbf {bold}}{table.caption.9}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-E}0b}LongBench.}{5}{paragraph.6.5.0.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-E}0c}Speedup.}{5}{paragraph.6.5.0.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces End-to-end prefill speedup relative to SDPA across sequence lengths on Qwen2.5-7B-Instruct-1M (4$\times $H100, layer-sharded). XAttention and DTS are reported to 256K; both OOM at 512K on this hardware.}}{5}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:dts_speedup_trend_qwen}{{5}{5}{End-to-end prefill speedup relative to SDPA across sequence lengths on Qwen2.5-7B-Instruct-1M (4$\times $H100, layer-sharded). XAttention and DTS are reported to 256K; both OOM at 512K on this hardware}{figure.caption.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-F}}Video Understanding: Qwen2-VL}{5}{subsection.6.6}\protected@file@percent }
+\newlabel{sec:results_video}{{\mbox  {VI-F}}{5}{Video Understanding: Qwen2-VL}{subsection.6.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces LongBench scores on Qwen2.5-7B-Instruct-1M (100 samples per task, 16 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Task abbreviations as in Table~\ref {tab:longbench}. Best score per column in \textbf  {bold}. $\dagger $MInference failed on 2 of 16 tasks (QMSum, RepoBench-P); its reported average is over the 14 completed tasks and is not directly comparable to the other rows.}}{6}{table.caption.10}\protected@file@percent }
+\newlabel{tab:longbench_qwen}{{V}{6}{LongBench scores on Qwen2.5-7B-Instruct-1M (100 samples per task, 16 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Task abbreviations as in Table~\ref {tab:longbench}. Best score per column in \textbf {bold}. $\dagger $MInference failed on 2 of 16 tasks (QMSum, RepoBench-P); its reported average is over the 14 completed tasks and is not directly comparable to the other rows}{table.caption.10}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Video-MME accuracy and prefill speedup on Qwen2-VL-7B-Instruct (Video-MME @ 1fps, no subtitles). Accuracy (\%) is on the full test set ($n{=}2700$). speedup ($\times $full) is attention-kernel latency (self\_attn\_ms) relative to full attention on a 10-videos-per-bucket timing sample. Best accuracy per column in \textbf  {bold}.}}{6}{table.caption.12}\protected@file@percent }
+\newlabel{tab:videomme_main}{{VI}{6}{Video-MME accuracy and prefill speedup on Qwen2-VL-7B-Instruct (Video-MME @ 1fps, no subtitles). Accuracy (\%) is on the full test set ($n{=}2700$). speedup ($\times $full) is attention-kernel latency (self\_attn\_ms) relative to full attention on a 10-videos-per-bucket timing sample. Best accuracy per column in \textbf {bold}}{table.caption.12}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VII}Conclusion}{6}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-A}}Future Work}{6}{subsection.7.1}\protected@file@percent }
+\bibstyle{IEEEtran}
+\bibdata{references}
+\bibcite{dubey2024llama3}{1}
+\bibcite{qwen25}{2}
+\bibcite{Qwen2-VL}{3}
+\bibcite{reid2024gemini}{4}
+\bibcite{liu2023ring}{5}
+\bibcite{yang2024sweagent}{6}
+\bibcite{lewis2020retrieval}{7}
+\bibcite{dao2022flashattention}{8}
+\bibcite{dao2023flashattention2}{9}
+\bibcite{shah2024flashattention3}{10}
+\bibcite{kwon2023efficient}{11}
+\bibcite{child2019generating}{12}
+\bibcite{Beltagy2020Longformer}{13}
+\bibcite{zaheer2020bigbird}{14}
+\bibcite{jiang2024minference}{15}
+\bibcite{lai2025flexprefill}{16}
+\bibcite{xu2025xattention}{17}
+\bibcite{wang2024kvmerger}{18}
+\bibcite{qi2024deltallm}{19}
+\bibcite{zhang2025spargeattn}{20}
+\bibcite{paszke2019pytorch}{21}
+\bibcite{vaswani2017attention}{22}
+\@writefile{toc}{\contentsline {section}{References}{7}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{Appendix\nobreakspace  A: Per-Head $\tau $ Calibration Details}{7}{section*.14}\protected@file@percent }
+\newlabel{app:calibration}{{A}{7}{\appendixname \nobreakspace \thesectiondis \\* Per-Head $\tau $ Calibration Details}{section*.14}{}}
+\@writefile{toc}{\contentsline {section}{Appendix\nobreakspace  B: Video-MME Ablations}{7}{section*.15}\protected@file@percent }
+\newlabel{app:videomme_ablations}{{B}{7}{\appendixname \nobreakspace \thesectiondis \\* Video-MME Ablations}{section*.15}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Packing metric ablation on Video-MME (200-video subset), Qwen2-VL-7B-Instruct, recall $r{=}0.90$, count-weighting off throughout.}}{7}{table.caption.16}\protected@file@percent }
+\newlabel{tab:videomme_ablation_metric}{{VII}{7}{Packing metric ablation on Video-MME (200-video subset), Qwen2-VL-7B-Instruct, recall $r{=}0.90$, count-weighting off throughout}{table.caption.16}{}}
+\gdef \@abspage@last{7}

@@ -11,15 +11,14 @@ As sequences grow attention computation becomes the dominant runtime cost and ap
 A natural way to reduce the time cost is to exploit the fact that attention matrices are empirically sparse: most tokens attend strongly to only a small fraction of others.
 \citet{child2019generating} were among the first to demonstrate this, observing that trained Transformer attention matrices concentrate on local windows and a few distant positions.
 They proposed fixed sparse patterns (local windows combined with strided or fixed summary positions) to approximate full attention with fewer FLOPs.
-The limitation is that a fixed pattern cannot adapt to the content of a given input.
+The limitation is that a fixed pattern cannot adapt to the content of a given input. This motivated a shift to dynamic sparse attention, where the sparsity pattern is determined on the fly. These methods generally fall into two categories: attention shape methods and block-sparse attention methods.
 
-This motivated a shift to dynamic sparse attention, where the sparsity pattern is determined on the fly.
-\citet{jiang2024minference} found that LLM attention heads exhibit consistent structural patterns across different inputs (A-shape, Vertical-Slash, and Block-Sparse) and assigned each head its dominant pattern offline, building sparse indices at inference time accordingly.
-SpargeAttn~\citep{zhang2025spargeattn} is a parallel work that takes a more general approach designed to work across diverse model types beyond language models.
-It selects a representative per block and uses representative-level attention scores to predict which block pairs are near-zero and can be skipped entirely, without assuming any fixed pattern.
-FlexPrefill~\citep{lai2025flexprefill} and XAttention~\citep{xu2025xattention} are more recent works that push the state of the art further.
-FlexPrefill adapts both the sparsity pattern and compute budget dynamically per head using Jensen-Shannon divergence to classify the pattern type at runtime.
-XAttention uses the sum of antidiagonal values within each attention block as a lightweight proxy for block importance, achieving aggressive pruning at minimal overhead.
+\textbf{Block-sparse attention methods} dynamically skip attention tiles that are estimated to be unimportant. SpargeAttn~\citep{zhang2025spargeattn} selects a representative per block using mean pooling and scores tiles based on the block representatives. XAttention~\citep{xu2025xattention} uses the sum of antidiagonal values within each attention block as a lightweight proxy for tile importance. Both methods then compute attention only for the tiles scored as important.
+
+\textbf{Attention shape methods} in contrast identify the attention pattern a head exhibits and exploit it. MInference~\citep{jiang2024minference}, a foundational paper in the field, widely used in production, found that LLM attention heads follow consistent structural patterns across different inputs (A-shape, Vertical-Slash, and Block-Sparse). It assigns each head its dominant pattern offline and builds sparse indices at inference time accordingly. Crucially, Block-Sparse heads do not fit the A-shape or Vertical-Slash patterns, so there is no fixed shape to exploit. For these heads MInference falls back to block-sparse attention: it mean-pools each query and key block into a single representative, then uses the representative-level attention scores to pick the important tiles, in the same way as SpargeAttn.
+
+FlexPrefill~\citep{lai2025flexprefill} extends MInference by making it content-adaptive. Instead of assigning a shape to a head offline, FlexPrefill decides at inference time whether to treat a head as Vertical-Slash or block-sparse, based on the Jensen-Shannon divergence between the head's attention and each candidate pattern. It also differs in how tiles are selected. MInference uses top-k selection, keeping the best $k$ blocks and tokens, while FlexPrefill uses top-p selection, keeping blocks and tokens until they hold $p\%$ of the attention mass. FlexPrefill defaults to $p=90$, so the selected blocks and tokens are expected to hold 90 percent of the attention mass.
+
 
 As a parallel line, \citet{qi2024deltallm}, a concurrent work from our group at LIACS, targets a different kind of sparsity.
 While the methods above exploit the empirical sparsity of the attention map, they observe that adjacent key vectors are similar, so encoding each key as a delta from the previous one yields a sparse delta key matrix.
@@ -28,17 +27,7 @@ However, the delta is applied element-wise, giving unstructured sparsity scatter
 
 \paragraph{KV cache compression for decoding.}
 A separate line of work targets the memory bottleneck of autoregressive decoding.
-Decoding is memory-bound: at every generation step the full KV cache must be loaded from HBM, so the KV cache dominates both memory capacity and memory bandwidth.
-As context length grows, the cache can exceed GPU memory entirely, but even when it fits, a smaller cache directly translates to faster decoding by reducing the amount of data loaded per step.
-\citet{zhang2023h2o} made the foundational observation that a small set of ``heavy hitter'' tokens receives the majority of attention mass, and proposed dynamically retaining only those tokens while evicting the rest.
-\citet{li2024snapkv} refined this with a query-aware eviction policy: each attention head observes which tokens are attended to within an observation window at the end of the prompt, and retains only those positions for subsequent decoding.
-\citet{zhang2024cam} pointed out that evicting tokens causes irreversible information loss, and proposed merging evicted tokens into their neighbors rather than discarding them.
-\citet{wang2024kvmerger} arrived at merging from a different angle: they observed that adjacent token embeddings in the key matrix exhibit high cosine similarity within a sequence, and that this pattern is consistent across datasets and layers.
-This motivates merging consecutive similar key tokens into a single representative, compressing the cache without throwing away information.
-
-InfLLM~\citep{xiao2024infllm} spans both prefill and decoding.
-It offloads the KV cache to CPU memory and selectively loads blocks to the GPU based on predicted attention relevance, using a block-representative scheme to decide which blocks a given query is likely to attend to.
-Since CPU RAM is far more abundant than GPU VRAM, this effectively extends the usable context window without requiring the full cache on device at once.
+KVMerger~\citep{wang2024kvmerger} observed that adjacent token embeddings in the key matrix exhibit high cosine similarity within a sequence, and that this pattern is consistent across datasets and layers. This motivates merging consecutive similar key tokens into a single representative, compressing the KV cache without throwing away information.
 
 \paragraph{Delta-based prefill acceleration.}
 The three methods in this thesis are all training-free prefill acceleration methods built on a single observation: adjacent tokens have highly similar key and query vectors.
@@ -46,12 +35,11 @@ Each method applies this insight in a different setting, and each has a differen
 
 Delta-KV compression is a direct prefill optimization and is closest to KVMerger~\citep{wang2024kvmerger}.
 Both compress the KV by merging adjacent keys that are nearly identical.
-KVMerger does this to shrink the KV cache for decoding, while we compress $K$ at prefill to cut the cost of the $QK$ multiplication, turning the redundancy into structured sparsity along the sequence dimension.
-To our knowledge this is the first work to use this redundancy as a prefill optimization with structured, GPU-friendly sparsity.
+KVMerger does this to shrink the KV cache for decoding, while we compress $K$ at prefill to cut the cost of the $QK$ multiplication.
 
 DeltaXAttention asks whether the delta principle can be layered on top of an existing block-sparse method rather than used on its own.
 We take XAttention~\citep{xu2025xattention} and apply delta compression to the keys inside the tiles it selects, compressing within each tile on top of the tiles XAttention already skips.
 
 Delta-based tile scoring (DPXA) is closest to XAttention~\citep{xu2025xattention} and SpargeAttn~\citep{zhang2025spargeattn}.
 All three compute a cheap importance score for each tile to decide which tiles to compute exactly.
-XAttention sums the antidiagonal values of each block, SpargeAttn mean-pools each block into a single representative, and DPXA compresses $Q$ and $K$ to form a proxy for the tile's attention mass.
+XAttention sums the antidiagonal values of each block, and SpargeAttn mean-pools each block into a single representative. DPXA, however, compresses $Q$ and $K$ to perform a lightweight attention that represents the tile's importance. Unlike XAttention, which relies on rigid strides, DPXA's tile scoring is fully content-adaptive, thereby avoiding the risk of missing critical information.

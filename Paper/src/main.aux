@@ -1,0 +1,230 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{vaswani2017attention}
+\citation{brown2020gpt3}
+\citation{dao2022flashattention}
+\citation{su2024rope}
+\citation{peng2023yarn}
+\citation{ding2024longrope}
+\citation{child2019generating}
+\citation{jiang2024minference,lai2025flexprefill,xu2025xattention}
+\citation{wang2024kvmerger,qi2024deltallm}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{3}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Preliminaries}{4}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Transformer Overview}{4}{subsection.2.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overview of a Transformer language model}}{4}{figure.caption.2}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:transformer_overview}{{1}{4}{Overview of a Transformer language model}{figure.caption.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Attention Block}{5}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.1}Self-Attention}{5}{subsubsection.2.2.1}\protected@file@percent }
+\newlabel{sec:self_attention}{{2.2.1}{5}{Self-Attention}{subsubsection.2.2.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Self-attention mechanism.}}{5}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:self_attention}{{2}{5}{Self-attention mechanism}{figure.caption.3}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.2}Multi-Head Attention}{6}{subsubsection.2.2.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Multi-head attention.}}{6}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:mha}{{3}{6}{Multi-head attention}{figure.caption.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}FlashAttention}{6}{subsection.2.3}\protected@file@percent }
+\citation{dao2022flashattention}
+\citation{dao2023flashattention2}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.1}FlashAttention Algorithm}{7}{subsubsection.2.3.1}\protected@file@percent }
+\newlabel{sec:flashattention_algorithm}{{2.3.1}{7}{FlashAttention Algorithm}{subsubsection.2.3.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.2}FlashAttention Demonstration}{7}{subsubsection.2.3.2}\protected@file@percent }
+\citation{xiao2023streamingllm}
+\citation{jiang2024minference}
+\citation{qi2024deltallm}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Two consecutive inner-loop iterations for $Q$-block 2.}}{8}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:flashattn_snapshot}{{4}{8}{Two consecutive inner-loop iterations for $Q$-block 2}{figure.caption.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Local Attention Window}{8}{subsection.2.4}\protected@file@percent }
+\newlabel{sec:local_attention_window}{{2.4}{8}{Local Attention Window}{subsection.2.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Attention score heatmaps for one head in an early, middle, and late layer of Qwen1.5-0.5B during prefill on a 512-token sequence. Darker means higher attention. Every layer has a strong band along the critical diagonal, where each token attends to its neighbors. From the middle layer onward a vertical band also appears on the first tokens, the attention sink.}}{8}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:exact_window}{{5}{8}{Attention score heatmaps for one head in an early, middle, and late layer of Qwen1.5-0.5B during prefill on a 512-token sequence. Darker means higher attention. Every layer has a strong band along the critical diagonal, where each token attends to its neighbors. From the middle layer onward a vertical band also appears on the first tokens, the attention sink}{figure.caption.6}{}}
+\citation{xu2025xattention}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}XAttention}{9}{subsection.2.5}\protected@file@percent }
+\newlabel{sec:xattention}{{2.5}{9}{XAttention}{subsection.2.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces XAttention three-stage process: Antidiagonal scoring samples $S{\times }S$ antidiagonals to estimate block importance. Block selection picks the top-scoring blocks. Block sparse attention computes the full attention only for selected blocks.}}{9}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:xattention_3part}{{6}{9}{XAttention three-stage process: Antidiagonal scoring samples $S{\times }S$ antidiagonals to estimate block importance. Block selection picks the top-scoring blocks. Block sparse attention computes the full attention only for selected blocks}{figure.caption.7}{}}
+\citation{wang2024kvmerger}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces XAttention antidiagonal scoring. Groups of $S$ consecutive tokens are packed along the head dimension ($d \to Sd$), with $K$ groups reversed. Each entry of the $(B/S)\times (B/S)$ product $\tilde  {Q}\tilde  {K}^\top $ sums the $S$ antidiagonal scores of one $S\times S$ sub-block (arrow).}}{10}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:xattention_antidiag}{{7}{10}{XAttention antidiagonal scoring. Groups of $S$ consecutive tokens are packed along the head dimension ($d \to Sd$), with $K$ groups reversed. Each entry of the $(B/S)\times (B/S)$ product $\tilde {Q}\tilde {K}^\top $ sums the $S$ antidiagonal scores of one $S\times S$ sub-block (arrow)}{figure.caption.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Observations}{10}{section.3}\protected@file@percent }
+\newlabel{sec:observations}{{3}{10}{Observations}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Key Similarity}{10}{subsection.3.1}\protected@file@percent }
+\citation{saxena2024eigenattention}
+\citation{deepseekai2024deepseekv2}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Average cosine similarity of adjacent key states under five configurations for LLaMA-3 8B Instruct at layers 0, 8, 16, and 23.}}{11}{figure.caption.9}\protected@file@percent }
+\newlabel{fig:cos_analysis}{{8}{11}{Average cosine similarity of adjacent key states under five configurations for LLaMA-3 8B Instruct at layers 0, 8, 16, and 23}{figure.caption.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Query Similarity}{11}{subsection.3.2}\protected@file@percent }
+\citation{dao2022flashattention}
+\citation{child2019generating}
+\citation{zhang2025spargeattn}
+\citation{xu2025xattention}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Mean adjacent query cosine similarity per layer (averaged over all heads) for LLaMA-3 8B Instruct at layers 0, 8, 16, and 23, under five configurations: pre-RoPE real, pre-RoPE shuffled, post-RoPE real, post-RoPE content-shuffled, and post-RoPE Q-shuffled.}}{12}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:query_similarity}{{9}{12}{Mean adjacent query cosine similarity per layer (averaged over all heads) for LLaMA-3 8B Instruct at layers 0, 8, 16, and 23, under five configurations: pre-RoPE real, pre-RoPE shuffled, post-RoPE real, post-RoPE content-shuffled, and post-RoPE Q-shuffled}{figure.caption.10}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Related Work}{12}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Attention complexity and FlashAttention.}{12}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Sparse attention for prefill.}{12}{section*.12}\protected@file@percent }
+\citation{jiang2024minference}
+\citation{lai2025flexprefill}
+\citation{qi2024deltallm}
+\citation{wang2024kvmerger}
+\citation{wang2024kvmerger}
+\citation{xu2025xattention}
+\citation{xu2025xattention}
+\citation{zhang2025spargeattn}
+\@writefile{toc}{\contentsline {paragraph}{KV cache compression for decoding.}{13}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Delta-based prefill acceleration.}{13}{section*.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Methodology}{14}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Delta-KV Compression}{14}{subsection.5.1}\protected@file@percent }
+\newlabel{sec:delta_kv}{{5.1}{14}{Delta-KV Compression}{subsection.5.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.1}Stage 1: Pre-processing}{14}{subsubsection.5.1.1}\protected@file@percent }
+\newlabel{sec:preprocessing}{{5.1.1}{14}{Stage 1: Pre-processing}{subsubsection.5.1.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces The three stages of Delta-KV compression. Stage 1 (pre-processing) computes row-wise deltas of $K$ and thresholds them into a keep mask. Stage 2 (packing) drops the masked rows to form $\hat  {K}$ and $\hat  {V}$ of length $m < n$. Stage 3 (self-attention) multiplies $Q$ against $\hat  {K}$, applies softmax, and multiplies by $\hat  {V}$ to give the $n \times l$ output.}}{15}{figure.caption.15}\protected@file@percent }
+\newlabel{fig:delta_attention}{{10}{15}{The three stages of Delta-KV compression. Stage 1 (pre-processing) computes row-wise deltas of $K$ and thresholds them into a keep mask. Stage 2 (packing) drops the masked rows to form $\hat {K}$ and $\hat {V}$ of length $m < n$. Stage 3 (self-attention) multiplies $Q$ against $\hat {K}$, applies softmax, and multiplies by $\hat {V}$ to give the $n \times l$ output}{figure.caption.15}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.2}Stage 2: Packing}{15}{subsubsection.5.1.2}\protected@file@percent }
+\newlabel{sec:packing}{{5.1.2}{15}{Stage 2: Packing}{subsubsection.5.1.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.3}Stage 3: Self-Attention}{16}{subsubsection.5.1.3}\protected@file@percent }
+\newlabel{sec:self_attention_compressed}{{5.1.3}{16}{Stage 3: Self-Attention}{subsubsection.5.1.3}{}}
+\newlabel{eq:count_weighted_softmax}{{4}{16}{Stage 3: Self-Attention}{equation.4}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.4}FlashAttention Adaptation}{16}{subsubsection.5.1.4}\protected@file@percent }
+\newlabel{sec:flash_attention_adaptation}{{5.1.4}{16}{FlashAttention Adaptation}{subsubsection.5.1.4}{}}
+\citation{xu2025xattention}
+\citation{zhang2025spargeattn}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}DeltaXAttention}{17}{subsection.5.2}\protected@file@percent }
+\newlabel{sec:xattention_adaptation}{{5.2}{17}{DeltaXAttention}{subsection.5.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.1}Preserving accuracy}{17}{subsubsection.5.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.2}Ablation}{17}{subsubsection.5.2.2}\protected@file@percent }
+\newlabel{sec:xattention_ablation}{{5.2.2}{17}{Ablation}{subsubsection.5.2.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Delta-Based Tile Scoring (DPXA)}{18}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:delta_tile_scoring}{{5.3}{18}{Delta-Based Tile Scoring (DPXA)}{subsection.5.3}{}}
+\citation{kuratov2024babilong}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Delta-based tile scoring. Delta pre-processing selects content-adaptive anchors (blue) from $Q$ and $K$ independently, producing $Q^\delta $ and $K^\delta $. Their product gives an $(\alpha B)\times (\beta B)$ score matrix; each entry (highlighted cell, arrow) corresponds to a single dot product at one position in the full $B\times B$ score tile.}}{19}{figure.caption.16}\protected@file@percent }
+\newlabel{fig:delta_tile_scoring}{{11}{19}{Delta-based tile scoring. Delta pre-processing selects content-adaptive anchors (blue) from $Q$ and $K$ independently, producing $Q^\delta $ and $K^\delta $. Their product gives an $(\alpha B)\times (\beta B)$ score matrix; each entry (highlighted cell, arrow) corresponds to a single dot product at one position in the full $B\times B$ score tile}{figure.caption.16}{}}
+\citation{hsieh2024ruler}
+\citation{jiang2024minference}
+\citation{lai2025flexprefill}
+\citation{xu2025xattention}
+\citation{bai2024longbench}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces DPXA four-stage process: Delta scoring samples, within each tile, the cells where a $Q$ anchor row meets a $K$ anchor column; anchors are selected per block, so the content-adaptive grid differs from tile to tile. Exponentiating and summing a tile's sampled scores gives its weight, normalized across each query row. Block selection keeps the top-scoring tiles per row (teal) and drops the rest (purple). Block sparse attention computes the full attention only for the selected blocks.}}{20}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:dpxa_3part}{{12}{20}{DPXA four-stage process: Delta scoring samples, within each tile, the cells where a $Q$ anchor row meets a $K$ anchor column; anchors are selected per block, so the content-adaptive grid differs from tile to tile. Exponentiating and summing a tile's sampled scores gives its weight, normalized across each query row. Block selection keeps the top-scoring tiles per row (teal) and drops the rest (purple). Block sparse attention computes the full attention only for the selected blocks}{figure.caption.17}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Experimental Setup}{20}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Benchmarks}{20}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.1}Needle in a Haystack and RULER}{20}{subsubsection.6.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.2}LongBench}{20}{subsubsection.6.1.2}\protected@file@percent }
+\citation{fu2024videomme}
+\citation{jiang2024minference}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.3}Video-MME}{21}{subsubsection.6.1.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Speedup Experiment}{21}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Results}{21}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Delta-KV Compression}{21}{subsection.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.1.1}RULER}{21}{subsubsection.7.1.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces RULER accuracy (\%) on LLaMA-3.1 8B Instruct (30 samples, 9 tasks). Higher is better. KV Red is the average fraction of KV loads saved relative to full attention.}}{22}{table.caption.18}\protected@file@percent }
+\newlabel{tab:ruler}{{1}{22}{RULER accuracy (\%) on LLaMA-3.1 8B Instruct (30 samples, 9 tasks). Higher is better. KV Red is the average fraction of KV loads saved relative to full attention}{table.caption.18}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.1.2}Speedup analysis}{22}{subsubsection.7.1.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Prefill speedup of Delta-KV relative to SDPA and Flash baselines at cos083 (left) and cos078 (right) on LLaMA-3.1 8B Instruct. Values above 1.0 mean Delta-KV is faster.}}{23}{figure.caption.19}\protected@file@percent }
+\newlabel{fig:speedup_comparison}{{13}{23}{Prefill speedup of Delta-KV relative to SDPA and Flash baselines at cos083 (left) and cos078 (right) on LLaMA-3.1 8B Instruct. Values above 1.0 mean Delta-KV is faster}{figure.caption.19}{}}
+\newlabel{fig:attention_dominance}{{14a}{23}{Attention compute as a fraction of total prefill time}{figure.caption.20}{}}
+\newlabel{sub@fig:attention_dominance}{{a}{23}{Attention compute as a fraction of total prefill time}{figure.caption.20}{}}
+\newlabel{fig:delta_overhead}{{14b}{23}{Delta computation and packing overhead as a fraction of total prefill time}{figure.caption.20}{}}
+\newlabel{sub@fig:delta_overhead}{{b}{23}{Delta computation and packing overhead as a fraction of total prefill time}{figure.caption.20}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Prefill time breakdown for Delta-KV at cos083 on LLaMA-3.1 8B Instruct, across sequence length. (a) Attention grows to dominate the forward pass, from a small fraction at short sequences to 95\% at 262K tokens. (b) The delta computation and packing overhead shrinks from 39\% of prefill at 512 tokens to 0.24\% at 262K, becoming negligible at the lengths where Delta-KV provides the most speedup.}}{23}{figure.caption.20}\protected@file@percent }
+\newlabel{fig:prefill_breakdown}{{14}{23}{Prefill time breakdown for Delta-KV at cos083 on LLaMA-3.1 8B Instruct, across sequence length. (a) Attention grows to dominate the forward pass, from a small fraction at short sequences to 95\% at 262K tokens. (b) The delta computation and packing overhead shrinks from 39\% of prefill at 512 tokens to 0.24\% at 262K, becoming negligible at the lengths where Delta-KV provides the most speedup}{figure.caption.20}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.1.3}Ablations}{23}{subsubsection.7.1.3}\protected@file@percent }
+\newlabel{sec:ablation_threshold}{{7.1.3}{23}{Threshold metric}{section*.21}{}}
+\@writefile{toc}{\contentsline {paragraph}{Threshold metric.}{23}{section*.21}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces RULER accuracy (\%) comparing Euclidean and cosine thresholds (30 samples, 9 tasks). Pairs are matched by KV reduction.}}{24}{table.caption.22}\protected@file@percent }
+\newlabel{tab:ablation_threshold}{{2}{24}{RULER accuracy (\%) comparing Euclidean and cosine thresholds (30 samples, 9 tasks). Pairs are matched by KV reduction}{table.caption.22}{}}
+\@writefile{toc}{\contentsline {paragraph}{Count-weighted softmax.}{24}{section*.23}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces RULER accuracy (\%) with and without count-weighted softmax (30 samples, 9 tasks).}}{24}{table.caption.24}\protected@file@percent }
+\newlabel{tab:ablation_count}{{3}{24}{RULER accuracy (\%) with and without count-weighted softmax (30 samples, 9 tasks)}{table.caption.24}{}}
+\@writefile{toc}{\contentsline {paragraph}{Critical diagonal.}{24}{section*.25}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces RULER accuracy (\%) with and without phase 2 (critical diagonal) (30 samples, 9 tasks).}}{25}{table.caption.26}\protected@file@percent }
+\newlabel{tab:ablation_diag}{{4}{25}{RULER accuracy (\%) with and without phase 2 (critical diagonal) (30 samples, 9 tasks)}{table.caption.26}{}}
+\@writefile{toc}{\contentsline {paragraph}{Phase 2 only.}{25}{section*.27}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces RULER accuracy (\%) for phase 2 only (local diagonal, no compressed history) (30 samples, 9 tasks).}}{25}{table.caption.28}\protected@file@percent }
+\newlabel{tab:ablation_phase2only}{{5}{25}{RULER accuracy (\%) for phase 2 only (local diagonal, no compressed history) (30 samples, 9 tasks)}{table.caption.28}{}}
+\@writefile{toc}{\contentsline {paragraph}{Non-adaptive baselines.}{25}{section*.29}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces RULER accuracy (\%) comparing Delta-KV against non-adaptive packing baselines at matched KV reduction (30 samples, 9 tasks).}}{26}{table.caption.30}\protected@file@percent }
+\newlabel{tab:ablation_packing}{{6}{26}{RULER accuracy (\%) comparing Delta-KV against non-adaptive packing baselines at matched KV reduction (30 samples, 9 tasks)}{table.caption.30}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}DeltaXAttention}{26}{subsection.7.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces RULER accuracy (\%) for DeltaXAttention ablation on LLaMA-3.1 8B Instruct (30 samples, 9 tasks). KV Red is relative to standard XAttention.}}{27}{table.caption.31}\protected@file@percent }
+\newlabel{tab:deltaxattn}{{7}{27}{RULER accuracy (\%) for DeltaXAttention ablation on LLaMA-3.1 8B Instruct (30 samples, 9 tasks). KV Red is relative to standard XAttention}{table.caption.31}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Delta-Based Tile Scoring (DPXA)}{27}{subsection.7.3}\protected@file@percent }
+\newlabel{sec:results_delta_tile_scoring}{{7.3}{27}{Delta-Based Tile Scoring (DPXA)}{subsection.7.3}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.3.1}RULER}{27}{subsubsection.7.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.3.2}LongBench}{27}{subsubsection.7.3.2}\protected@file@percent }
+\newlabel{sec:results_longbench}{{7.3.2}{27}{LongBench}{subsubsection.7.3.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on LLaMA-3.1 8B Instruct (100 samples, 13 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Best score per column in \textbf  {bold}.}}{28}{table.caption.32}\protected@file@percent }
+\newlabel{tab:delta_tile_scoring}{{8}{28}{RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on LLaMA-3.1 8B Instruct (100 samples, 13 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Best score per column in \textbf {bold}}{table.caption.32}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.3.3}Speedup and discussion}{28}{subsubsection.7.3.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces LongBench scores on LLaMA-3.1 8B Instruct (100 samples per task, 16 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). NQA = NarrativeQA, Qas = Qasper, MFQ = MultifieldQA-en, HotP = HotpotQA, 2Wiki = 2WikiMultiHopQA, Mus = MuSiQue, GovR = GovReport, QMS = QMSum, MNews = MultiNews, TREC = TREC, TQA = TriviaQA, SAM = SAMSum, PCnt = PassageCount, PassR = PassageRetrieval-en, LCC = LCC, RepoB = RepoBench-P. Best score per column in \textbf  {bold}.}}{29}{table.caption.33}\protected@file@percent }
+\newlabel{tab:longbench}{{9}{29}{LongBench scores on LLaMA-3.1 8B Instruct (100 samples per task, 16 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). NQA = NarrativeQA, Qas = Qasper, MFQ = MultifieldQA-en, HotP = HotpotQA, 2Wiki = 2WikiMultiHopQA, Mus = MuSiQue, GovR = GovReport, QMS = QMSum, MNews = MultiNews, TREC = TREC, TQA = TriviaQA, SAM = SAMSum, PCnt = PassageCount, PassR = PassageRetrieval-en, LCC = LCC, RepoB = RepoBench-P. Best score per column in \textbf {bold}}{table.caption.33}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Prefill speedup at 131K tokens on LLaMA-3.1 8B Instruct. Speedup is end-to-end prefill relative to SDPA. Attention density is the fraction of the dense attention computed. Score\% is the fraction of full tile cost spent on tile importance scoring. Score ms and Attn ms are absolute latencies for the scoring and attention phases.}}{30}{table.caption.34}\protected@file@percent }
+\newlabel{tab:delta_tile_speedup}{{10}{30}{Prefill speedup at 131K tokens on LLaMA-3.1 8B Instruct. Speedup is end-to-end prefill relative to SDPA. Attention density is the fraction of the dense attention computed. Score\% is the fraction of full tile cost spent on tile importance scoring. Score ms and Attn ms are absolute latencies for the scoring and attention phases}{table.caption.34}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces End-to-end prefill speedup relative to SDPA across sequence lengths on LLaMA-3.1 8B Instruct (4$\times $H100, layer-sharded). Points above the dashed break-even line (1.0$\times $) are faster than full attention. All methods are slower than SDPA at short contexts and cross break-even between 16K and 32K tokens; speedup then grows with sequence length as attention dominates the forward pass. Sequence lengths beyond 128K are outside LLaMA-3.1's native context and are used for latency benchmarking only. Table~\ref {tab:delta_tile_speedup} details the 128K operating point.}}{30}{figure.caption.35}\protected@file@percent }
+\newlabel{fig:dpxa_speedup_trend}{{15}{30}{End-to-end prefill speedup relative to SDPA across sequence lengths on LLaMA-3.1 8B Instruct (4$\times $H100, layer-sharded). Points above the dashed break-even line (1.0$\times $) are faster than full attention. All methods are slower than SDPA at short contexts and cross break-even between 16K and 32K tokens; speedup then grows with sequence length as attention dominates the forward pass. Sequence lengths beyond 128K are outside LLaMA-3.1's native context and are used for latency benchmarking only. Table~\ref {tab:delta_tile_speedup} details the 128K operating point}{figure.caption.35}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.3.4}Cosine threshold ablation}{31}{subsubsection.7.3.4}\protected@file@percent }
+\newlabel{sec:results_cos_ablation}{{7.3.4}{31}{Cosine threshold ablation}{subsubsection.7.3.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Prefill speedup at 131K tokens for the DPXA cosine-threshold sweep on LLaMA-3.1 8B Instruct, all at recall $r{=}0.90$ using the tuned scoring kernel. Speedup is end-to-end prefill relative to SDPA. Attention density is the fraction of the dense attention computed; Score\% is the fraction of full tile cost spent on scoring; Score ms and Attn ms are the scoring and attention phase latencies.}}{31}{table.caption.36}\protected@file@percent }
+\newlabel{tab:cos_speedup}{{11}{31}{Prefill speedup at 131K tokens for the DPXA cosine-threshold sweep on LLaMA-3.1 8B Instruct, all at recall $r{=}0.90$ using the tuned scoring kernel. Speedup is end-to-end prefill relative to SDPA. Attention density is the fraction of the dense attention computed; Score\% is the fraction of full tile cost spent on scoring; Score ms and Attn ms are the scoring and attention phase latencies}{table.caption.36}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.3.5}Cross-Model Generalization: Qwen2.5-7B}{31}{subsubsection.7.3.5}\protected@file@percent }
+\newlabel{sec:results_qwen}{{7.3.5}{31}{Cross-Model Generalization: Qwen2.5-7B}{subsubsection.7.3.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces RULER accuracy (\%) for the DPXA cosine-threshold sweep on LLaMA-3.1 8B Instruct (30 samples, 9 tasks), all at recall $r{=}0.90$.}}{32}{table.caption.37}\protected@file@percent }
+\newlabel{tab:cos_ruler}{{12}{32}{RULER accuracy (\%) for the DPXA cosine-threshold sweep on LLaMA-3.1 8B Instruct (30 samples, 9 tasks), all at recall $r{=}0.90$}{table.caption.37}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces LongBench scores on LLaMA-3.1 8B Instruct (100 samples per task) for the DPXA cosine-threshold sweep, all at recall $r{=}0.90$. Task abbreviations as in Table~\ref {tab:longbench}.}}{32}{table.caption.38}\protected@file@percent }
+\newlabel{tab:cos_longbench}{{13}{32}{LongBench scores on LLaMA-3.1 8B Instruct (100 samples per task) for the DPXA cosine-threshold sweep, all at recall $r{=}0.90$. Task abbreviations as in Table~\ref {tab:longbench}}{table.caption.38}{}}
+\@writefile{toc}{\contentsline {paragraph}{RULER.}{32}{section*.39}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on Qwen2.5-7B-Instruct-1M (100 samples, 13 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Best score per column in \textbf  {bold}.}}{32}{table.caption.40}\protected@file@percent }
+\newlabel{tab:delta_tile_scoring_qwen}{{14}{32}{RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on Qwen2.5-7B-Instruct-1M (100 samples, 13 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Best score per column in \textbf {bold}}{table.caption.40}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces RULER per-task accuracy (\%) at 128K on Qwen2.5-7B-Instruct-1M (100 samples). ns1--3 = niah\_single\_1--3, mk1--3 = niah\_multikey\_1--3, mv = niah\_multivalue, mq = niah\_multiquery, vt = variable tracking, cwe = common words extraction, fwe = frequent words extraction, qa1--2 = question answering 1--2. vt and cwe are the aggregation tasks discussed in the text.}}{33}{table.caption.41}\protected@file@percent }
+\newlabel{tab:ruler_pertask_qwen}{{15}{33}{RULER per-task accuracy (\%) at 128K on Qwen2.5-7B-Instruct-1M (100 samples). ns1--3 = niah\_single\_1--3, mk1--3 = niah\_multikey\_1--3, mv = niah\_multivalue, mq = niah\_multiquery, vt = variable tracking, cwe = common words extraction, fwe = frequent words extraction, qa1--2 = question answering 1--2. vt and cwe are the aggregation tasks discussed in the text}{table.caption.41}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces RULER accuracy (\%) at 128K on the two aggregation tasks (variable tracking, common words extraction) on LLaMA-3.1 8B Instruct (100 samples). On cwe, full attention is already near the floor and every method sits close to it; on vt, full attention is meaningful and DPXA holds up.}}{33}{table.caption.42}\protected@file@percent }
+\newlabel{tab:ruler_pertask_llama_agg}{{16}{33}{RULER accuracy (\%) at 128K on the two aggregation tasks (variable tracking, common words extraction) on LLaMA-3.1 8B Instruct (100 samples). On cwe, full attention is already near the floor and every method sits close to it; on vt, full attention is meaningful and DPXA holds up}{table.caption.42}{}}
+\@writefile{toc}{\contentsline {paragraph}{LongBench.}{33}{section*.43}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {17}{\ignorespaces LongBench scores on Qwen2.5-7B-Instruct-1M (100 samples per task, 16 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Task abbreviations as in Table~\ref {tab:longbench}. Best score per column in \textbf  {bold}. $\dagger $MInference failed on 2 of 16 tasks (QMSum, RepoBench-P); its reported average is over the 14 completed tasks and is not directly comparable to the other rows.}}{34}{table.caption.44}\protected@file@percent }
+\newlabel{tab:longbench_qwen}{{17}{34}{LongBench scores on Qwen2.5-7B-Instruct-1M (100 samples per task, 16 tasks). DPXA and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma {=}0.90$ respectively). Task abbreviations as in Table~\ref {tab:longbench}. Best score per column in \textbf {bold}. $\dagger $MInference failed on 2 of 16 tasks (QMSum, RepoBench-P); its reported average is over the 14 completed tasks and is not directly comparable to the other rows}{table.caption.44}{}}
+\@writefile{toc}{\contentsline {paragraph}{Speedup.}{34}{section*.45}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.3.6}Video Understanding: Qwen2-VL}{34}{subsubsection.7.3.6}\protected@file@percent }
+\newlabel{sec:results_video}{{7.3.6}{34}{Video Understanding: Qwen2-VL}{subsubsection.7.3.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{Benchmark.}{34}{section*.47}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {16}{\ignorespaces End-to-end prefill speedup relative to SDPA across sequence lengths on Qwen2.5-7B-Instruct-1M (4$\times $H100, layer-sharded). XAttention and DPXA are reported to 256K; both OOM at 512K on this hardware.}}{35}{figure.caption.46}\protected@file@percent }
+\newlabel{fig:dpxa_speedup_trend_qwen}{{16}{35}{End-to-end prefill speedup relative to SDPA across sequence lengths on Qwen2.5-7B-Instruct-1M (4$\times $H100, layer-sharded). XAttention and DPXA are reported to 256K; both OOM at 512K on this hardware}{figure.caption.46}{}}
+\@writefile{toc}{\contentsline {paragraph}{Ablations.}{35}{section*.49}\protected@file@percent }
+\citation{jiang2024minference}
+\@writefile{lot}{\contentsline {table}{\numberline {18}{\ignorespaces VideoMME accuracy and prefill speedup on Qwen2-VL-7B-Instruct (Video-MME @ 1fps, no subtitles). Accuracy (\%) is on the full test set ($n{=}2700$). Speedup ($\times $full) is attention-kernel latency (\texttt  {self\_attn\_ms}) relative to full attention on a 10-videos-per-bucket timing sample; higher is faster. DPXA rows use Euclidean packing with count-weighting off. Best accuracy per column in \textbf  {bold}.}}{36}{table.caption.48}\protected@file@percent }
+\newlabel{tab:videomme_main}{{18}{36}{VideoMME accuracy and prefill speedup on Qwen2-VL-7B-Instruct (Video-MME @ 1fps, no subtitles). Accuracy (\%) is on the full test set ($n{=}2700$). Speedup ($\times $full) is attention-kernel latency (\texttt {self\_attn\_ms}) relative to full attention on a 10-videos-per-bucket timing sample; higher is faster. DPXA rows use Euclidean packing with count-weighting off. Best accuracy per column in \textbf {bold}}{table.caption.48}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {19}{\ignorespaces Packing metric ablation on VideoMME (200-video subset), Qwen2-VL-7B-Instruct, recall $r{=}0.90$, count-weighting off throughout.}}{36}{table.caption.50}\protected@file@percent }
+\newlabel{tab:videomme_ablation_metric}{{19}{36}{Packing metric ablation on VideoMME (200-video subset), Qwen2-VL-7B-Instruct, recall $r{=}0.90$, count-weighting off throughout}{table.caption.50}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Conclusion}{36}{section.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}Delta-KV Compression}{37}{subsection.8.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}DeltaXattention}{37}{subsection.8.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}DPXA}{37}{subsection.8.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.4}Future Work}{38}{subsection.8.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.5}Strengths \& Limitations}{38}{subsection.8.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Strengths.}{38}{section*.51}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Limitations.}{38}{section*.52}\protected@file@percent }
+\bibstyle{plainnat}
+\bibdata{references}
+\bibcite{bai2024longbench}{{1}{2024}{{Bai et~al.}}{{Bai, Lv, Zhang, Lyu, Tang, Huang, Du, Liu, Zeng, Hou, Dong, Tang, and Li}}}
+\bibcite{brown2020gpt3}{{2}{2020}{{Brown et~al.}}{{Brown, Mann, Ryder, Subbiah, Kaplan, Dhariwal, Neelakantan, Shyam, Sastry, Askell, et~al.}}}
+\bibcite{child2019generating}{{3}{2019}{{Child et~al.}}{{Child, Gray, Radford, and Sutskever}}}
+\bibcite{dao2023flashattention2}{{4}{2024}{{Dao}}{{}}}
+\bibcite{dao2022flashattention}{{5}{2022}{{Dao et~al.}}{{Dao, Fu, Ermon, Rudra, and R{\'e}}}}
+\bibcite{deepseekai2024deepseekv2}{{6}{2024}{{DeepSeek-AI}}{{}}}
+\bibcite{ding2024longrope}{{7}{2024}{{Ding et~al.}}{{Ding, Zhang, Zhang, Xu, Shang, Xu, Yang, and Yang}}}
+\bibcite{fu2024videomme}{{8}{2025}{{Fu et~al.}}{{Fu, Dai, Luo, Li, Ren, Zhang, Wang, Zhou, Shen, Zhang, Chen, Li, Lin, Zhao, Li, Xu, Zheng, Chen, Ji, and Sun}}}
+\bibcite{hsieh2024ruler}{{9}{2024}{{Hsieh et~al.}}{{Hsieh, Sun, Kriman, Acharya, Rekesh, Jia, Zhang, and Ginsburg}}}
+\bibcite{jiang2024minference}{{10}{2024}{{Jiang et~al.}}{{Jiang, Li, Zhang, Wu, Luo, Ahn, Han, Abdi, Li, Lin, Yang, and Qiu}}}
+\bibcite{kuratov2024babilong}{{11}{2024}{{Kuratov et~al.}}{{Kuratov, Bulatov, Anokhin, Rodkin, Sorokin, Sorokin, and Burtsev}}}
+\bibcite{lai2025flexprefill}{{12}{2025}{{Lai et~al.}}{{Lai, Lu, Luo, Ma, and Zhou}}}
+\bibcite{peng2023yarn}{{13}{2023}{{Peng et~al.}}{{Peng, Quesnelle, Fan, and Shippole}}}
+\bibcite{qi2024deltallm}{{14}{2024}{{Qi et~al.}}{{Qi, Gao, Ren, and Chen}}}
+\bibcite{saxena2024eigenattention}{{15}{2024}{{Saxena et~al.}}{{Saxena, Saha, Choudhary, and Roy}}}
+\bibcite{su2024rope}{{16}{2024}{{Su et~al.}}{{Su, Ahmed, Lu, Pan, Bo, and Liu}}}
+\bibcite{vaswani2017attention}{{17}{2017}{{Vaswani et~al.}}{{Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, and Polosukhin}}}
+\bibcite{wang2024kvmerger}{{18}{2024}{{Wang et~al.}}{{Wang, Jin, Yu, and Zhang}}}
+\bibcite{xiao2023streamingllm}{{19}{2024}{{Xiao et~al.}}{{Xiao, Tian, Chen, Han, and Lewis}}}
+\bibcite{xu2025xattention}{{20}{2025}{{Xu et~al.}}{{Xu, Xiao, Huang, Guo, and Han}}}
+\bibcite{zhang2025spargeattn}{{21}{2025}{{Zhang et~al.}}{{Zhang, Xiang, Huang, Wei, Xi, Zhu, and Chen}}}
+\gdef \@abspage@last{40}
