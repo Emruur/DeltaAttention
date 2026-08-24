@@ -1,6 +1,6 @@
 \section{Results}
 
-We evaluate delta-based tile scoring (DTS) against MInference, FlexPrefill, and XAttention. We exclude SpargeAttention from our comparisons because its implementation is bundled with quantization. All baselines are run directly from their original GitHub repositories without reimplementation. We report DTS at two cosine thresholds, 0.72 and 0.78, both at a recall of $r{=}0.90$. We evaluate these methods on RULER (100 samples, 13 tasks) and LongBench (16 tasks), alongside an isolated speedup analysis from 4K to 512K tokens.
+We evaluate delta-based tile scoring (DTS) against MInference, FlexPrefill, and XAttention. We exclude SpargeAttention from our comparisons because its implementation is bundled with quantization. All baselines are run directly from their original GitHub repositories without reimplementation. We report DTS at two cosine thresholds, 0.72 and 0.78. Across all applicable methods, we use a recall or coverage target of 0.90 (i.e., $r{=}0.90$ for DTS and XAttention, and $\gamma{=}0.90$ for FlexPrefill). We evaluate these methods on RULER and LongBench, alongside an isolated speedup analysis from 4K to 512K tokens.
 
 
 \subsection{RULER}
@@ -9,7 +9,7 @@ Table~\ref{tab:delta_tile_scoring} reports RULER accuracy. DTS achieves near-los
 
 \begin{table}[!ht]
 \centering
-\caption{RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on LLaMA-3.1 8B Instruct (100 samples, 13 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma{=}0.90$ respectively). Best score per column in \textbf{bold}.}
+\caption{RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on LLaMA-3.1 8B Instruct. Best score per column in \textbf{bold}.}
 \label{tab:delta_tile_scoring}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lrrrrrrr}
@@ -20,8 +20,8 @@ Full attention              & 96.16 & 93.77 & 93.43 & 90.47 & \textbf{86.14} & 7
 MInference                  & 96.04 & 93.95 & 92.60 & 88.43 & 84.66 & 63.73 & 86.57 \\
 FlexPrefill                  & 95.37 & 92.29 & 91.23 & 88.02 & 83.56 & 74.23 & 87.45 \\
 \midrule
-XAttn $s=16$                & \textbf{96.17} & 93.97 & 93.43 & 90.56 & 83.04 & 70.96 & 88.02 \\
-XAttn $s=8$                 & 95.57 & 93.92 & 92.71 & \textbf{90.60} & 81.83 & 71.57 & 87.70 \\
+XAttn $s{=}16$                & \textbf{96.17} & 93.97 & 93.43 & 90.56 & 83.04 & 70.96 & 88.02 \\
+XAttn $s{=}8$                 & 95.57 & 93.92 & 92.71 & \textbf{90.60} & 81.83 & 71.57 & 87.70 \\
 \midrule
 DTS cos\,0.72 & 95.83 & \textbf{94.22} & 93.36 & 90.42 & 85.19 & 74.82 & 88.97 \\
 DTS cos\,0.78 & 96.14 & 93.70 & \textbf{93.44} & 90.35 & 84.93 & \textbf{75.55} & 89.02 \\
@@ -39,7 +39,7 @@ Table~\ref{tab:longbench} shows that DTS is the strongest sparse method on avera
 \begin{table*}[!ht]
 \centering
 \small
-\caption{LongBench scores on LLaMA-3.1 8B Instruct (100 samples per task, 16 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma{=}0.90$ respectively). NQA = NarrativeQA, Qas = Qasper, MFQ = MultifieldQA-en, HotP = HotpotQA, 2Wiki = 2WikiMultiHopQA, Mus = MuSiQue, GovR = GovReport, QMS = QMSum, MNews = MultiNews, TREC = TREC, TQA = TriviaQA, SAM = SAMSum, PCnt = PassageCount, PassR = PassageRetrieval-en, LCC = LCC, RepoB = RepoBench-P. Best score per column in \textbf{bold}.}
+\caption{LongBench scores on LLaMA-3.1 8B Instruct. NQA = NarrativeQA, Qas = Qasper, MFQ = MultifieldQA-en, HotP = HotpotQA, 2Wiki = 2WikiMultiHopQA, Mus = MuSiQue, GovR = GovReport, QMS = QMSum, MNews = MultiNews, TREC = TREC, TQA = TriviaQA, SAM = SAMSum, PCnt = PassageCount, PassR = PassageRetrieval-en, LCC = LCC, RepoB = RepoBench-P. Best score per column in \textbf{bold}.}
 \label{tab:longbench}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lrrrrrrrrrrrrrrrrr}
@@ -61,7 +61,7 @@ DTS cos\,0.78 & 31.81 & \textbf{43.60} & \textbf{57.19} & 54.51 & 45.27 & 32.72 
 
 \subsection{Speedup and discussion}
 
-Figure~\ref{fig:dts_speedup_trend} shows the end-to-end speedup for every method from 4K to 512K tokens. All sparse methods initially run slower than SDPA at short contexts due to scoring overhead, but accelerate as attention dominates the forward pass. MInference is the slowest to catch up, crossing break-even at 48K and trailing others until 100K tokens. FlexPrefill is the fastest up to 256K, but MInference overtakes it at 512K (9.33$\times$ vs. 4.83$\times$). Meanwhile, DTS and XAttention track each other closely, crossing break-even near 16K and reaching roughly 3.3$\times$ at 512K. At the 128K operating point, both DTS settings match or slightly exceed the end-to-end speed of XAttention (2.02$\times$--2.08$\times$ for DTS vs. 1.89$\times$--2.00$\times$ for XAttention). This is driven by DTS's significantly lower scoring overhead. For example, DTS cos\,0.72 spends only 2.3\% of the full-attention tile cost on scoring (1.59s), whereas XAttention $s{=}16$ spends 6.2\% (2.57s) at a similar attention density (17.6\% vs 17.1\%).
+Figure~\ref{fig:dts_speedup_trend} shows the end-to-end speedup for every method from 4K to 512K tokens. All sparse methods initially run slower than SDPA at short contexts due to scoring overhead, but accelerate as attention dominates the forward pass. MInference is the slowest to catch up, crossing break-even at 48K and trailing others until 100K tokens. FlexPrefill is the fastest up to 256K, but MInference overtakes it at 512K (9.33$\times$ vs. 4.83$\times$). Meanwhile, DTS and XAttention track each other closely, crossing break-even near 16K and reaching roughly 3.3$\times$ at 512K. Breaking down the 128K operating point for DTS and XAttention, both DTS settings match or slightly exceed the end-to-end speed of XAttention (2.02$\times$--2.08$\times$ for DTS vs. 1.89$\times$--2.00$\times$ for XAttention). This is driven by DTS's significantly lower scoring overhead. DTS cos\,0.72 spends only 2.3\% of the full-attention tile cost on scoring (1.61s), whereas XAttention $s{=}16$ spends 6.2\% (2.57s) at a similar attention density (17.6\% vs 17.1\%).
 
 
 
@@ -128,7 +128,7 @@ LongBench is more sensitive to $\tau$ (Table~\ref{tab:cos_ablation}). Accuracy p
 
 \begin{table}[!ht]
 \centering
-\caption{End-to-end prefill speedup (128K tokens) and accuracy (\%) on RULER and LongBench for DTS cosine thresholds on LLaMA-3.1 8B Instruct ($r{=}0.90$). Attention density is the fraction of computed sparse attention. Score\% represents the scoring overhead. Score ms and Attn ms indicate the respective phase latencies.}
+\caption{End-to-end prefill speedup (128K tokens) and accuracy (\%) on RULER and LongBench for DTS cosine thresholds on LLaMA-3.1 8B Instruct. Attention density is the fraction of computed sparse attention. Score\% represents the scoring overhead. Score ms and Attn ms indicate the respective phase latencies.}
 \label{tab:cos_ablation}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lrrrrrrr}
@@ -149,7 +149,7 @@ cos\,0.80 & 1.97$\times$ & 13.3\% & 8.7\% & 2{,}885 & 2{,}140 & 91.58 & 38.61 \\
 \subsection{Cross-Model Generalization: Qwen2.5-7B}
 \label{sec:results_qwen}
 
-The results above use LLaMA-3.1 8B Instruct throughout. To check whether DTS's behavior is specific to that model, we repeat the full RULER, LongBench, and speedup evaluation on Qwen2.5-7B-Instruct-1M, using the same two operating points (cos\,0.72 and cos\,0.78 at $r{=}0.90$) and the same baselines.
+The results above use LLaMA-3.1 8B Instruct throughout. To check whether DTS's behavior is specific to that model, we repeat the full RULER, LongBench, and speedup evaluation on Qwen2.5-7B-Instruct-1M, using the same two operating points (cos\,0.72 and cos\,0.78) and the same baselines.
 
 
 \paragraph{RULER.}
@@ -158,7 +158,7 @@ Table~\ref{tab:delta_tile_scoring_qwen} reports RULER accuracy on Qwen. MInferen
 
 \begin{table}[!ht]
 \centering
-\caption{RULER accuracy (\%) comparing delta-based tile scoring against baseline and block-sparse methods on Qwen2.5-7B-Instruct-1M (100 samples, 13 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma{=}0.90$ respectively). Best score per column in \textbf{bold}.}
+\caption{RULER accuracy (\%) comparing DTS with the other baselines on Qwen2.5-7B-Instruct-1M. Best score per column in \textbf{bold}. The DTS row is measured under the corrected scoring kernel; cos\,0.72 was not re-run under it and is omitted.}
 \label{tab:delta_tile_scoring_qwen}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lrrrrrrr}
@@ -169,11 +169,10 @@ Full attention              & 94.10 & 93.67 & 93.54 & \textbf{91.17} & 88.07 & \
 MInference                  & \textbf{94.16} & \textbf{94.00} & \textbf{94.03} & 90.99 & 87.68 & 81.23 & \textbf{90.35} \\
 FlexPrefill                  & 74.39 & 61.74 & 55.66 & 59.71 & 32.38 & 37.10 & 53.50 \\
 \midrule
-XAttn $s=16$                & 94.02 & 93.55 & 93.66 & 90.85 & \textbf{88.21} & 81.22 & 90.25 \\
-XAttn $s=8$                 & 94.06 & 93.53 & 93.60 & 91.02 & 87.96 & 81.23 & 90.23 \\
+XAttn $s{=}16$                & 94.02 & 93.55 & 93.66 & 90.85 & \textbf{88.21} & 81.22 & 90.25 \\
+XAttn $s{=}8$                 & 94.06 & 93.53 & 93.60 & 91.02 & 87.96 & 81.23 & 90.23 \\
 \midrule
-DTS cos\,0.72 & 94.01 & 92.38 & 92.56 & 87.45 & 83.69 & 78.60 & 88.12 \\
-DTS cos\,0.78 & 94.02 & 93.54 & 92.59 & 89.38 & 84.54 & 79.26 & 88.89 \\
+DTS cos\,0.78 & 93.98 & 93.49 & 93.33 & 89.47 & 86.95 & 81.28 & 89.75 \\
 \bottomrule
 \end{tabular}%
 }
@@ -190,21 +189,20 @@ DTS only underperforms full attention on MuSiQue (29.22--29.88 vs. 32.70) and 2W
 \begin{table*}[!ht]
 \centering
 \small
-\caption{LongBench scores on Qwen2.5-7B-Instruct-1M (100 samples per task, 16 tasks). DTS and FlexPrefill are both at recall/coverage target $0.90$ ($r{=}0.90$ and $\gamma{=}0.90$ respectively). Task abbreviations as in Table~\ref{tab:longbench}. Best score per column in \textbf{bold}. $\dagger$MInference failed on 2 of 16 tasks (QMSum, RepoBench-P); its reported average is over the 14 completed tasks and is not directly comparable to the other rows.}
+\caption{LongBench scores on Qwen2.5-7B-Instruct-1M. Task abbreviations as in Table~\ref{tab:longbench}. Best score per column in \textbf{bold}. As in Table~\ref{tab:delta_tile_scoring_qwen}, the DTS row is measured under the corrected scoring kernel; cos\,0.72 was not re-run under it and is omitted. $\dagger$MInference failed on 2 of 16 tasks (QMSum, RepoBench-P); no average is reported for it, since a mean over the 14 completed tasks omits two below-average tasks and is not comparable to the other rows.}
 \label{tab:longbench_qwen}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lrrrrrrrrrrrrrrrrr}
 \toprule
 Method & NQA & Qas & MFQ & HotP & 2Wiki & Mus & GovR & QMS & MNews & TREC & TQA & SAM & PCnt & PassR & LCC & RepoB & Avg \\
 \midrule
-Full attention               & 29.26 & 45.12 & 51.49 & \textbf{58.34} & 55.45 & 32.70 & 35.22 & 23.99 & 25.69 & 71.00 & 83.31 & 45.24 & 10.00 & \textbf{100.00} & \textbf{48.40} & 32.92 & 46.76 \\
-MInference$^\dagger$         & 29.38 & 45.36 & 51.85 & 56.77 & 54.65 & \textbf{33.47} & 35.20 & --    & 25.98 & 71.00 & 83.31 & 46.32 & 10.00 & 99.00 & 47.63 & --    & (44.4)$^\dagger$ \\
+Full attention               & 29.26 & 45.12 & 51.49 & \textbf{58.34} & 55.45 & 32.70 & 35.22 & 23.99 & 25.69 & 71.00 & 83.31 & 45.24 & 10.00 & \textbf{100.00} & 48.40 & 32.92 & 46.76 \\
+MInference$^\dagger$         & 29.38 & 45.36 & 51.85 & 56.77 & 54.65 & \textbf{33.47} & 35.20 & --    & 25.98 & 71.00 & 83.31 & \textbf{46.32} & 10.00 & 99.00 & 47.63 & --    & --    \\
 FlexPrefill                  & 24.68 & 39.46 & 50.63 & 48.72 & 50.58 & 21.06 & 33.61 & \textbf{24.67} & 25.42 & 70.00 & 78.64 & 46.11 & 2.00 & 59.00 & 45.18 & 33.61 & 40.84 \\
 XAttn $s{=}16$               & 29.84 & 44.74 & 51.41 & 57.63 & \textbf{55.62} & 32.60 & 34.84 & 24.00 & \textbf{26.09} & 70.00 & 83.18 & 46.00 & \textbf{12.00} & \textbf{100.00} & 46.70 & 31.97 & 46.66 \\
-XAttn $s{=}8$                & \textbf{30.26} & 45.77 & \textbf{52.31} & 58.16 & 53.78 & 31.62 & 35.18 & 24.09 & 26.00 & 71.00 & 83.51 & 45.83 & 9.00 & \textbf{100.00} & 45.14 & 31.70 & 46.46 \\
+XAttn $s{=}8$                & \textbf{30.26} & \textbf{45.77} & 52.31 & 58.16 & 53.78 & 31.62 & 35.18 & 24.09 & 26.00 & 71.00 & 83.51 & 45.83 & 9.00 & \textbf{100.00} & 45.14 & 31.70 & 46.46 \\
 \midrule
-DTS cos\,0.72 & 29.89 & \textbf{46.48} & 52.04 & \textbf{58.56} & 53.31 & 29.22 & 35.12 & 24.19 & 25.86 & 72.00 & 83.17 & \textbf{46.51} & 4.00 & 98.00 & 45.57 & 35.15 & 46.19 \\
-DTS cos\,0.78 & 28.16 & 42.79 & 50.85 & 55.59 & 52.46 & 29.88 & 35.11 & 24.33 & 25.57 & \textbf{74.00} & \textbf{83.84} & 46.18 & 10.00 & 97.00 & 46.52 & \textbf{36.90} & 46.20 \\
+DTS cos\,0.78 & 21.96 & 44.66 & \textbf{53.08} & 54.57 & 54.63 & 33.21 & \textbf{35.47} & 24.12 & 25.64 & \textbf{74.00} & \textbf{84.19} & 46.13 & 6.00 & \textbf{100.00} & \textbf{48.49} & \textbf{33.71} & 46.24 \\
 \bottomrule
 \end{tabular}%
 }
@@ -244,20 +242,17 @@ Figure~\ref{fig:dts_speedup_trend_qwen} illustrates end-to-end speedups on Qwen 
     coordinates {(4096,0.52)(16384,0.90)(32768,1.26)(65536,1.77)(131072,2.66)(262144,4.13)(524288,3.87)};
 \addlegendentry{FlexPrefill $\gamma{=}0.90$}
 \addplot[color=cyan!60!black, semithick, dashed, mark=triangle]
-    coordinates {(4096,0.73)(16384,1.03)(32768,1.13)(65536,1.29)(131072,1.45)(262144,1.74)};
+    coordinates {(4096,0.73)(16384,1.03)(32768,1.13)(65536,1.29)(131072,1.45)(262144,1.73)(524288,2.06)};
 \addlegendentry{XAttn $s{=}16$}
 \addplot[color=blue!70!black, semithick, mark=triangle*]
-    coordinates {(4096,0.73)(16384,1.01)(32768,1.11)(65536,1.24)(131072,1.36)(262144,1.61)};
+    coordinates {(4096,0.73)(16384,1.01)(32768,1.11)(65536,1.25)(131072,1.37)(262144,1.60)(524288,1.87)};
 \addlegendentry{XAttn $s{=}8$}
 \addplot[color=red!80!black, very thick, mark=*]
-    coordinates {(4096,0.66)(16384,0.96)(32768,1.10)(65536,1.29)(131072,1.54)(262144,1.79)};
-\addlegendentry{DTS cos\,0.72 (ours)}
-\addplot[color=orange!90!black, very thick, dashed, mark=square*]
-    coordinates {(4096,0.66)(16384,0.97)(32768,1.11)(65536,1.30)(131072,1.57)(262144,1.81)};
+    coordinates {(4096,0.67)(16384,0.95)(32768,1.10)(65536,1.30)(131072,1.59)(262144,1.89)(524288,2.17)};
 \addlegendentry{DTS cos\,0.78 (ours)}
 \end{axis}
 \end{tikzpicture}
-\caption{End-to-end prefill speedup relative to SDPA across sequence lengths on Qwen2.5-7B-Instruct-1M (4$\times$H100, layer-sharded). XAttention and DTS are reported to 256K; both OOM at 512K on this hardware.}
+\caption{End-to-end prefill speedup relative to SDPA across sequence lengths on Qwen2.5-7B-Instruct-1M (4$\times$H100, layer-sharded). Points above the dashed break-even line (1.0$\times$) are faster than full attention.}
 \label{fig:dts_speedup_trend_qwen}
 \end{figure}
 
@@ -270,7 +265,7 @@ Table~\ref{tab:videomme_main} reports results against the same baselines used in
 
 \begin{table}[!ht]
 \centering
-\caption{Video-MME accuracy and prefill speedup on Qwen2-VL-7B-Instruct (Video-MME @ 1fps, no subtitles). Accuracy (\%) is on the full test set ($n{=}2700$). speedup ($\times$full) is attention-kernel latency (self\_attn\_ms) relative to full attention on a 10-videos-per-bucket timing sample. Best accuracy per column in \textbf{bold}.}
+\caption{Video-MME accuracy and prefill speedup on Qwen2-VL-7B-Instruct (Video-MME @ 1fps, no subtitles). Accuracy (\%) is on the full test set ($n{=}2700$). Speedup ($\times$full) is attention-kernel latency (self\_attn\_ms) relative to full attention on a 10-videos-per-bucket timing sample. Best accuracy per column in \textbf{bold}.}
 \label{tab:videomme_main}
 \resizebox{\linewidth}{!}{%
 \begin{tabular}{lrrrrrrr}
@@ -282,9 +277,9 @@ Method & Short & Med & Long & Avg & Short & Med & Long \\
 Full attention                    & 72.3 & 61.0 & 53.0 & 62.1 & 1.00 & 1.00 & 1.00 \\
 MInference                        & \textbf{72.8} & 61.2 & \textbf{53.3} & \textbf{62.4} & 0.42 & 0.62 & 0.61 \\
 FlexPrefill                        & 72.1 & \textbf{61.3} & 51.6 & 61.7 & 1.41 & 2.12 & 2.18 \\
-XAttn $s{=}16$ ($r{=}0.90$)       & 72.0 & 59.9 & 51.7 & 61.2 & 0.95 & 1.22 & 1.18 \\
+XAttn $s{=}16$                    & 72.0 & 59.9 & 51.7 & 61.2 & 0.95 & 1.22 & 1.18 \\
 \midrule
-DTS $\delta{=}15$ ($r{=}0.90$)   & 71.1 & 58.6 & 52.6 & 60.8 & 0.98 & 1.21 & 1.33 \\
+DTS $\delta{=}15$                 & 71.1 & 58.6 & 52.6 & 60.8 & 0.98 & 1.21 & 1.33 \\
 \bottomrule
 \end{tabular}%
 }
